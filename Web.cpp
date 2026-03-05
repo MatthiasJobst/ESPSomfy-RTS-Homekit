@@ -13,7 +13,7 @@
 #include "Web.h"
 #include "MQTT.h"
 #include "GitOTA.h"
-#include "Network.h"
+#include "SomfyNetwork.h"
 
 extern ConfigSettings settings;
 extern SSDPClass SSDP;
@@ -22,7 +22,7 @@ extern SomfyShadeController somfy;
 extern Web webServer;
 extern MQTTClass mqtt;
 extern GitUpdater git;
-extern Network net;
+extern SomfyNetwork net;
 
 //#define WEB_MAX_RESPONSE 34768
 #define WEB_MAX_RESPONSE 4096
@@ -161,7 +161,7 @@ void Web::handleLogin(WebServer &server) {
     memset(password, 0x00, sizeof(password));
     memset(pin, 0x00, sizeof(pin));
     if(server.hasArg("plain")) {
-      DynamicJsonDocument docin(512);
+      JsonDocument docin;
       DeserializationError err = deserializeJson(docin, server.arg("plain"));
       if (err) {
         this->handleDeserializationError(server, err);
@@ -359,7 +359,7 @@ void Web::handleShadeCommand(WebServer& server) {
     }
     else if (server.hasArg("plain")) {
       Serial.println("Sending Shade Command");
-      DynamicJsonDocument doc(512);
+      JsonDocument doc;
       DeserializationError err = deserializeJson(doc, server.arg("plain"));
       if (err) {
         this->handleDeserializationError(server, err);
@@ -420,7 +420,7 @@ void Web::handleRepeatCommand(WebServer& server) {
     if(server.hasArg("repeat")) repeat = atoi(server.arg("repeat").c_str());
     if(server.hasArg("stepSize")) stepSize = atoi(server.arg("stepSize").c_str());
     if(shadeId == 255 && groupId == 255 && server.hasArg("plain")) {
-      DynamicJsonDocument doc(512);
+      JsonDocument doc;
       DeserializationError err = deserializeJson(doc, server.arg("plain"));
       if (err) {
         this->handleDeserializationError(server, err);
@@ -438,7 +438,7 @@ void Web::handleRepeatCommand(WebServer& server) {
         if (obj.containsKey("repeat")) repeat = obj["repeat"].as<uint8_t>();
       }
     }
-    //DynamicJsonDocument sdoc(512);
+    //JsonDocument sdoc;
     //JsonObject sobj = sdoc.to<JsonObject>();
     if(shadeId != 255) {
       SomfyShade *shade = somfy.getShadeById(shadeId);
@@ -506,7 +506,7 @@ void Web::handleGroupCommand(WebServer &server) {
     }
     else if (server.hasArg("plain")) {
       Serial.println("Sending Group Command");
-      DynamicJsonDocument doc(256);
+      JsonDocument doc;
       DeserializationError err = deserializeJson(doc, server.arg("plain"));
       if (err) {
         this->handleDeserializationError(server, err);
@@ -563,7 +563,7 @@ void Web::handleTiltCommand(WebServer &server) {
     }
     else if (server.hasArg("plain")) {
       Serial.println("Sending Shade Tilt Command");
-      DynamicJsonDocument doc(256);
+      JsonDocument doc;
       DeserializationError err = deserializeJson(doc, server.arg("plain"));
       if (err) {
         this->handleDeserializationError(server, err);
@@ -632,7 +632,7 @@ void Web::handleRoom(WebServer &server) {
     // We are updating an existing room.
     if (server.hasArg("plain")) {
       Serial.println("Updating a room");
-      DynamicJsonDocument doc(512);
+      JsonDocument doc;
       DeserializationError err = deserializeJson(doc, server.arg("plain"));
       if (err) {
         this->handleDeserializationError(server, err);
@@ -694,7 +694,7 @@ void Web::handleShade(WebServer &server) {
     // We are updating an existing shade.
     if (server.hasArg("plain")) {
       Serial.println("Updating a shade");
-      DynamicJsonDocument doc(512);
+      JsonDocument doc;
       DeserializationError err = deserializeJson(doc, server.arg("plain"));
       if (err) {
         this->handleDeserializationError(server, err);
@@ -756,7 +756,7 @@ void Web::handleGroup(WebServer &server) {
     // We are updating an existing group.
     if (server.hasArg("plain")) {
       Serial.println("Updating a group");
-      DynamicJsonDocument doc(512);
+      JsonDocument doc;
       DeserializationError err = deserializeJson(doc, server.arg("plain"));
       if (err) {
         this->handleDeserializationError(server, err);
@@ -871,7 +871,7 @@ void Web::handleSetPositions(WebServer &server) {
   int8_t pos = (server.hasArg("position")) ? atoi(server.arg("position").c_str()) : -1;
   int8_t tiltPos = (server.hasArg("tiltPosition")) ? atoi(server.arg("tiltPosition").c_str()) : -1;
   if(server.hasArg("plain")) {
-    DynamicJsonDocument doc(512);
+    JsonDocument doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
     if (err) {
       this->handleDeserializationError(server, err);
@@ -913,7 +913,7 @@ void Web::handleSetSensor(WebServer &server) {
   int8_t windy = (server.hasArg("windy")) ? atoi(server.arg("windy").c_str()) : -1;
   int8_t repeat = (server.hasArg("repeat")) ? atoi(server.arg("repeat").c_str()) : -1;
   if(server.hasArg("plain")) {
-    DynamicJsonDocument doc(512);
+    JsonDocument doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
     if (err) {
       this->handleDeserializationError(server, err);
@@ -1239,7 +1239,7 @@ void Web::begin() {
     SomfyRoom * room = nullptr;
     if (method == HTTP_POST || method == HTTP_PUT) {
       Serial.println("Adding a room");
-      DynamicJsonDocument doc(512);
+      JsonDocument doc;
       DeserializationError err = deserializeJson(doc, server.arg("plain"));
       if (err) {
         webServer.handleDeserializationError(server, err);
@@ -1280,7 +1280,7 @@ void Web::begin() {
     SomfyShade* shade = nullptr;
     if (method == HTTP_POST || method == HTTP_PUT) {
       Serial.println("Adding a shade");
-      DynamicJsonDocument doc(1024);
+      JsonDocument doc;
       DeserializationError err = deserializeJson(doc, server.arg("plain"));
       if (err) {
         webServer.handleDeserializationError(server, err);
@@ -1322,7 +1322,7 @@ void Web::begin() {
     SomfyGroup * group = nullptr;
     if (method == HTTP_POST || method == HTTP_PUT) {
       Serial.println("Adding a group");
-      DynamicJsonDocument doc(512);
+      JsonDocument doc;
       DeserializationError err = deserializeJson(doc, server.arg("plain"));
       if (err) {
         webServer.handleDeserializationError(server, err);
@@ -1408,7 +1408,7 @@ void Web::begin() {
       // We are updating an existing room.
       if (server.hasArg("plain")) {
         Serial.println("Updating a room");
-        DynamicJsonDocument doc(512);
+        JsonDocument doc;
         DeserializationError err = deserializeJson(doc, server.arg("plain"));
         if (err) {
           webServer.handleDeserializationError(server, err);
@@ -1445,7 +1445,7 @@ void Web::begin() {
       // We are updating an existing shade.
       if (server.hasArg("plain")) {
         Serial.println("Updating a shade");
-        DynamicJsonDocument doc(1024);
+        JsonDocument doc;
         DeserializationError err = deserializeJson(doc, server.arg("plain"));
         if (err) {
           webServer.handleDeserializationError(server, err);
@@ -1487,7 +1487,7 @@ void Web::begin() {
       // We are updating an existing shade.
       if (server.hasArg("plain")) {
         Serial.println("Updating a group");
-        DynamicJsonDocument doc(512);
+        JsonDocument doc;
         DeserializationError err = deserializeJson(doc, server.arg("plain"));
         if (err) {
           webServer.handleDeserializationError(server, err);
@@ -1529,7 +1529,7 @@ void Web::begin() {
         if(server.hasArg("tilt")) tilt = atoi(server.arg("tilt").c_str());
       }
       else if (server.hasArg("plain")) {
-        DynamicJsonDocument doc(256);
+        JsonDocument doc;
         DeserializationError err = deserializeJson(doc, server.arg("plain"));
         if (err) {
           webServer.handleDeserializationError(server, err);
@@ -1551,7 +1551,7 @@ void Web::begin() {
         if(shade->tiltType == tilt_types::none) tilt = -1;
         if(pos >= 0 && pos <= 100)
           shade->setMyPosition(shade->transformPosition(pos), shade->transformPosition(tilt));
-          JsonResponse resp;
+        JsonResponse resp;
           resp.beginResponse(&server, g_content, sizeof(g_content));
           resp.beginObject();
           shade->toJSONRef(resp);
@@ -1612,7 +1612,7 @@ void Web::begin() {
     uint8_t shadeId = 255;
     bool paired = false;
     if(server.hasArg("plain")) {
-      DynamicJsonDocument doc(512);
+      JsonDocument doc;
       DeserializationError err = deserializeJson(doc, server.arg("plain"));
       if(err) {
           webServer.handleDeserializationError(server, err);
@@ -1652,7 +1652,7 @@ void Web::begin() {
       uint8_t shadeId = 255;
       if (server.hasArg("plain")) {
         // Its coming in the body.
-        DynamicJsonDocument doc(512);
+        JsonDocument doc;
         DeserializationError err = deserializeJson(doc, server.arg("plain"));
         if (err) {
           webServer.handleDeserializationError(server, err);
@@ -1695,7 +1695,7 @@ void Web::begin() {
       uint32_t address = 0;
       if (server.hasArg("plain")) {
         Serial.println("Linking a repeater");
-        DynamicJsonDocument doc(512);
+        JsonDocument doc;
         DeserializationError err = deserializeJson(doc, server.arg("plain"));
         if (err) {
           webServer.handleDeserializationError(server, err);
@@ -1731,7 +1731,7 @@ void Web::begin() {
       uint32_t address = 0;
       if (server.hasArg("plain")) {
         Serial.println("Unlinking a repeater");
-        DynamicJsonDocument doc(512);
+        JsonDocument doc;
         DeserializationError err = deserializeJson(doc, server.arg("plain"));
         if (err) {
           webServer.handleDeserializationError(server, err);
@@ -1766,7 +1766,7 @@ void Web::begin() {
     if (method == HTTP_PUT || method == HTTP_POST) {
       // We are updating an existing shade by adding a linked remote.
       if (server.hasArg("plain")) {
-        DynamicJsonDocument doc(512);
+        JsonDocument doc;
         DeserializationError err = deserializeJson(doc, server.arg("plain"));
         if (err) {
           webServer.handleDeserializationError(server, err);
@@ -1806,7 +1806,7 @@ void Web::begin() {
       // We are updating an existing shade by adding a linked remote.
       if (server.hasArg("plain")) {
         Serial.println("Linking a remote");
-        DynamicJsonDocument doc(512);
+        JsonDocument doc;
         DeserializationError err = deserializeJson(doc, server.arg("plain"));
         if (err) {
           webServer.handleDeserializationError(server, err);
@@ -1846,7 +1846,7 @@ void Web::begin() {
     if (method == HTTP_PUT || method == HTTP_POST) {
       if (server.hasArg("plain")) {
         Serial.println("Linking a shade to a group");
-        DynamicJsonDocument doc(512);
+        JsonDocument doc;
         DeserializationError err = deserializeJson(doc, server.arg("plain"));
         if (err) {
           webServer.handleDeserializationError(server, err);
@@ -1893,7 +1893,7 @@ void Web::begin() {
     if (method == HTTP_PUT || method == HTTP_POST) {
       if (server.hasArg("plain")) {
         Serial.println("Unlinking a shade from a group");
-        DynamicJsonDocument doc(512);
+        JsonDocument doc;
         DeserializationError err = deserializeJson(doc, server.arg("plain"));
         if (err) {
           switch (err.code()) {
@@ -1953,7 +1953,7 @@ void Web::begin() {
       }
       else if (server.hasArg("plain")) {
         Serial.println("Deleting a Room");
-        DynamicJsonDocument doc(256);
+        JsonDocument doc;
         DeserializationError err = deserializeJson(doc, server.arg("plain"));
         if (err) {
           webServer.handleDeserializationError(server, err);
@@ -1985,7 +1985,7 @@ void Web::begin() {
       }
       else if (server.hasArg("plain")) {
         Serial.println("Deleting a shade");
-        DynamicJsonDocument doc(256);
+        JsonDocument doc;
         DeserializationError err = deserializeJson(doc, server.arg("plain"));
         if (err) {
           webServer.handleDeserializationError(server, err);
@@ -2020,7 +2020,7 @@ void Web::begin() {
       }
       else if (server.hasArg("plain")) {
         Serial.println("Deleting a group");
-        DynamicJsonDocument doc(256);
+        JsonDocument doc;
         DeserializationError err = deserializeJson(doc, server.arg("plain"));
         if (err) {
           webServer.handleDeserializationError(server, err);
@@ -2206,7 +2206,7 @@ void Web::begin() {
   server.on("/saveSecurity", []() {
     webServer.sendCORSHeaders(server);
     if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
-    DynamicJsonDocument doc(512);
+    JsonDocument doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
     if (err) {
       Serial.print("Error parsing JSON ");
@@ -2223,7 +2223,7 @@ void Web::begin() {
         char token[65];
         webServer.createAPIToken(server.client().remoteIP(), token);
         obj["apiKey"] = token;
-        DynamicJsonDocument sdoc(1024);
+        JsonDocument sdoc;
         JsonObject sobj = sdoc.to<JsonObject>();
         settings.Security.toJSON(sobj);
         serializeJson(sdoc, g_content);
@@ -2236,7 +2236,7 @@ void Web::begin() {
     });
   server.on("/getSecurity", []() {
     webServer.sendCORSHeaders(server);
-    DynamicJsonDocument doc(512);
+    JsonDocument doc;
     JsonObject obj = doc.to<JsonObject>();
     settings.Security.toJSON(obj);
     serializeJson(doc, g_content);
@@ -2245,7 +2245,7 @@ void Web::begin() {
   server.on("/saveRadio", []() {
     webServer.sendCORSHeaders(server);
     if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
-    DynamicJsonDocument doc(512);
+    JsonDocument doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
     if (err) {
       Serial.print("Error parsing JSON ");
@@ -2323,7 +2323,7 @@ void Web::begin() {
   server.on("/setgeneral", []() {
     webServer.sendCORSHeaders(server);
     if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
-    DynamicJsonDocument doc(512);
+    JsonDocument doc;
     
     Serial.print("Plain: ");
     Serial.print(server.method());
@@ -2359,7 +2359,7 @@ void Web::begin() {
   server.on("/setNetwork", []() {
     webServer.sendCORSHeaders(server);
     if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
     if (err) {
       Serial.print("Error parsing JSON ");
@@ -2416,7 +2416,7 @@ void Web::begin() {
     webServer.sendCORSHeaders(server);
     if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
     Serial.println("Setting IP...");
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
     if (err) {
       webServer.handleDeserializationError(server, err);
@@ -2439,7 +2439,7 @@ void Web::begin() {
     webServer.sendCORSHeaders(server);
     if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
     Serial.println("Settings WIFI connection...");
-    DynamicJsonDocument doc(512);
+    JsonDocument doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
     if (err) {
       webServer.handleDeserializationError(server, err);
@@ -2490,7 +2490,7 @@ void Web::begin() {
     resp.endObject();
     resp.endResponse();
     /*
-    DynamicJsonDocument doc(512);
+    JsonDocument doc;
     JsonObject obj = doc.to<JsonObject>();
     doc["fwVersion"] = settings.fwVersion.name;
     settings.toJSON(obj);
@@ -2521,7 +2521,7 @@ void Web::begin() {
     resp.endResponse();
     
     /*
-    DynamicJsonDocument doc(2048);
+    JsonDocument doc;
     JsonObject obj = doc.to<JsonObject>();
     doc["fwVersion"] = settings.fwVersion.name;
     settings.toJSON(obj);
@@ -2537,7 +2537,7 @@ void Web::begin() {
     });
   server.on("/connectmqtt", []() {
     if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
     if (err) {
       webServer.handleDeserializationError(server, err);
@@ -2560,7 +2560,7 @@ void Web::begin() {
         resp.endObject();
         resp.endResponse();
         /*
-        DynamicJsonDocument sdoc(1024);
+        JsonDocument sdoc;
         JsonObject sobj = sdoc.to<JsonObject>();
         settings.MQTT.toJSON(sobj);
         serializeJson(sdoc, g_content);
@@ -2582,7 +2582,7 @@ void Web::begin() {
     resp.endResponse();
     
     /*
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
     JsonObject obj = doc.to<JsonObject>();
     settings.MQTT.toJSON(obj);
     serializeJson(doc, g_content);
@@ -2591,7 +2591,7 @@ void Web::begin() {
     });
   server.on("/roomSortOrder", []() {
     if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
-    DynamicJsonDocument doc(512);
+    JsonDocument doc;
     Serial.print("Plain: ");
     Serial.print(server.method());
     Serial.println(server.arg("plain"));
@@ -2622,7 +2622,7 @@ void Web::begin() {
   });
   server.on("/shadeSortOrder", []() {
     if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
-    DynamicJsonDocument doc(512);
+    JsonDocument doc;
     Serial.print("Plain: ");
     Serial.print(server.method());
     Serial.println(server.arg("plain"));
@@ -2653,7 +2653,7 @@ void Web::begin() {
   });
   server.on("/groupSortOrder", []() {
     if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
-    DynamicJsonDocument doc(512);
+    JsonDocument doc;
     Serial.print("Plain: ");
     Serial.print(server.method());
     Serial.println(server.arg("plain"));
@@ -2692,7 +2692,7 @@ void Web::begin() {
     resp.endObject();
     resp.endResponse();
     /*
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
     JsonObject obj = doc.to<JsonObject>();
     somfy.transceiver.toJSON(obj);
     serializeJson(doc, g_content);
@@ -2709,7 +2709,7 @@ void Web::begin() {
     resp.endObject();
     resp.endResponse();
     /*
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
     JsonObject obj = doc.to<JsonObject>();
     somfy.transceiver.toJSON(obj);
     serializeJson(doc, g_content);

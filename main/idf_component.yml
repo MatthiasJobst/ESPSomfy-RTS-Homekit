@@ -1,0 +1,4 @@
+dependencies:
+  idf: ">=5.3.0"
+  espressif/arduino-esp32:
+    version: ">=3.0.0"

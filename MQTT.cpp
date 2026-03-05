@@ -5,7 +5,7 @@
 #include "ConfigSettings.h"
 #include "MQTT.h"
 #include "Somfy.h"
-#include "Network.h"
+#include "SomfyNetwork.h"
 #include "Utils.h"
 
 WiFiClient tcpClient;
@@ -16,7 +16,7 @@ static char g_content[MQTT_MAX_RESPONSE];
 
 extern ConfigSettings settings;
 extern SomfyShadeController somfy;
-extern Network net;
+extern SomfyNetwork net;
 extern rebootDelay_t rebootDelay;
 
 
@@ -196,7 +196,7 @@ bool MQTTClass::connect() {
   if(settings.MQTT.enabled && !this->suspended) {
     if(this->lastConnect + 10000 > millis()) return false;    
     uint64_t mac = ESP.getEfuseMac();
-    snprintf(this->clientId, sizeof(this->clientId), "client-%08x%08x", (uint32_t)((mac >> 32) & 0xFFFFFFFF), (uint32_t)(mac & 0xFFFFFFFF));
+    snprintf(this->clientId, sizeof(this->clientId), "client-%08lx%08lx", (uint32_t)((mac >> 32) & 0xFFFFFFFF), (uint32_t)(mac & 0xFFFFFFFF));
     if(strlen(settings.MQTT.protocol) > 0 && strlen(settings.MQTT.hostname) > 0) {
       mqttClient.setServer(settings.MQTT.hostname, settings.MQTT.port);
       char lwtTopic[128] = "status";
@@ -307,7 +307,7 @@ bool MQTTClass::publish(const char *topic, const char *payload, bool retain) {
   return false;
 }
 bool MQTTClass::publish(const char *topic, uint32_t val, bool retain) {
-  snprintf(g_content, sizeof(g_content), "%u", val);
+  snprintf(g_content, sizeof(g_content), "%lu", val);
   return this->publish(topic, g_content, retain);
 }
 bool MQTTClass::unpublish(const char *topic) {

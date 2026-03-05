@@ -1,0 +1,29 @@
+# ---------------------------------------------------------------------------
+# sdkconfig.defaults — applied before menuconfig on a clean build.
+# Run `idf.py set-target esp32` (or esp32s3) before first build.
+# ---------------------------------------------------------------------------
+
+# Partition table
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# Flash size (must match your board; change to 8MB/16MB if needed)
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+
+# FreeRTOS tick rate — arduino-esp32 requires 1000 Hz
+CONFIG_FREERTOS_HZ=1000
+
+# arduino-esp32: let the component own app_main and call setup()/loop()
+CONFIG_AUTOSTART_ARDUINO=y
+
+# mbedTLS: full certificate bundle for HTTPS (GitHub OTA, MQTT TLS)
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y
+
+# mbedTLS: PSK cipher suites — required for NetworkClientSecure/ssl_client.cpp
+CONFIG_MBEDTLS_PSK_MODES=y
+
+# Increase default stack size for the Arduino loop task
+CONFIG_ARDUINO_LOOP_STACK_SIZE=8192
+
+# WDT timeout — matches the 7s set in setup()
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=10

@@ -411,6 +411,7 @@ class SomfyGroup : public SomfyRemote {
     void sendCommand(somfy_commands cmd);
     void sendCommand(somfy_commands cmd, uint8_t repeat, uint8_t stepSize = 0);
     int8_t p_direction(int8_t dir);
+    bool publish(const char *topic, const char *val, bool retain = false);
     bool publish(const char *topic, uint8_t val, bool retain = false);
     bool publish(const char *topic, int8_t val, bool retain = false);
     bool publish(const char *topic, uint32_t val, bool retain = false);

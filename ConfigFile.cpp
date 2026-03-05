@@ -230,7 +230,7 @@ bool ConfigFile::writeUInt16(const uint16_t val, const char tok) {
 }
 bool ConfigFile::writeUInt32(const uint32_t val, const char tok) {
   char buff[11];
-  snprintf(buff, sizeof(buff), "%10u", val);
+  snprintf(buff, sizeof(buff), "%10lu", val);
   return this->writeString(buff, sizeof(buff), tok); 
 }
 bool ConfigFile::writeFloat(const float val, const uint8_t prec, const char tok) {
@@ -433,7 +433,7 @@ bool ShadeConfigFile::validate() {
     fsize += (this->header.repeaterRecordSize * this->header.repeaterRecords);
   }
   if(this->file.size() != fsize) {
-    Serial.printf("File size is not correct should be %d and got %d\n", fsize, this->file.size());
+    Serial.printf("File size is not correct should be %lu and got %u\n", fsize, this->file.size());
   }
   // Next check to see if the records match the header length.
   uint8_t recs = 0;
@@ -446,7 +446,7 @@ bool ShadeConfigFile::validate() {
         return false;
       }
       if(this->file.position() - pos != this->header.roomRecordSize) {
-        Serial.printf("Room record length is %d and should be %d\n", this->file.position() - pos, this->header.roomRecordSize);
+        Serial.printf("Room record length is %lu and should be %d\n", this->file.position() - pos, this->header.roomRecordSize);
         return false;
       }
       recs++;
@@ -460,7 +460,7 @@ bool ShadeConfigFile::validate() {
       return false;
     }
     if(this->file.position() - pos != this->header.shadeRecordSize) {
-      Serial.printf("Shade record length is %d and should be %d\n", this->file.position() - pos, this->header.shadeRecordSize);
+      Serial.printf("Shade record length is %lu and should be %d\n", this->file.position() - pos, this->header.shadeRecordSize);
       return false;
     }
     recs++;
@@ -475,7 +475,7 @@ bool ShadeConfigFile::validate() {
       }
       recs++;
       if(this->file.position() - pos != this->header.groupRecordSize) {
-        Serial.printf("Group record length is %d and should be %d\n", this->file.position() - pos, this->header.groupRecordSize);
+        Serial.printf("Group record length is %lu and should be %d\n", this->file.position() - pos, this->header.groupRecordSize);
         return false;
       }
     }

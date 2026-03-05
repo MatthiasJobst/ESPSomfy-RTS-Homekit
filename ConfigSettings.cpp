@@ -111,7 +111,7 @@ bool BaseSettings::loadFile(const char *filename) {
       char c = file.read();
       data += c;
     }
-    DynamicJsonDocument doc(filesize);
+    JsonDocument doc;
     deserializeJson(doc, data);
     JsonObject obj = doc.as<JsonObject>();
     this->fromJSON(obj);
@@ -121,7 +121,7 @@ bool BaseSettings::loadFile(const char *filename) {
 }
 bool BaseSettings::saveFile(const char *filename) {
   File file = LittleFS.open(filename, "w");
-  DynamicJsonDocument doc(2048);
+  JsonDocument doc;
   JsonObject obj = doc.as<JsonObject>();
   this->toJSON(obj);
   serializeJson(doc, file);
@@ -373,7 +373,7 @@ bool MQTTSettings::load() {
   pref.end();
   return true;
 }
-bool ConfigSettings::toJSON(DynamicJsonDocument &doc) {
+bool ConfigSettings::toJSON(JsonDocument &doc) {
   doc["fwVersion"] = this->fwVersion.name;
   JsonObject objWIFI = doc.createNestedObject("WIFI");
   this->WIFI.toJSON(objWIFI);

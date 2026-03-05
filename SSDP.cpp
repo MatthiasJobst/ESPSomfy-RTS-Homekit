@@ -1,4 +1,5 @@
 #include <functional>
+#include <inttypes.h>
 #include <AsyncUDP.h>
 #include "Utils.h"
 #include "ConfigSettings.h"
@@ -37,7 +38,7 @@ static const char _ssdp_bye_template[] PROGMEM =
   "\r\n";
 static const char _ssdp_packet_template[] PROGMEM =
   "%s" // _ssdp_response_template / _ssdp_notify_template
-  "CACHE-CONTROL: max-age=%u\r\n" // _interval
+  "CACHE-CONTROL: max-age=%lu\r\n" // _interval (uint32_t = long unsigned on xtensa)
   "SERVER: Arduino/1.0 UPnP/1.1 ESPSomfyRTS/2.0\r\n"
   "USN: %s\r\n" // _uuid
   "%s: %s\r\n"  // "NT" or "ST", _deviceType
@@ -102,7 +103,7 @@ void UPNPDeviceType::setUUID(const char *id) { snprintf_P(uuid, sizeof(uuid), PS
 void UPNPDeviceType::setName(const char *name) { strlcpy(friendlyName, name, sizeof(friendlyName)); }
 void UPNPDeviceType::setURL(const char *url) { strlcpy(presentationURL, url, sizeof(presentationURL)); }
 void UPNPDeviceType::setSerialNumber(const char *sn) { strlcpy(serialNumber, sn, sizeof(serialNumber)); }
-void UPNPDeviceType::setSerialNumber(const uint32_t sn) { snprintf(serialNumber, sizeof(uint32_t) * 2 + 1, "%08X", sn); }
+void UPNPDeviceType::setSerialNumber(const uint32_t sn) { snprintf(serialNumber, sizeof(uint32_t) * 2 + 1, "%08lX", sn); }
 void UPNPDeviceType::setModelName(const char *name) { strlcpy(modelName, name, sizeof(modelName)); }
 void UPNPDeviceType::setModelNumber(const char *num) { strlcpy(modelNumber, num, sizeof(modelNumber));}
 void UPNPDeviceType::setModelURL(const char *url) { strlcpy(modelURL, url, sizeof(modelURL)); }
@@ -380,18 +381,11 @@ void SSDPClass::_parsePacket(ssdp_packet_t *pkt, AsyncUDPPacket &p) {
 }
 IPAddress SSDPClass::localIP()
 {
-    // Make sure we don't get a null IPAddress.
-    tcpip_adapter_ip_info_t ip;
-    if (WiFi.getMode() == WIFI_STA) {
-        if (tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &ip)) {
-            return IPAddress();
-        }
-    } else if (WiFi.getMode() == WIFI_OFF) {
-        if (tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_ETH, &ip)) {
-            return IPAddress();
-        }
+    // arduino-esp32 v3 removed tcpip_adapter; use the WiFi/ETH helpers directly.
+    if (WiFi.getMode() == WIFI_OFF) {
+        return ETH.localIP();
     }
-    return IPAddress(ip.ip.addr);
+    return WiFi.localIP();
 }    
 void SSDPClass::_sendResponse(IPAddress addr, uint16_t port, UPNPDeviceType *d, const char *st, response_types_t responseType) {
   char buffer[1460];
@@ -743,7 +737,7 @@ void SSDPClass::schema(Print &client) {
   IPAddress ip = this->localIP();
   uint8_t devCount = 0;
   for(uint8_t i = 0; i < this->m_cdeviceTypes; i++) {
-    if(this->deviceTypes[i].deviceType && strlen(this->deviceTypes[i].deviceType) > 0) devCount++;
+    if(strlen(this->deviceTypes[i].deviceType) > 0) devCount++;
   }
   char schema_template[strlen_P(_ssdp_schema_template)+1];
   char device_template[strlen_P(_ssdp_device_schema_template)+1];

@@ -94,10 +94,10 @@ class EthernetSettings: BaseSettings {
     uint8_t boardType = 0; // These board types are enumerated in the ui and used to set the chip settings.
     eth_phy_type_t phyType = ETH_PHY_LAN8720;
     eth_clock_mode_t CLKMode = ETH_CLOCK_GPIO0_IN;
-    int8_t phyAddress = ETH_PHY_ADDR;
-    int8_t PWRPin = ETH_PHY_POWER;
-    int8_t MDCPin = ETH_PHY_MDC;
-    int8_t MDIOPin = ETH_PHY_MDIO;
+    int8_t phyAddress = -1;      // ETH_PHY_ADDR removed in arduino-esp32 v3
+    int8_t PWRPin = -1;          // ETH_PHY_POWER removed in arduino-esp32 v3
+    int8_t MDCPin = 23;          // ETH_PHY_MDC removed in arduino-esp32 v3
+    int8_t MDIOPin = 18;         // ETH_PHY_MDIO removed in arduino-esp32 v3
     
     bool begin();
     bool fromJSON(JsonObject &obj);
@@ -194,7 +194,7 @@ class ConfigSettings: BaseSettings {
     void print();
     void emitSockets();
     void emitSockets(uint8_t num);
-    bool toJSON(DynamicJsonDocument &doc);
+    bool toJSON(JsonDocument &doc);
     uint16_t calcSettingsRecSize();
     uint16_t calcNetRecSize();
     bool getAppVersion();

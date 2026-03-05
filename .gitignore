@@ -10,3 +10,9 @@ SomfyController.ino.esp32s2.bin
 .vscode/settings.json
 
 documentation/
+
+# ESP-IDF build artifacts
+build/
+sdkconfig
+managed_components/
+dependencies.lock

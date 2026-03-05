@@ -3,6 +3,7 @@
 #include <SPI.h>
 #include <WebServer.h>
 #include <esp_task_wdt.h>
+#include <esp_chip_info.h>
 #include "Utils.h"
 #include "ConfigSettings.h"
 #include "Somfy.h"
@@ -1469,7 +1470,7 @@ void SomfyShade::publishState() {
 void SomfyShade::publishDisco() {
   if(!mqtt.connected() || !settings.MQTT.pubDisco) return;
   char topic[128] = "";
-  DynamicJsonDocument doc(2048);
+  JsonDocument doc;
   JsonObject obj = doc.to<JsonObject>();
   snprintf(topic, sizeof(topic), "%s/shades/%d", settings.MQTT.rootTopic, this->shadeId);
   obj["~"] = topic;
@@ -1750,6 +1751,14 @@ bool SomfyShade::publish(const char *topic, bool val, bool retain) {
   return false;
 }
 
+bool SomfyGroup::publish(const char *topic, const char *val, bool retain) {
+  if(mqtt.connected()) {
+    snprintf(mqttTopicBuffer, sizeof(mqttTopicBuffer), "groups/%u/%s", this->groupId, topic);
+    mqtt.publish(mqttTopicBuffer, val, retain);
+    return true;
+  }
+  return false;
+}
 bool SomfyGroup::publish(const char *topic, int8_t val, bool retain) {
   if(mqtt.connected()) {
     snprintf(mqttTopicBuffer, sizeof(mqttTopicBuffer), "groups/%u/%s", this->groupId, topic);
@@ -4133,7 +4142,7 @@ void SomfyShadeController::toJSONShades(JsonResponse &json) {
 }
 
 /*
-bool SomfyShadeController::toJSON(DynamicJsonDocument &doc) {
+bool SomfyShadeController::toJSON(JsonDocument &doc) {
   doc["maxRooms"] = SOMFY_MAX_ROOMS;
   doc["maxShades"] = SOMFY_MAX_SHADES;
   doc["maxGroups"] = SOMFY_MAX_GROUPS;
