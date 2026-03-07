@@ -1,14 +1,14 @@
 # ---------------------------------------------------------------------------
 # sdkconfig.defaults — applied before menuconfig on a clean build.
-# Run `idf.py set-target esp32` (or esp32s3) before first build.
+# Run `idf.py set-target esp32s3` before first build.
 # ---------------------------------------------------------------------------
 
 # Partition table
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 
-# Flash size (must match your board; change to 8MB/16MB if needed)
-CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+# Flash size — Seeed ESP32-S3 has 8MB flash
+CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
 
 # FreeRTOS tick rate — arduino-esp32 requires 1000 Hz
 CONFIG_FREERTOS_HZ=1000

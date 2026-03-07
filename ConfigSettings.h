@@ -92,8 +92,13 @@ class EthernetSettings: BaseSettings {
   public:
     EthernetSettings();
     uint8_t boardType = 0; // These board types are enumerated in the ui and used to set the chip settings.
+#if CONFIG_ETH_USE_ESP32_EMAC
     eth_phy_type_t phyType = ETH_PHY_LAN8720;
     eth_clock_mode_t CLKMode = ETH_CLOCK_GPIO0_IN;
+#else
+    uint8_t phyType = 0;  // ETH_PHY_LAN8720; no EMAC on this SoC
+    uint8_t CLKMode = 0;  // ETH_CLOCK_GPIO0_IN; no EMAC on this SoC
+#endif
     int8_t phyAddress = -1;      // ETH_PHY_ADDR removed in arduino-esp32 v3
     int8_t PWRPin = -1;          // ETH_PHY_POWER removed in arduino-esp32 v3
     int8_t MDCPin = 23;          // ETH_PHY_MDC removed in arduino-esp32 v3

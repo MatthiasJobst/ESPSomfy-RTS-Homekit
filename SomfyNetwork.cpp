@@ -400,7 +400,13 @@ bool SomfyNetwork::connectWired() {
       ETH.setHostname("ESPSomfy-RTS");
     Serial.print("Set hostname to:");
     Serial.println(ETH.getHostname());
-    if(!ETH.begin(settings.Ethernet.phyType, (int32_t)settings.Ethernet.phyAddress, settings.Ethernet.MDCPin, settings.Ethernet.MDIOPin, settings.Ethernet.PWRPin, settings.Ethernet.CLKMode)) { 
+#if CONFIG_ETH_USE_ESP32_EMAC
+    if(!ETH.begin(settings.Ethernet.phyType, (int32_t)settings.Ethernet.phyAddress, settings.Ethernet.MDCPin, settings.Ethernet.MDIOPin, settings.Ethernet.PWRPin, settings.Ethernet.CLKMode)) {
+#else
+    // ESP32-S3 and other SoCs without built-in EMAC: RMII Ethernet not supported.
+    Serial.println("Ethernet: internal EMAC not supported on this SoC");
+    if(false) {
+#endif 
       Serial.println("Ethernet Begin failed");
       this->ethStarted = false;
       if(settings.connType == conn_types_t::ethernetpref) {

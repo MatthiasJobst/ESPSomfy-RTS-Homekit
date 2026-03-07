@@ -661,8 +661,13 @@ bool ShadeConfigFile::readNetRecord(restore_options_t &opts) {
       if(strncmp(settings.serverId, this->header.serverId, sizeof(settings.serverId)) == 0) {
         Serial.println("Restoring Ethernet adapter settings");
         settings.Ethernet.boardType = this->readUInt8(1);
+#if CONFIG_ETH_USE_ESP32_EMAC
         settings.Ethernet.phyType = static_cast<eth_phy_type_t>(this->readUInt8(0));
         settings.Ethernet.CLKMode = static_cast<eth_clock_mode_t>(this->readUInt8(0));
+#else
+        settings.Ethernet.phyType = this->readUInt8(0);
+        settings.Ethernet.CLKMode = this->readUInt8(0);
+#endif
         settings.Ethernet.phyAddress = this->readInt8(1);
         settings.Ethernet.PWRPin = this->readInt8(1);
         settings.Ethernet.MDCPin = this->readInt8(16);
