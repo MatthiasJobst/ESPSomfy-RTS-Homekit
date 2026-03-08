@@ -24,6 +24,15 @@ static bool _apScanning = false;
 static uint32_t _lastMaxHeap = 0;
 static uint32_t _lastHeap = 0;
 int connectRetries = 0;
+
+// esp_task_wdt_reset() must only be called from tasks subscribed to the
+// watchdog (via esp_task_wdt_add). When setConnected() runs from a WiFi event
+// callback it executes in the arduino_events task which is NOT subscribed,
+// producing "task not found" errors. This wrapper silences those.
+static inline void safe_wdt_reset() {
+  if(esp_task_wdt_status(NULL) == ESP_OK) esp_task_wdt_reset();
+}
+
 void SomfyNetwork::end() {
   SSDP.end();
   mqtt.end();
@@ -143,7 +152,7 @@ void SomfyNetwork::loop() {
       this->emitSockets();
       this->lastEmit = millis();
     }
-    esp_task_wdt_reset(); // Make sure we do not reboot here.
+    safe_wdt_reset(); // Make sure we do not reboot here.
   }
   
   sockEmit.loop();
@@ -155,7 +164,7 @@ void SomfyNetwork::loop() {
   else if(!settings.ssdpBroadcast && SSDP.isStarted) SSDP.end();
 }
 bool SomfyNetwork::changeAP(const uint8_t *bssid, const int32_t channel) {
-  esp_task_wdt_reset(); // Make sure we do not reboot here.
+  safe_wdt_reset(); // Make sure we do not reboot here.
   if(SSDP.isStarted) SSDP.end();
   mqtt.disconnect();
   //sockEmit.end();
@@ -221,7 +230,7 @@ void SomfyNetwork::emitSockets(uint8_t num) {
   this->emitHeap(num);
 }
 void SomfyNetwork::setConnected(conn_types_t connType) {
-  esp_task_wdt_reset();
+  safe_wdt_reset();
   this->connType = connType;
   this->connectTime = millis();
   connectRetries = 0;
@@ -250,7 +259,7 @@ void SomfyNetwork::setConnected(conn_types_t connType) {
   }
   // NET: Begin this in the startup.
   //sockEmit.begin();
-  esp_task_wdt_reset();
+  safe_wdt_reset();
   
   if(this->connectAttempts == 1) {
     Serial.println();
@@ -284,7 +293,7 @@ void SomfyNetwork::setConnected(conn_types_t connType) {
         settings.IP.dns1 = ETH.dnsIP(0);
         settings.IP.dns2 = ETH.dnsIP(1);
       }
-      esp_task_wdt_reset();
+      safe_wdt_reset();
       JsonSockEvent *json = sockEmit.beginEmit("ethernet");
       json->beginObject();
       json->addElem("connected", this->connected());
@@ -292,7 +301,7 @@ void SomfyNetwork::setConnected(conn_types_t connType) {
       json->addElem("fullduplex", ETH.fullDuplex());
       json->endObject();
       sockEmit.endEmit();
-      esp_task_wdt_reset();
+      safe_wdt_reset();
     }
   }
   else {
@@ -343,7 +352,7 @@ void SomfyNetwork::setConnected(conn_types_t connType) {
   SSDP.setManufacturerURL(0, "https://github.com/rstrouse");
   SSDP.setURL(0, "/");
   SSDP.setActive(0, true);
-  esp_task_wdt_reset();
+  safe_wdt_reset();
   if(MDNS.begin(settings.hostname)) {
     Serial.printf("MDNS Responder Started: serverId=%s\n", settings.serverId);
     MDNS.addService("http", "tcp", 80);
@@ -356,11 +365,11 @@ void SomfyNetwork::setConnected(conn_types_t connType) {
     MDNS.addServiceTxt("espsomfy_rts", "tcp", "version", String(settings.fwVersion.name));
   }
   if(settings.ssdpBroadcast) {
-    esp_task_wdt_reset();
+    safe_wdt_reset();
     SSDP.begin();
   }
   else if(SSDP.isStarted) SSDP.end();
-  esp_task_wdt_reset();
+  safe_wdt_reset();
   this->emitSockets();
   settings.printAvailHeap();
   this->needsBroadcast = true;
@@ -520,7 +529,7 @@ bool SomfyNetwork::connectWiFi(const uint8_t *bssid, const int32_t channel) {
   return true;
 }
 bool SomfyNetwork::connect(conn_types_t ctype) {
-  esp_task_wdt_reset();
+  safe_wdt_reset();
   if(this->connecting()) return true;
   if(this->disconnectTime == 0) this->disconnectTime = millis();
   if(ctype == conn_types_t::ethernet && this->connType != conn_types_t::ethernet) {
@@ -579,7 +588,7 @@ bool SomfyNetwork::openSoftAP() {
   this->openingSoftAP = true;
   Serial.println();
   Serial.println("Turning the HotSpot On");
-  esp_task_wdt_reset(); // Make sure we do not reboot here.
+  safe_wdt_reset(); // Make sure we do not reboot here.
   WiFi.softAP(strlen(settings.hostname) > 0 ? settings.hostname : "ESPSomfy RTS", "");
   delay(200);
   return true;
