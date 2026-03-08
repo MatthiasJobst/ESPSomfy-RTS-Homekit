@@ -27,3 +27,24 @@ CONFIG_ARDUINO_LOOP_STACK_SIZE=8192
 
 # WDT timeout — matches the 7s set in setup()
 CONFIG_ESP_TASK_WDT_TIMEOUT_S=10
+
+# ---------------------------------------------------------------------------
+# HomeKit Accessory Protocol (HAP) — Step 11
+# ---------------------------------------------------------------------------
+
+# Bluetooth / NimBLE — required for HAP BLE transport and WAC2 provisioning
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+
+# LWIP tuning — HAP opens many concurrent TCP/UDP connections
+CONFIG_LWIP_MAX_SOCKETS=16
+CONFIG_LWIP_SO_REUSE=y
+CONFIG_LWIP_MAX_ACTIVE_TCP=12
+CONFIG_LWIP_MAX_LISTENING_TCP=12
+CONFIG_LWIP_UDP_RECVMBOX_SIZE=10
+CONFIG_LWIP_AUTOIP=y
+CONFIG_LWIP_AUTOIP_RATE_LIMIT_INTERVAL=60
+
+# HAP platform requirements
+CONFIG_MP_BLOB_SUPPORT=y
+CONFIG_MBEDTLS_HARDWARE_MPI=y
