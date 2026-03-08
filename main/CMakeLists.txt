@@ -21,7 +21,12 @@ idf_component_register(
         WebSockets
         ArduinoJson
         CC1101
+        joltwallet__littlefs
 )
+
+# Build a LittleFS image from the data/ directory and flash it automatically
+# alongside the firmware image when running `idf.py flash`.
+littlefs_create_partition_image(spiffs ../data FLASH_IN_PROJECT)
 
 # Suppress deprecation warnings for ArduinoJson v6→v7 API changes.
 # These are deferred to a later migration step; the deprecated APIs are

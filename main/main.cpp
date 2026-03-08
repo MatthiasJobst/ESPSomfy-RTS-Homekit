@@ -31,7 +31,7 @@ void setup() {
   Serial.println();
   Serial.println("Startup/Boot....");
   Serial.println("Mounting File System...");
-  if(LittleFS.begin()) Serial.println("File system mounted successfully");
+  if(LittleFS.begin(true)) Serial.println("File system mounted successfully");
   else Serial.println("Error mounting file system");
   settings.begin();
   if(WiFi.status() == WL_CONNECTED) WiFi.disconnect(true);

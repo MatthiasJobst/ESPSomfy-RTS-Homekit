@@ -15,4 +15,4 @@ documentation/
 build/
 sdkconfig
 managed_components/
-dependencies.lock
+dependencies.locksdkconfig.old
