@@ -387,7 +387,7 @@ dependencies:
     component_hash: 45033e1c199b13f1c8c1b544fb7d4e2df6a8e3071ebdcb1b22582b61a7974ff2
     dependencies: []
     source:
-      registry_url: https://components.espressif.com
+      registry_url: https://components.espressif.com/
       type: service
     version: 1.1.2
   espressif/json_parser:
@@ -400,7 +400,7 @@ dependencies:
       - if: idf_version >=5.0
       version: ~1.1
     source:
-      registry_url: https://components.espressif.com
+      registry_url: https://components.espressif.com/
       type: service
     version: 1.0.3
   espressif/libsodium:
@@ -410,7 +410,7 @@ dependencies:
       require: private
       version: '>=4.2'
     source:
-      registry_url: https://components.espressif.com
+      registry_url: https://components.espressif.com/
       type: service
     version: 1.0.20~4
   espressif/mdns:
@@ -420,7 +420,7 @@ dependencies:
       require: private
       version: '>=5.0'
     source:
-      registry_url: https://components.espressif.com
+      registry_url: https://components.espressif.com/
       type: service
     version: 1.10.1
   espressif/network_provisioning:
@@ -463,7 +463,11 @@ dependencies:
     version: 1.20.4
 direct_dependencies:
 - espressif/arduino-esp32
+- espressif/json_generator
+- espressif/json_parser
+- espressif/libsodium
+- espressif/mdns
 - idf
-manifest_hash: 8b5a1c0409426fade95e2796eef36092e36f2fbdf4466b9872038e50f05cb6fe
+manifest_hash: 3840ec891a04d71bf6ddc53067d933d0a0411ecb261dd9b487e7c6eba234a93a
 target: esp32s3
 version: 2.0.0
