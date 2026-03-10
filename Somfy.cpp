@@ -9,6 +9,7 @@
 #include "Somfy.h"
 #include "Sockets.h"
 #include "MQTT.h"
+#include "HomeKit.h"
 #include "ConfigFile.h"
 #include "GitOTA.h"
 
@@ -1445,6 +1446,7 @@ void SomfyRoom::unpublish() {
   }
 }
 void SomfyShade::publishState() {
+  homekit.notifyShadeState(this);
   if(mqtt.connected()) {
     this->publish("position", this->transformPosition(this->currentPos), true);
     this->publish("direction", this->direction, true);

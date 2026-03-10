@@ -2,6 +2,8 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <esp_task_wdt.h>
+#include <esp_wifi.h>
+#include "HomeKit.h"
 #include "ConfigSettings.h"
 #include "SomfyNetwork.h"
 #include "Web.h"
@@ -246,6 +248,7 @@ void SomfyNetwork::setConnected(conn_types_t connType) {
     this->strength = WiFi.RSSI();
     this->channel = WiFi.channel();
     this->connectAttempts++;
+    esp_wifi_set_ps(WIFI_PS_NONE);  // Disable modem sleep to prevent DELBA/frame-drop issues
   }
   else if(this->connType == conn_types_t::ethernet) {
     if(this->softAPOpened) {
@@ -364,6 +367,8 @@ void SomfyNetwork::setConnected(conn_types_t connType) {
     MDNS.addServiceTxt("espsomfy_rts", "tcp", "model", "ESPSomfyRTS");
     MDNS.addServiceTxt("espsomfy_rts", "tcp", "version", String(settings.fwVersion.name));
   }
+  // Start HomeKit bridge after mDNS is running (first connection only)
+  homekit.begin();
   if(settings.ssdpBroadcast) {
     safe_wdt_reset();
     SSDP.begin();

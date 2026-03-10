@@ -4,6 +4,7 @@ idf_component_register(
         "../ConfigFile.cpp"
         "../ConfigSettings.cpp"
         "../GitOTA.cpp"
+        "../HomeKit.cpp"
         "../MQTT.cpp"
         "../SomfyNetwork.cpp"
         "../Sockets.cpp"
@@ -22,6 +23,8 @@ idf_component_register(
         ArduinoJson
         CC1101
         joltwallet__littlefs
+        esp_hap_core
+        esp_hap_apple_profiles
 )
 
 # Build a LittleFS image from the data/ directory and flash it automatically

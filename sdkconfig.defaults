@@ -28,6 +28,13 @@ CONFIG_ARDUINO_LOOP_STACK_SIZE=8192
 # WDT timeout — matches the 7s set in setup()
 CONFIG_ESP_TASK_WDT_TIMEOUT_S=10
 
+# Pin Arduino loop/event tasks to core 0 so the HAP httpd task (priority 5,
+# no affinity) schedules itself on core 1 and cannot pre-empt the loop task.
+CONFIG_ARDUINO_RUN_CORE1=y
+CONFIG_ARDUINO_RUNNING_CORE=1
+CONFIG_ARDUINO_EVENT_RUN_CORE1=y
+CONFIG_ARDUINO_EVENT_RUNNING_CORE=1
+
 # ---------------------------------------------------------------------------
 # HomeKit Accessory Protocol (HAP) — Step 11
 # ---------------------------------------------------------------------------
@@ -36,8 +43,21 @@ CONFIG_ESP_TASK_WDT_TIMEOUT_S=10
 CONFIG_BT_ENABLED=y
 CONFIG_BT_NIMBLE_ENABLED=y
 
+# WiFi power save — disable modem sleep to prevent DELBA/frame-drop under load
+CONFIG_ESP_WIFI_STA_DISCONNECTED_PM_ENABLE=n
+
+# WiFi A-MPDU — disable TX aggregation to prevent BA session DELBA under CPU load;
+# small home-automation payloads don't benefit from throughput gains
+CONFIG_ESP_WIFI_AMPDU_TX_ENABLED=n
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=16
+
+# HAP port and socket cap — port must not clash with web server (port 80);
+# cap at 4 so HAP doesn't starve the web server of LWIP sockets (4+3 internal = 7 used by HAP)
+CONFIG_HAP_HTTP_SERVER_PORT=51826
+CONFIG_HAP_HTTP_MAX_OPEN_SOCKETS=4
+
 # LWIP tuning — HAP opens many concurrent TCP/UDP connections
-CONFIG_LWIP_MAX_SOCKETS=16
+CONFIG_LWIP_MAX_SOCKETS=24
 CONFIG_LWIP_SO_REUSE=y
 CONFIG_LWIP_MAX_ACTIVE_TCP=12
 CONFIG_LWIP_MAX_LISTENING_TCP=12

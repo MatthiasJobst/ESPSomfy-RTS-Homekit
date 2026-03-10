@@ -15,6 +15,7 @@
 #include "Somfy.h"
 #include "MQTT.h"
 #include "GitOTA.h"
+#include "HomeKit.h"
 
 ConfigSettings settings;
 Web webServer;
@@ -27,6 +28,9 @@ GitUpdater git;
 
 uint32_t oldheap = 0;
 void setup() {
+  // Raise loop task priority above HAP httpd task (priority 5) so it cannot pre-empt
+  // the WebSocket / web server poll loop. Must be first line of setup().
+  vTaskPrioritySet(NULL, 6);
   Serial.begin(115200);
   Serial.println();
   Serial.println("Startup/Boot....");
@@ -42,6 +46,7 @@ void setup() {
   delay(1000);
   net.setup();
   somfy.begin();
+  // homekit.begin() is deferred — called in SomfyNetwork::setConnected() after mDNS is up.
   //git.checkForUpdate();
   // IDF v5: WDT API uses a config struct. arduino-esp32 may have already
   // initialized the WDT; use reconfigure to set our preferred timeout.
