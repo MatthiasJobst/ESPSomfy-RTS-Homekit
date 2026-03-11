@@ -6,6 +6,7 @@ tool_install_folder_name = "/Users/matthiasjobst/.espressif/tools"
 target = ["all"]
 idf_versions = ["v5.5.3"]
 tools_json_file = "tools/tools.json"
+config_file = "eim_config.toml"
 config_file_save_path = "eim_config.toml"
 non_interactive = true
 wizard_all_questions = false
