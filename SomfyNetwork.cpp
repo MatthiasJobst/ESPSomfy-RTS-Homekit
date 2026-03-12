@@ -367,7 +367,8 @@ void SomfyNetwork::setConnected(conn_types_t connType) {
     MDNS.addServiceTxt("espsomfy_rts", "tcp", "model", "ESPSomfyRTS");
     MDNS.addServiceTxt("espsomfy_rts", "tcp", "version", String(settings.fwVersion.name));
   }
-  // Start HomeKit bridge after mDNS is running (first connection only)
+  // begin() is idempotent (_started guard inside) — safe to call on every
+  // reconnect. ESP-IDF mDNS re-announces _hap._tcp automatically on WiFi reconnect.
   homekit.begin();
   if(settings.ssdpBroadcast) {
     safe_wdt_reset();

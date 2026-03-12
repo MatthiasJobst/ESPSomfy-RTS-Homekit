@@ -20,6 +20,8 @@ public:
     void addShade(SomfyShade *shade);
     void removeShade(SomfyShade *shade);
 
+    bool isStarted() const { return _started; }
+
 private:
     bool _started = false;
 };

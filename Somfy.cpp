@@ -3757,6 +3757,7 @@ SomfyShade *SomfyShadeController::addShade(JsonObject &obj) {
     shade->fromJSON(obj);
     shade->save();
     shade->emitState("shadeAdded");
+    homekit.addShade(shade);
   }
   return shade;
 }
@@ -4038,6 +4039,7 @@ bool SomfyShadeController::deleteShade(uint8_t shadeId) {
     if(this->shades[i].getShadeId() == shadeId) {
       shades[i].emitState("shadeRemoved");
       shades[i].unpublish();
+      homekit.removeShade(&shades[i]);
       this->shades[i].clear();
     }
   }
