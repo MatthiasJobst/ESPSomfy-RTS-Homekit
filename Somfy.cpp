@@ -4536,7 +4536,6 @@ uint32_t lastScan = 0;
 void Transceiver::beginFrequencyScan() {
   if(this->config.enabled) {
     this->disableReceive();
-    SPI.end();
     this->config.apply();
     rxmode = 3;
     pinMode(this->config.RXPin, INPUT);
@@ -4583,7 +4582,6 @@ void Transceiver::endFrequencyScan() {
     rxmode = 0;
     if(interruptPin > 0) detachInterrupt(interruptPin); 
     interruptPin = 0;
-    SPI.end();
     this->config.apply();
     this->emitFrequencyScan();
   }
@@ -4733,11 +4731,6 @@ bool Transceiver::usesPin(uint8_t pin) {
 }
 bool Transceiver::save() {
     this->config.save();
-    // End SPI before apply() so that SpiStart() inside ELECHOUSE Init()
-    // can re-initialize cleanly. Without this, the second SPI.begin() call
-    // on ESP32-S3 leaves the CS pin owned by the SPI peripheral, causing
-    // subsequent digitalWrite(SS_PIN) calls to fail and hanging the transfer.
-    SPI.end();
     this->config.apply();
     return true;
 }
