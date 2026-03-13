@@ -1,6 +1,7 @@
 #include "HomeKit.h"
 #include "Somfy.h"
 #include "ConfigSettings.h"
+#include "WResp.h"
 
 #include <hap.h>
 #include <hap_apple_servs.h>
@@ -197,12 +198,25 @@ void HomeKitClass::begin() {
     if(payload) {
         ESP_LOGI(TAG, "Pair with HomeKit using setup code: %s", HAP_SETUP_CODE);
         ESP_LOGI(TAG, "Or scan QR payload: %s", payload);
+        strncpy(_qrPayload, payload, sizeof(_qrPayload) - 1);
         free(payload);
     }
 
     hap_start();
     _started = true;
     ESP_LOGI(TAG, "HomeKit bridge started");
+}
+
+void HomeKitClass::resetPairings() {
+    if(!_started) return;
+    hap_reset_pairings();
+}
+
+void HomeKitClass::toJSON(JsonResponse &resp) {
+    resp.addElem("started", _started);
+    resp.addElem("setupCode", (const char *)HAP_SETUP_CODE);
+    resp.addElem("qrPayload", (const char *)_qrPayload);
+    resp.addElem("pairedCount", (int8_t)(_started ? hap_get_paired_controller_count() : 0));
 }
 
 void HomeKitClass::notifyShadeState(SomfyShade *shade) {

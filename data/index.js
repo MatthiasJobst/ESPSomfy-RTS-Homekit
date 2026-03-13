@@ -4801,3 +4801,50 @@ class Firmware {
 }
 var firmware = new Firmware();
 
+class HomeKit {
+    load() {
+        getJSONSync('/homekit', (err, data) => {
+            if (err) { ui.serviceError(err); return; }
+            let notEnabled = document.getElementById('divHomeKitNotEnabled');
+            let content    = document.getElementById('divHomeKitContent');
+            if (!data.started) {
+                if (notEnabled) notEnabled.style.display = '';
+                if (content)    content.style.display    = 'none';
+                return;
+            }
+            if (notEnabled) notEnabled.style.display = 'none';
+            if (content)    content.style.display    = '';
+            let code = document.getElementById('spanHKSetupCode');
+            if (code) code.innerHTML = data.setupCode || '---';
+            let qrdiv = document.getElementById('divHKQR');
+            if (qrdiv && data.qrPayload && typeof qrcode !== 'undefined') {
+                try {
+                    var qr = qrcode(0, 'M');
+                    qr.addData(data.qrPayload);
+                    qr.make();
+                    qrdiv.innerHTML = qr.createSvgTag(4, 2);
+                    var svg = qrdiv.querySelector('svg');
+                    if (svg) { svg.style.background = '#fff'; svg.style.borderRadius = '4px'; }
+                } catch(e) { console.error('QR error:', e); }
+            }
+            let count = document.getElementById('spanHKPairedCount');
+            if (count) {
+                let n = data.pairedCount || 0;
+                count.innerHTML = n === 0 ? 'None' : n === 1 ? '1 controller' : `${n} controllers`;
+            }
+        });
+    }
+    resetPairings() {
+        if (!confirm('Remove all paired HomeKit controllers? You will need to re-pair all devices.')) return;
+        postJSONSync('/homekit/resetPairings', {}, (err) => {
+            if (err) ui.serviceError(err);
+            else {
+                let count = document.getElementById('spanHKPairedCount');
+                if (count) count.innerHTML = 'None';
+                ui.infoMessage('All HomeKit pairings have been reset.');
+            }
+        });
+    }
+}
+var hkit = new HomeKit();
+

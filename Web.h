@@ -12,6 +12,8 @@ class Web {
     void handleLogout(WebServer &server);
     void handleStreamFile(WebServer &server, const char *filename, const char *encoding);
     void handleController(WebServer &server);
+    void handleHomeKit(WebServer &server);
+    void handleHomeKitResetPairings(WebServer &server);
     void handleLoginContext(WebServer &server);
     void handleGetRepeaters(WebServer &server);
     void handleGetRooms(WebServer &server);

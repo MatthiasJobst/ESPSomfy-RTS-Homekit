@@ -4536,6 +4536,8 @@ uint32_t lastScan = 0;
 void Transceiver::beginFrequencyScan() {
   if(this->config.enabled) {
     this->disableReceive();
+    SPI.end();
+    this->config.apply();
     rxmode = 3;
     pinMode(this->config.RXPin, INPUT);
     interruptPin = digitalPinToInterrupt(this->config.RXPin);
@@ -4581,6 +4583,7 @@ void Transceiver::endFrequencyScan() {
     rxmode = 0;
     if(interruptPin > 0) detachInterrupt(interruptPin); 
     interruptPin = 0;
+    SPI.end();
     this->config.apply();
     this->emitFrequencyScan();
   }
@@ -4730,6 +4733,11 @@ bool Transceiver::usesPin(uint8_t pin) {
 }
 bool Transceiver::save() {
     this->config.save();
+    // End SPI before apply() so that SpiStart() inside ELECHOUSE Init()
+    // can re-initialize cleanly. Without this, the second SPI.begin() call
+    // on ESP32-S3 leaves the CS pin owned by the SPI peripheral, causing
+    // subsequent digitalWrite(SS_PIN) calls to fail and hanging the transfer.
+    SPI.end();
     this->config.apply();
     return true;
 }
@@ -4975,6 +4983,9 @@ void transceiver_config_t::apply() {
     bit_length = this->type;    
     if(this->enabled) {
       bool radioInit = true;
+      // Always configure SPI pin assignments first, regardless of radioInit guard,
+      // so that any subsequent library calls have valid pin numbers.
+      ELECHOUSE_cc1101.setSpiPin(this->SCKPin, this->MISOPin, this->MOSIPin, this->CSNPin);
       pref.begin("CC1101");
       radioInit = pref.getBool("radioInit", true);
       // If the radio locks up then we can simply reboot and re-enable the radio.
@@ -4984,16 +4995,22 @@ void transceiver_config_t::apply() {
       if(!radioInit) return;
       Serial.print("Applying radio settings ");
       Serial.printf("Setting Data Pins RX:%u TX:%u\n", this->RXPin, this->TXPin);
-      //if(this->TXPin != this->RXPin)
-      //  pinMode(this->TXPin, OUTPUT);
-      //pinMode(this->RXPin, INPUT);
-      // Essentially these call only preform the two functions above.
+      // Configure all pins through the GPIO matrix before SPI/CC1101 init.
+      // Without this, ESP32-S3 reports "IO x is not set as GPIO" and the SPI
+      // transfer hangs, triggering the watchdog.
+      pinMode(this->SCKPin,  OUTPUT);
+      pinMode(this->MOSIPin, OUTPUT);
+      pinMode(this->MISOPin, INPUT);
+      pinMode(this->CSNPin,  OUTPUT);
+      digitalWrite(this->CSNPin, HIGH);
+      if(this->TXPin != this->RXPin)
+        pinMode(this->TXPin, OUTPUT);
+      pinMode(this->RXPin, INPUT);
       if(this->TXPin == this->RXPin)
         ELECHOUSE_cc1101.setGDO0(this->TXPin); // This pin may be shared.
       else
         ELECHOUSE_cc1101.setGDO(this->TXPin, this->RXPin); // GDO0, GDO2
       Serial.printf("Setting SPI Pins SCK:%u MISO:%u MOSI:%u CSN:%u\n", this->SCKPin, this->MISOPin, this->MOSIPin, this->CSNPin);
-      ELECHOUSE_cc1101.setSpiPin(this->SCKPin, this->MISOPin, this->MOSIPin, this->CSNPin);
       Serial.println("Radio Pins Configured!");
       ELECHOUSE_cc1101.Init();
       ELECHOUSE_cc1101.setCCMode(0);                            // set config for internal transmission mode.
@@ -5073,6 +5090,12 @@ void transceiver_config_t::apply() {
 }
 bool Transceiver::begin() {
     this->config.load();
+    // Clear any radioInit=false guard left by a previous crash so that apply()
+    // doesn't skip init on the first boot after a watchdog reset.
+    Preferences pref;
+    pref.begin("CC1101");
+    pref.putBool("radioInit", true);
+    pref.end();
     this->config.apply();
     rx_queue.init();
     return true;

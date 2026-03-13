@@ -114,6 +114,7 @@
           rel="apple-touch-startup-image">
 
 
+    <script type="text/javascript" src="qrcode.min.js"></script>
     <script type="text/javascript" src="index.js?v=2.4.7c"></script>
 </head>
 <body>
@@ -140,7 +141,7 @@
                         <div><span style="text-align:right;display:inline-block;width:57px;color:#00bcd4">Speed:</span><span id="spanEthernetSpeed" style="padding-left:4px;display:inline-block;text-align:left;width:120px;">--</span></div>
                     </div>
                 </div>
-                <div class="tab-container"><span class="selected" data-grpid="divSystemSettings">System</span><span data-grpid="divNetworkSettings">Network</span><span data-grpid="divSomfySettings">Somfy</span><span data-grpid="divRadioSettings">Radio</span></div>
+                <div class="tab-container"><span class="selected" data-grpid="divSystemSettings">System</span><span data-grpid="divNetworkSettings">Network</span><span data-grpid="divHomeKitSettings">HomeKit</span><span data-grpid="divSomfySettings">Somfy</span><span data-grpid="divRadioSettings">Radio</span></div>
                 <div id="divSystemSettings" class="tab-content">
                     <div class="subtab-container"><span class="selected" data-grpid="divSystemOptions">Options</span><span data-grpid="divSecurityOptions">Security</span><span data-grpid="divFirmware">Firmware</span></div>
                     <div id="divSystemOptions" class="subtab-content">
@@ -424,6 +425,25 @@
 
                         <div class="button-container">
                             <button id="btnConnectMQTT" type="button" onclick="mqtt.connectMQTT();">Save MQTT Settings</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="divHomeKitSettings" style="display:none;">
+                    <div id="divHomeKitNotEnabled" style="display:none;padding-top:20px;text-align:center;color:#aaa;font-size:15px;">HomeKit is not enabled on this device.</div>
+                    <div id="divHomeKitContent">
+                        <div style="padding-top:8px;text-align:center;">
+                            <div id="divHKQR" style="display:inline-block;"></div>
+                            <div style="font-size:14px;color:#00bcd4;margin:8px 0 4px;">Setup Code</div>
+                            <div id="spanHKSetupCode" style="font-size:2em;letter-spacing:4px;font-weight:bold;">---</div>
+                        </div>
+                        <hr style="border-color:#333;margin:12px 0;" />
+                        <div>
+                            <div style="font-size:14px;color:#00bcd4;margin-bottom:4px;">Paired Controllers</div>
+                            <div id="spanHKPairedCount" style="font-size:1.4em;">--</div>
+                        </div>
+                        <hr style="border-color:#333;margin:12px 0;" />
+                        <div class="button-container">
+                            <button id="btnHKResetPairings" type="button" onclick="hkit.resetPairings();">Reset Pairings</button>
                         </div>
                     </div>
                 </div>
@@ -1062,6 +1082,9 @@
                     switch (tab.getAttribute('data-grpid')) {
                         case 'divNetworkSettings':
                             wifi.loadNetwork();
+                            break;
+                        case 'divHomeKitSettings':
+                            hkit.load();
                             break;
                     }
                     let grp = document.getElementById(tab.getAttribute('data-grpid'));

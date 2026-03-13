@@ -14,6 +14,7 @@
 #include "MQTT.h"
 #include "GitOTA.h"
 #include "SomfyNetwork.h"
+#include "HomeKit.h"
 
 extern ConfigSettings settings;
 extern SSDPClass SSDP;
@@ -269,6 +270,30 @@ void Web::handleController(WebServer &server) {
   }
   else server.send(404, _encoding_text, _response_404);
 }
+void Web::handleHomeKit(WebServer &server) {
+  webServer.sendCORSHeaders(server);
+  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
+  if(server.method() == HTTP_GET) {
+    JsonResponse resp;
+    resp.beginResponse(&server, g_content, sizeof(g_content));
+    resp.beginObject();
+    homekit.toJSON(resp);
+    resp.endObject();
+    resp.endResponse();
+  }
+  else server.send(404, _encoding_text, _response_404);
+}
+
+void Web::handleHomeKitResetPairings(WebServer &server) {
+  webServer.sendCORSHeaders(server);
+  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
+  if(server.method() == HTTP_POST) {
+    homekit.resetPairings();
+    server.send(200, _encoding_json, F("{\"status\":\"OK\"}"));
+  }
+  else server.send(404, _encoding_text, _response_404);
+}
+
 void Web::handleLoginContext(WebServer &server) {
     webServer.sendCORSHeaders(server);
     if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
@@ -1082,6 +1107,8 @@ void Web::begin() {
   apiServer.on("/downloadFirmware", []() { webServer.handleDownloadFirmware(apiServer); });
   apiServer.on("/backup", []() { webServer.handleBackup(apiServer); });
   apiServer.on("/reboot", []() { webServer.handleReboot(apiServer); });
+  apiServer.on("/homekit", []() { webServer.handleHomeKit(apiServer); });
+  apiServer.on("/homekit/resetPairings", []() { webServer.handleHomeKitResetPairings(apiServer); });
   
   // Web Interface
   server.on("/tiltCommand", []() { webServer.handleTiltCommand(server); });
@@ -1180,6 +1207,7 @@ void Web::begin() {
 
     });
   server.on("/index.js", []() { webServer.sendCacheHeaders(604800); webServer.handleStreamFile(server, "/index.js", "text/javascript"); });
+  server.on("/qrcode.min.js", []() { webServer.sendCacheHeaders(604800); webServer.handleStreamFile(server, "/qrcode.min.js", "text/javascript"); });
   server.on("/main.css", []() { webServer.sendCacheHeaders(604800); webServer.handleStreamFile(server, "/main.css", "text/css"); });
   server.on("/widgets.css", []() { webServer.sendCacheHeaders(604800); webServer.handleStreamFile(server, "/widgets.css", "text/css"); });
   server.on("/icons.css", []() {  webServer.sendCacheHeaders(604800); webServer.handleStreamFile(server, "/icons.css", "text/css"); });
@@ -1189,6 +1217,8 @@ void Web::begin() {
   server.on("/apple-icon.png", []() { webServer.sendCacheHeaders(604800); webServer.handleStreamFile(server, "/apple-icon.png", "image/png"); });
   server.onNotFound([]() { webServer.handleNotFound(server); });
   server.on("/controller", []() { webServer.handleController(server); });
+  server.on("/homekit", []() { webServer.handleHomeKit(server); });
+  server.on("/homekit/resetPairings", []() { webServer.handleHomeKitResetPairings(server); });
   server.on("/rooms", []() { webServer.handleGetRooms(server); });
   server.on("/shades", []() { webServer.handleGetShades(server); });
   server.on("/groups", []() { webServer.handleGetGroups(server); });

@@ -3,6 +3,7 @@
 
 // Forward declarations — avoid pulling in heavy headers here.
 class SomfyShade;
+class JsonResponse;
 
 class HomeKitClass {
 public:
@@ -20,10 +21,17 @@ public:
     void addShade(SomfyShade *shade);
     void removeShade(SomfyShade *shade);
 
+    // Reset all pairings (removes all paired controllers).
+    void resetPairings();
+
+    // Serialize HomeKit status to JSON for the /homekit API endpoint.
+    void toJSON(JsonResponse &resp);
+
     bool isStarted() const { return _started; }
 
 private:
     bool _started = false;
+    char _qrPayload[64] = {};
 };
 
 extern HomeKitClass homekit;
