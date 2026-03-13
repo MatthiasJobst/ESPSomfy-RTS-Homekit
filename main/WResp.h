@@ -1,6 +1,5 @@
 #include <WebServer.h>
 #include <WebSocketsServer.h>
-#include "Somfy.h"
 #ifndef wresp_h
 #define wresp_h
 
