@@ -1,21 +1,20 @@
 idf_component_register(
     SRCS
         "main.cpp"
-        "../ConfigFile.cpp"
-        "../ConfigSettings.cpp"
-        "../GitOTA.cpp"
-        "../HomeKit.cpp"
-        "../MQTT.cpp"
-        "../SomfyNetwork.cpp"
-        "../Sockets.cpp"
-        "../Somfy.cpp"
-        "../SSDP.cpp"
-        "../Utils.cpp"
-        "../WResp.cpp"
-        "../Web.cpp"
+        "ConfigFile.cpp"
+        "ConfigSettings.cpp"
+        "GitOTA.cpp"
+        "HomeKit.cpp"
+        "MQTT.cpp"
+        "SomfyNetwork.cpp"
+        "Sockets.cpp"
+        "Somfy.cpp"
+        "SSDP.cpp"
+        "Utils.cpp"
+        "WResp.cpp"
+        "Web.cpp"
     INCLUDE_DIRS
         "."
-        ".."
     REQUIRES
         arduino-esp32
         PubSubClient
