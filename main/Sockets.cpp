@@ -4,7 +4,7 @@
 #include <esp_task_wdt.h>
 #include "Sockets.h"
 #include "ConfigSettings.h"
-#include "Somfy.h"
+#include "SomfyController.h"
 #include "SomfyNetwork.h"
 #include "GitOTA.h"
 

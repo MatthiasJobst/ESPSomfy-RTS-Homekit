@@ -8,7 +8,7 @@
 #include "ConfigFile.h"
 #include "Utils.h"
 #include "SSDP.h"
-#include "Somfy.h"
+#include "SomfyController.h"
 #include "WResp.h"
 #include "Web.h"
 #include "MQTT.h"

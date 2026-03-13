@@ -8,7 +8,7 @@
 #include <esp_task_wdt.h>
 #include <esp_chip_info.h>
 #include "SomfyTransceiver.h"
-#include "Somfy.h"
+#include "SomfyController.h"
 #include "Sockets.h"
 #include "MQTT.h"
 #include "GitOTA.h"

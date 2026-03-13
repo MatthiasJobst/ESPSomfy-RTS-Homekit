@@ -1,5 +1,5 @@
 #include "HomeKit.h"
-#include "Somfy.h"
+#include "SomfyController.h"
 #include "ConfigSettings.h"
 #include "WResp.h"
 

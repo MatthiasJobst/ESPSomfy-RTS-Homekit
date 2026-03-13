@@ -1,6 +1,6 @@
 #include <ArduinoJson.h>
 #include <LittleFS.h>
-#include "Somfy.h"
+#include "SomfyController.h"
 #include "ConfigSettings.h"
 
 #ifndef configfile_h

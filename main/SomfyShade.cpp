@@ -6,7 +6,7 @@
 #include "GitOTA.h"
 #include "SomfyShade.h"
 #include "SomfyTransceiver.h"
-#include "Somfy.h"
+#include "SomfyController.h"
 #include "Sockets.h"
 #include "MQTT.h"
 #include "HomeKit.h"

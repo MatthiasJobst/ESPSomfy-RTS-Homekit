@@ -4,7 +4,7 @@
 #include <esp_task_wdt.h>
 #include "ConfigSettings.h"
 #include "MQTT.h"
-#include "Somfy.h"
+#include "SomfyController.h"
 #include "SomfyNetwork.h"
 #include "Utils.h"
 

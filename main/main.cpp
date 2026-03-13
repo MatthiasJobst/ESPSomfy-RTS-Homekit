@@ -12,7 +12,7 @@
 #include "Web.h"
 #include "Sockets.h"
 #include "Utils.h"
-#include "Somfy.h"
+#include "SomfyController.h"
 #include "MQTT.h"
 #include "GitOTA.h"
 #include "HomeKit.h"

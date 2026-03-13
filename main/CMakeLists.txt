@@ -1,3 +1,6 @@
+# CMakeLists.txt — ESP-IDF component registration for the main Somfy firmware.
+# Lists every source file in main/ and declares dependencies on the arduino-esp32,
+# CC1101 driver, and esp-homekit-sdk components.
 idf_component_register(
     SRCS
         "main.cpp"
@@ -12,7 +15,7 @@ idf_component_register(
         "SomfyTransceiver.cpp"
         "SomfyRemote.cpp"
         "SomfyShade.cpp"
-        "Somfy.cpp"
+        "SomfyController.cpp"
         "SSDP.cpp"
         "Utils.cpp"
         "WResp.cpp"
