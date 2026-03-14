@@ -19,9 +19,10 @@ idf_component_register(
         "SSDP.cpp"
         "Utils.cpp"
         "WResp.cpp"
-        "Web.cpp"
+        "web/Web.cpp"
     INCLUDE_DIRS
         "."
+        "web"
     REQUIRES
         arduino-esp32
         PubSubClient
