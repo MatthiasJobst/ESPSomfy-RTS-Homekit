@@ -22,6 +22,7 @@ idf_component_register(
         "web/Web.cpp"
         "web/WebSettings.cpp"
         "web/WebShades.cpp"
+        "web/WebRooms.cpp"
     INCLUDE_DIRS
         "."
         "somfy"
