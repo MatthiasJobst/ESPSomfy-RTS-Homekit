@@ -21,6 +21,7 @@ idf_component_register(
         "WResp.cpp"
         "web/Web.cpp"
         "web/WebSettings.cpp"
+        "web/WebShades.cpp"
     INCLUDE_DIRS
         "."
         "somfy"

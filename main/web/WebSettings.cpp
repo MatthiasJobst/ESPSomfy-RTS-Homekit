@@ -1,3 +1,14 @@
+// WebSettings.cpp — Web handler implementations for device configuration.
+//
+// Exposes the HTTP API surface for reading and writing all persistent settings:
+//   - Security / authentication (handleGetSecurity, handleSaveSecurity)
+//   - Radio / transceiver configuration (handleGetRadio, handleSaveRadio)
+//   - General device settings (handleSetGeneral)
+//   - Network settings and Wi-Fi connection (handleSetNetwork, handleSetIP, handleConnectWifi, handleNetworkSettings)
+//   - MQTT broker configuration and connection (handleMQTTSettings, handleConnectMQTT)
+//   - Module-level settings (handleModuleSettings)
+//   - OTA release listing and firmware download queuing (handleGetReleases, handleCancelFirmware)
+
 #include <WiFi.h>
 #include <WebServer.h>
 #include "ConfigSettings.h"
