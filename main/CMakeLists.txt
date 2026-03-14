@@ -20,6 +20,7 @@ idf_component_register(
         "Utils.cpp"
         "WResp.cpp"
         "web/Web.cpp"
+        "web/WebSettings.cpp"
     INCLUDE_DIRS
         "."
         "somfy"
