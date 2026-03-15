@@ -15,7 +15,6 @@ class Web {
     void handleHomeKit(WebServer &server);
     void handleHomeKitResetPairings(WebServer &server);
     void handleLoginContext(WebServer &server);
-    void handleGetRepeaters(WebServer &server);
     void handleGetRooms(WebServer &server);
     void handleGetShades(WebServer &server);
     void handleGetGroups(WebServer &server);
