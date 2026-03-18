@@ -53,8 +53,6 @@ static void sendShadeJSON(WebServer &server, SomfyShade *shade, bool ref = false
 // ---------------------------------------------------------------------------
 
 void Web::handleGetShades(WebServer &server) {
-    webServer.sendCORSHeaders(server);
-    if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
     HTTPMethod method = server.method();
     if (method == HTTP_POST || method == HTTP_GET) {
       JsonResponse resp;
@@ -68,7 +66,6 @@ void Web::handleGetShades(WebServer &server) {
 }
 
 void Web::handleShadeCommand(WebServer& server) {
-  webServer.sendCORSHeaders(server);
   if (server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   uint8_t shadeId = 255;
@@ -114,8 +111,6 @@ void Web::handleShadeCommand(WebServer& server) {
 }
 
 void Web::handleTiltCommand(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   uint8_t shadeId = 255;
   uint8_t target = 255;
@@ -154,8 +149,6 @@ void Web::handleTiltCommand(WebServer &server) {
 }
 
 void Web::handleShade(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   if (server.method() == HTTP_GET) {
     if (server.hasArg("shadeId")) {
       SomfyShade* shade = requireShade(server, atoi(server.arg("shadeId").c_str()));
@@ -169,8 +162,6 @@ void Web::handleShade(WebServer &server) {
 }
 
 void Web::handleSetPositions(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   uint8_t shadeId = (server.hasArg("shadeId")) ? atoi(server.arg("shadeId").c_str()) : 255;
   int8_t pos = (server.hasArg("position")) ? atoi(server.arg("position").c_str()) : -1;
   int8_t tiltPos = (server.hasArg("tiltPosition")) ? atoi(server.arg("tiltPosition").c_str()) : -1;
@@ -196,7 +187,6 @@ void Web::handleSetPositions(WebServer &server) {
 }
 
 void Web::handleAddShade(WebServer &server) {
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   SomfyShade* shade = nullptr;
   if (method == HTTP_POST || method == HTTP_PUT) {
@@ -220,8 +210,6 @@ void Web::handleAddShade(WebServer &server) {
 }
 
 void Web::handleSaveShade(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   if (method == HTTP_PUT || method == HTTP_POST) {
     if (server.hasArg("plain")) {
@@ -246,8 +234,6 @@ void Web::handleSaveShade(WebServer &server) {
 }
 
 void Web::handleDeleteShade(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   uint8_t shadeId = 255;
   if (method == HTTP_GET || method == HTTP_PUT || method == HTTP_POST) {
@@ -274,8 +260,6 @@ void Web::handleDeleteShade(WebServer &server) {
 }
 
 void Web::handleSetMyPosition(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   uint8_t shadeId = 255;
   int8_t pos = -1;
@@ -309,8 +293,6 @@ void Web::handleSetMyPosition(WebServer &server) {
 }
 
 void Web::handleSetRollingCode(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   if (method == HTTP_PUT || method == HTTP_POST) {
     uint8_t shadeId = 255;
@@ -334,8 +316,6 @@ void Web::handleSetRollingCode(WebServer &server) {
 }
 
 void Web::handleSetPaired(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   uint8_t shadeId = 255;
   bool paired = false;
   if(server.hasArg("plain")) {
@@ -357,8 +337,6 @@ void Web::handleSetPaired(WebServer &server) {
 }
 
 void Web::handleUnpairShade(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   if (method == HTTP_PUT || method == HTTP_POST) {
     uint8_t shadeId = 255;
@@ -380,7 +358,6 @@ void Web::handleUnpairShade(WebServer &server) {
 }
 
 static void repeaterLinkOp(WebServer &server, bool link) {
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   if (method == HTTP_PUT || method == HTTP_POST) {
     uint32_t address = 0;
@@ -408,17 +385,14 @@ static void repeaterLinkOp(WebServer &server, bool link) {
 }
 
 void Web::handleLinkRepeater(WebServer &server) {
-  webServer.sendCORSHeaders(server);
   repeaterLinkOp(server, true);
 }
 
 void Web::handleUnlinkRepeater(WebServer &server) {
-  webServer.sendCORSHeaders(server);
   repeaterLinkOp(server, false);
 }
 
 static void remoteLinkOp(WebServer &server, bool link) {
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   if (method == HTTP_PUT || method == HTTP_POST) {
     if (server.hasArg("plain")) {
@@ -449,11 +423,9 @@ static void remoteLinkOp(WebServer &server, bool link) {
 }
 
 void Web::handleLinkRemote(WebServer &server) {
-  webServer.sendCORSHeaders(server);
   remoteLinkOp(server, true);
 }
 
 void Web::handleUnlinkRemote(WebServer &server) {
-  webServer.sendCORSHeaders(server);
   remoteLinkOp(server, false);
 }

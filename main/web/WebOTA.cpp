@@ -34,8 +34,6 @@ extern const char _encoding_text[];
 extern const char _encoding_json[];
 
 void Web::handleDownloadFirmware(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   GitRepo repo;
   GitRelease *rel = nullptr;
   int8_t err = repo.getReleases();
@@ -76,7 +74,6 @@ void Web::handleDownloadFirmware(WebServer &server) {
 }
 
 void Web::handleRestore(WebServer &server) {
-  webServer.sendCORSHeaders(server);
   server.sendHeader("Connection", "close");
   if(webServer.uploadSuccess) {
     server.send(200, _encoding_json, "{\"status\":\"Success\",\"desc\":\"Restoring Shade settings\"}");
@@ -123,8 +120,6 @@ void Web::handleRestoreUpload(WebServer &server) {
   }
 }
 void Web::handleUpdateFirmware(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   if (Update.hasError())
     server.send(500, _encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Error updating firmware: \"}");
   else
@@ -172,8 +167,6 @@ void Web::handleUpdateShadeConfig(WebServer &server) {
     server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Filesystem update in progress\"}"));
     return;
   }
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   server.sendHeader("Connection", "close");
   server.send(200, _encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Updating Shade Config: \"}");
 }
@@ -196,8 +189,6 @@ void Web::handleUpdateShadeConfigUpload(WebServer &server) {
   }
 }
 void Web::handleUpdateApplication(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   server.sendHeader("Connection", "close");
   if (Update.hasError())
     server.send(500, _encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Error updating application: \"}");

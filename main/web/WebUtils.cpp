@@ -30,8 +30,6 @@ extern char g_content[WEB_MAX_RESPONSE];
 extern const char _encoding_json[];
 
 void Web::handleGetNextShade(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   uint8_t shadeId = somfy.getNextShadeId();
   JsonResponse resp;
   resp.beginResponse(&server, g_content, sizeof(g_content));
@@ -46,7 +44,6 @@ void Web::handleGetNextShade(WebServer &server) {
 }
 
 void Web::handleShadeSortOrder(WebServer &server) {
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   JsonDocument doc;
   Serial.print("Plain: ");
   Serial.print(server.method());
@@ -77,9 +74,7 @@ void Web::handleShadeSortOrder(WebServer &server) {
 }
 
 void Web::handleScanAPs(WebServer &server) {
-  webServer.sendCORSHeaders(server);
   esp_task_wdt_reset();
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   esp_task_wdt_delete(NULL);
   if(net.softAPOpened) WiFi.disconnect(false);
   int n = WiFi.scanNetworks(false, true);
@@ -112,8 +107,6 @@ void Web::handleScanAPs(WebServer &server) {
 }
 
 void Web::handleSendRemoteCommand(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   if (method == HTTP_GET || method == HTTP_PUT || method == HTTP_POST) {
     somfy_frame_t frame;
@@ -153,7 +146,6 @@ void Web::handleSendRemoteCommand(WebServer &server) {
 }
 
 void Web::handleBeginFrequencyScan(WebServer &server) {
-  webServer.sendCORSHeaders(server);
   somfy.transceiver.beginFrequencyScan();
   JsonResponse resp;
   resp.beginResponse(&server, g_content, sizeof(g_content));
@@ -164,7 +156,6 @@ void Web::handleBeginFrequencyScan(WebServer &server) {
 }
 
 void Web::handleEndFrequencyScan(WebServer &server) {
-  webServer.sendCORSHeaders(server);
   somfy.transceiver.endFrequencyScan();
   JsonResponse resp;
   resp.beginResponse(&server, g_content, sizeof(g_content));
@@ -175,8 +166,6 @@ void Web::handleEndFrequencyScan(WebServer &server) {
 }
 
 void Web::handleRecoverFilesystem(WebServer &server) {
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
-  webServer.sendCORSHeaders(server);
   if(git.status == GIT_UPDATING)
     server.send(200, "application/json", "{\"status\":\"OK\",\"desc\":\"Filesystem is updating.  Please wait!!!\"}");
   else if(git.status != GIT_STATUS_READY)

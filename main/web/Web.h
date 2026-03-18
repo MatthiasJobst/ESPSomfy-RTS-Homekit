@@ -5,7 +5,6 @@
 class Web {
   public:
     bool uploadSuccess = false;
-    void sendCORSHeaders(WebServer &server);
     void sendCacheHeaders(uint32_t seconds=604800);
     void startup();
     void handleLogin(WebServer &server);

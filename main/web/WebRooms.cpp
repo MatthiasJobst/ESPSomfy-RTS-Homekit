@@ -24,8 +24,6 @@ extern const char _encoding_json[];
 extern const char _response_404[];
 
 void Web::handleGetRooms(WebServer &server) {
-    webServer.sendCORSHeaders(server);
-    if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
     HTTPMethod method = server.method();
     if (method == HTTP_POST || method == HTTP_GET) {
       JsonResponse resp;
@@ -39,8 +37,6 @@ void Web::handleGetRooms(WebServer &server) {
 }
 
 void Web::handleRoom(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   if (method == HTTP_GET) {
     if (server.hasArg("roomId")) {
@@ -102,8 +98,6 @@ void Web::handleRoom(WebServer &server) {
 }
 
 void Web::handleGetNextRoom(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   JsonResponse resp;
   resp.beginResponse(&server, g_content, sizeof(g_content));
   resp.beginObject();
@@ -113,7 +107,6 @@ void Web::handleGetNextRoom(WebServer &server) {
 }
 
 void Web::handleRoomSortOrder(WebServer &server) {
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   JsonDocument doc;
   Serial.print("Plain: ");
   Serial.print(server.method());
@@ -144,7 +137,6 @@ void Web::handleRoomSortOrder(WebServer &server) {
 }
 
 void Web::handleAddRoom(WebServer &server) {
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   SomfyRoom * room = nullptr;
   if (method == HTTP_POST || method == HTTP_PUT) {
@@ -186,8 +178,6 @@ void Web::handleAddRoom(WebServer &server) {
 }
 
 void Web::handleSaveRoom(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   if (method == HTTP_PUT || method == HTTP_POST) {
     if (server.hasArg("plain")) {
@@ -222,8 +212,6 @@ void Web::handleSaveRoom(WebServer &server) {
 }
 
 void Web::handleDeleteRoom(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   uint8_t roomId = 0;
   if (method == HTTP_GET || method == HTTP_PUT || method == HTTP_POST) {

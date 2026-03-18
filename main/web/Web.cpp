@@ -51,14 +51,6 @@ void Web::loop() {
   apiServer.handleClient();
   delay(1);
 }
-void Web::sendCORSHeaders(WebServer &server) { 
-    //server.sendHeader(F("Connection"), F("Keep-Alive")); 
-    //server.sendHeader(F("Keep-Alive"), F("timeout=5, max=1000"));
-    //server.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
-    //server.sendHeader(F("Access-Control-Max-Age"), F("600"));
-    //server.sendHeader(F("Access-Control-Allow-Methods"), F("PUT,POST,GET,OPTIONS"));
-    //server.sendHeader(F("Access-Control-Allow-Headers"), F("*"));
-}
 void Web::sendCacheHeaders(uint32_t seconds) {
   server.sendHeader(F("Cache-Control"), F("public, max-age=604800, immutable"));
 }
@@ -139,8 +131,6 @@ void Web::handleLogout(WebServer &server) {
   server.send(301);
 }
 void Web::handleLogin(WebServer &server) {
-    webServer.sendCORSHeaders(server);
-    if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
     StaticJsonDocument<256> doc;
     JsonObject obj = doc.to<JsonObject>();
     char token[65];
@@ -208,8 +198,6 @@ void Web::handleStreamFile(WebServer &server, const char *filename, const char *
     server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Filesystem update in progress\"}"));
     return;
   }
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   esp_task_wdt_reset();
   // Load the index html page from the data directory.
   Serial.print("Loading file ");
@@ -227,8 +215,6 @@ void Web::handleStreamFile(WebServer &server, const char *filename, const char *
   esp_task_wdt_reset();
 }
 void Web::handleController(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   settings.printAvailHeap();
   if (method == HTTP_POST || method == HTTP_GET) {
@@ -265,8 +251,6 @@ void Web::handleController(WebServer &server) {
   else server.send(404, _encoding_text, _response_404);
 }
 void Web::handleHomeKit(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   if(server.method() == HTTP_GET) {
     JsonResponse resp;
     resp.beginResponse(&server, g_content, sizeof(g_content));
@@ -279,8 +263,6 @@ void Web::handleHomeKit(WebServer &server) {
 }
 
 void Web::handleHomeKitResetPairings(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   if(server.method() == HTTP_POST) {
     homekit.resetPairings();
     server.send(200, _encoding_json, F("{\"status\":\"OK\"}"));
@@ -289,8 +271,6 @@ void Web::handleHomeKitResetPairings(WebServer &server) {
 }
 
 void Web::handleLoginContext(WebServer &server) {
-    webServer.sendCORSHeaders(server);
-    if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
     JsonResponse resp;
     resp.beginResponse(&server, g_content, sizeof(g_content));
     resp.beginObject();
@@ -304,7 +284,6 @@ void Web::handleLoginContext(WebServer &server) {
     resp.endResponse();
 }
 void Web::handleRepeatCommand(WebServer& server) {
-  webServer.sendCORSHeaders(server);
   HTTPMethod method = server.method();
   if (method == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   uint8_t shadeId = 255;
@@ -382,8 +361,6 @@ void Web::handleRepeatCommand(WebServer& server) {
   }
 }
 void Web::handleGroupCommand(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   uint8_t groupId = 255;
   uint8_t stepSize = 0;
@@ -477,7 +454,6 @@ void Web::handleDiscovery(WebServer &server) {
     server.send(500, _encoding_text, "Invalid http method");
 }
 void Web::handleBackup(WebServer &server, bool attach) {
-  webServer.sendCORSHeaders(server);
   if(server.hasArg("attach")) attach = toBoolean(server.arg("attach").c_str(), attach);
   if(attach) {
     char filename[120];
@@ -512,8 +488,6 @@ void Web::handleBackup(WebServer &server, bool attach) {
   file.close();
 }
 void Web::handleSetSensor(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   uint8_t shadeId = (server.hasArg("shadeId")) ? atoi(server.arg("shadeId").c_str()) : 255;
   uint8_t groupId = (server.hasArg("groupId")) ? atoi(server.arg("groupId").c_str()) : 255;
   int8_t sunny = (server.hasArg("sunny")) ? toBoolean(server.arg("sunny").c_str(), false) ? 1 : 0 : -1;
@@ -601,8 +575,6 @@ void Web::handleNotFound(WebServer &server) {
     server.send(404, _encoding_text, g_content);
 }
 void Web::handleReboot(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   if (method == HTTP_POST || method == HTTP_PUT) {
     Serial.println("Rebooting ESP...");

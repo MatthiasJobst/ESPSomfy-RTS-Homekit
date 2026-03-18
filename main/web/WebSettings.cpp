@@ -38,8 +38,6 @@ extern const char _encoding_json[];
 // Settings handlers
 // ============================================================
 void Web::handleGetReleases(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   GitRepo repo;
   repo.getReleases();
   git.setCurrentRelease(repo);
@@ -51,8 +49,6 @@ void Web::handleGetReleases(WebServer &server) {
   resp.endResponse();
 }
 void Web::handleCancelFirmware(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   // If we are currently downloading the filesystem we cannot cancel.
   if(!git.lockFS) {
     git.status = GIT_UPDATE_CANCELLING;
@@ -69,8 +65,6 @@ void Web::handleCancelFirmware(WebServer &server) {
   }
 }
 void Web::handleSaveSecurity(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   JsonDocument doc;
   DeserializationError err = deserializeJson(doc, server.arg("plain"));
   if (err) {
@@ -100,7 +94,6 @@ void Web::handleSaveSecurity(WebServer &server) {
   }
 }
 void Web::handleGetSecurity(WebServer &server) {
-  webServer.sendCORSHeaders(server);
   JsonDocument doc;
   JsonObject obj = doc.to<JsonObject>();
   settings.Security.toJSON(obj);
@@ -108,8 +101,6 @@ void Web::handleGetSecurity(WebServer &server) {
   server.send(200, _encoding_json, g_content);
 }
 void Web::handleSaveRadio(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   JsonDocument doc;
   DeserializationError err = deserializeJson(doc, server.arg("plain"));
   if (err) {
@@ -137,7 +128,6 @@ void Web::handleSaveRadio(WebServer &server) {
   }
 }
 void Web::handleGetRadio(WebServer &server) {
-  webServer.sendCORSHeaders(server);
   JsonResponse resp;
   resp.beginResponse(&server, g_content, sizeof(g_content));
   resp.beginObject();
@@ -146,8 +136,6 @@ void Web::handleGetRadio(WebServer &server) {
   resp.endResponse();
 }
 void Web::handleSetGeneral(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   Serial.print("Plain: ");
   Serial.print(server.method());
   Serial.println(server.arg("plain"));
@@ -173,8 +161,6 @@ void Web::handleSetGeneral(WebServer &server) {
   }
 }
 void Web::handleSetNetwork(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   JsonDocument doc;
   DeserializationError err = deserializeJson(doc, server.arg("plain"));
   if (err) {
@@ -226,8 +212,6 @@ void Web::handleSetNetwork(WebServer &server) {
   }
 }
 void Web::handleSetIP(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   Serial.println("Setting IP...");
   JsonDocument doc; JsonObject obj;
   if (!parseBody(server, doc, obj)) return;
@@ -242,8 +226,6 @@ void Web::handleSetIP(WebServer &server) {
   }
 }
 void Web::handleConnectWifi(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   Serial.println("Settings WIFI connection...");
   JsonDocument doc; JsonObject obj;
   if (!parseBody(server, doc, obj)) return;
@@ -277,7 +259,6 @@ void Web::handleConnectWifi(WebServer &server) {
   }
 }
 void Web::handleModuleSettings(WebServer &server) {
-  webServer.sendCORSHeaders(server);
   JsonResponse resp;
   resp.beginResponse(&server, g_content, sizeof(g_content));
   resp.beginObject();
@@ -288,7 +269,6 @@ void Web::handleModuleSettings(WebServer &server) {
   resp.endResponse();
 }
 void Web::handleNetworkSettings(WebServer &server) {
-  webServer.sendCORSHeaders(server);
   JsonResponse resp;
   resp.beginResponse(&server, g_content, sizeof(g_content));
   resp.beginObject();
@@ -307,7 +287,6 @@ void Web::handleNetworkSettings(WebServer &server) {
   resp.endResponse();
 }
 void Web::handleConnectMQTT(WebServer &server) {
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   JsonDocument doc; JsonObject obj;
   if (!parseBody(server, doc, obj)) return;
   HTTPMethod method = server.method();
@@ -330,7 +309,6 @@ void Web::handleConnectMQTT(WebServer &server) {
   }
 }
 void Web::handleMQTTSettings(WebServer &server) {
-  webServer.sendCORSHeaders(server);
   JsonResponse resp;
   resp.beginResponse(&server, g_content, sizeof(g_content));
   resp.beginObject();

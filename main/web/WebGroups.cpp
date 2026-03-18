@@ -27,8 +27,6 @@ extern const char _encoding_json[];
 extern const char _response_404[];
 
 void Web::handleGetGroups(WebServer &server) {
-    webServer.sendCORSHeaders(server);
-    if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
     HTTPMethod method = server.method();
     if (method == HTTP_POST || method == HTTP_GET) {
       JsonResponse resp;
@@ -42,8 +40,6 @@ void Web::handleGetGroups(WebServer &server) {
 }
 
 void Web::handleGroup(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   if (method == HTTP_GET) {
     if (server.hasArg("groupId")) {
@@ -92,7 +88,6 @@ void Web::handleGroup(WebServer &server) {
 }
 
 void Web::handleGetNextGroup(WebServer &server) {
-  webServer.sendCORSHeaders(server);
   uint8_t groupId = somfy.getNextGroupId();
   JsonResponse resp;
   resp.beginResponse(&server, g_content, sizeof(g_content));
@@ -107,7 +102,6 @@ void Web::handleGetNextGroup(WebServer &server) {
 
 
 void Web::handleGroupSortOrder(WebServer &server) {
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   JsonDocument doc;
   Serial.print("Plain: ");
   Serial.print(server.method());
@@ -139,7 +133,6 @@ void Web::handleGroupSortOrder(WebServer &server) {
 
 
 void Web::handleAddGroup(WebServer &server) {
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   SomfyGroup * group = nullptr;
   if (method == HTTP_POST || method == HTTP_PUT) {
@@ -174,8 +167,6 @@ void Web::handleAddGroup(WebServer &server) {
 }
 
 void Web::handleSaveGroup(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   if (method == HTTP_PUT || method == HTTP_POST) {
     if (server.hasArg("plain")) {
@@ -203,8 +194,6 @@ void Web::handleSaveGroup(WebServer &server) {
 }
 
 void Web::handleGroupOptions(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   if (method == HTTP_GET || method == HTTP_POST) {
     if (server.hasArg("groupId")) {
@@ -246,8 +235,6 @@ void Web::handleGroupOptions(WebServer &server) {
 }
 
 void Web::handleDeleteGroup(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   uint8_t groupId = 255;
   if (method == HTTP_GET || method == HTTP_PUT || method == HTTP_POST) {
@@ -272,8 +259,6 @@ void Web::handleDeleteGroup(WebServer &server) {
 }
 
 void Web::handleLinkToGroup(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   if (method == HTTP_PUT || method == HTTP_POST) {
     if (server.hasArg("plain")) {
@@ -301,8 +286,6 @@ void Web::handleLinkToGroup(WebServer &server) {
 }
 
 void Web::handleUnlinkFromGroup(WebServer &server) {
-  webServer.sendCORSHeaders(server);
-  if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   HTTPMethod method = server.method();
   if (method == HTTP_PUT || method == HTTP_POST) {
     if (server.hasArg("plain")) {
