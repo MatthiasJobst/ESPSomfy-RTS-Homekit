@@ -16,6 +16,7 @@
 #include "SomfyController.h"
 #include "WResp.h"
 #include "Web.h"
+#include "WebHelpers.h"
 #include "MQTT.h"
 #include "GitOTA.h"
 #include "SomfyNetwork.h"
@@ -147,35 +148,28 @@ void Web::handleGetRadio(WebServer &server) {
 void Web::handleSetGeneral(WebServer &server) {
   webServer.sendCORSHeaders(server);
   if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
-  JsonDocument doc;
   Serial.print("Plain: ");
   Serial.print(server.method());
   Serial.println(server.arg("plain"));
-  DeserializationError err = deserializeJson(doc, server.arg("plain"));
-  if (err) {
-    webServer.handleDeserializationError(server, err);
-    return;
+  JsonDocument doc; JsonObject obj;
+  if (!parseBody(server, doc, obj)) return;
+  HTTPMethod method = server.method();
+  if (method == HTTP_POST || method == HTTP_PUT) {
+    if (obj.containsKey("hostname") || obj.containsKey("ssdpBroadcast") || obj.containsKey("checkForUpdate")) {
+      bool checkForUpdate = settings.checkForUpdate;
+      settings.fromJSON(obj);
+      settings.save();
+      if(settings.checkForUpdate != checkForUpdate) git.emitUpdateCheck();
+      if(obj.containsKey("hostname")) net.updateHostname();
+    }
+    if (obj.containsKey("ntpServer") || obj.containsKey("ntpServer")) {
+      settings.NTP.fromJSON(obj);
+      settings.NTP.save();
+    }
+    server.send(200, "application/json", "{\"status\":\"OK\",\"desc\":\"Successfully set General Settings\"}");
   }
   else {
-    JsonObject obj = doc.as<JsonObject>();
-    HTTPMethod method = server.method();
-    if (method == HTTP_POST || method == HTTP_PUT) {
-      if (obj.containsKey("hostname") || obj.containsKey("ssdpBroadcast") || obj.containsKey("checkForUpdate")) {
-        bool checkForUpdate = settings.checkForUpdate;
-        settings.fromJSON(obj);
-        settings.save();
-        if(settings.checkForUpdate != checkForUpdate) git.emitUpdateCheck();
-        if(obj.containsKey("hostname")) net.updateHostname();
-      }
-      if (obj.containsKey("ntpServer") || obj.containsKey("ntpServer")) {
-        settings.NTP.fromJSON(obj);
-        settings.NTP.save();
-      }
-      server.send(200, "application/json", "{\"status\":\"OK\",\"desc\":\"Successfully set General Settings\"}");
-    }
-    else {
-      server.send(201, "application/json", "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
-    }
+    server.send(201, "application/json", "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
   }
 }
 void Web::handleSetNetwork(WebServer &server) {
@@ -235,65 +229,51 @@ void Web::handleSetIP(WebServer &server) {
   webServer.sendCORSHeaders(server);
   if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   Serial.println("Setting IP...");
-  JsonDocument doc;
-  DeserializationError err = deserializeJson(doc, server.arg("plain"));
-  if (err) {
-    webServer.handleDeserializationError(server, err);
-    return;
+  JsonDocument doc; JsonObject obj;
+  if (!parseBody(server, doc, obj)) return;
+  HTTPMethod method = server.method();
+  if (method == HTTP_POST || method == HTTP_PUT) {
+    settings.IP.fromJSON(obj);
+    settings.IP.save();
+    server.send(200, "application/json", "{\"status\":\"OK\",\"desc\":\"Successfully set Network Settings\"}");
   }
   else {
-    JsonObject obj = doc.as<JsonObject>();
-    HTTPMethod method = server.method();
-    if (method == HTTP_POST || method == HTTP_PUT) {
-      settings.IP.fromJSON(obj);
-      settings.IP.save();
-      server.send(200, "application/json", "{\"status\":\"OK\",\"desc\":\"Successfully set Network Settings\"}");
-    }
-    else {
-      server.send(201, _encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
-    }
+    server.send(201, _encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
   }
 }
 void Web::handleConnectWifi(WebServer &server) {
   webServer.sendCORSHeaders(server);
   if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
   Serial.println("Settings WIFI connection...");
-  JsonDocument doc;
-  DeserializationError err = deserializeJson(doc, server.arg("plain"));
-  if (err) {
-    webServer.handleDeserializationError(server, err);
-    return;
-  }
-  else {
-    JsonObject obj = doc.as<JsonObject>();
-    HTTPMethod method = server.method();
-    if (method == HTTP_POST || method == HTTP_PUT) {
-      String ssid = "";
-      String passphrase = "";
-      if (obj.containsKey("ssid")) ssid = obj["ssid"].as<String>();
-      if (obj.containsKey("passphrase")) passphrase = obj["passphrase"].as<String>();
-      bool reboot;
-      if (ssid.compareTo(settings.WIFI.ssid) != 0) reboot = true;
-      if (passphrase.compareTo(settings.WIFI.passphrase) != 0) reboot = true;
-      if (!settings.WIFI.ssidExists(ssid.c_str()) && ssid.length() > 0) {
-        server.send(400, _encoding_json, "{\"status\":\"ERROR\",\"desc\":\"WiFi Network Does not exist\"}");
-      }
-      else {
-        SETCHARPROP(settings.WIFI.ssid, ssid.c_str(), sizeof(settings.WIFI.ssid));
-        SETCHARPROP(settings.WIFI.passphrase, passphrase.c_str(), sizeof(settings.WIFI.passphrase));
-        settings.WIFI.save();
-        settings.WIFI.print();
-        server.send(201, _encoding_json, "{\"status\":\"OK\",\"desc\":\"Successfully set server connection\"}");
-        if (reboot) {
-          Serial.println("Rebooting ESP for new WiFi settings...");
-          rebootDelay.reboot = true;
-          rebootDelay.rebootTime = millis() + 1000;
-        }
-      }
+  JsonDocument doc; JsonObject obj;
+  if (!parseBody(server, doc, obj)) return;
+  HTTPMethod method = server.method();
+  if (method == HTTP_POST || method == HTTP_PUT) {
+    String ssid = "";
+    String passphrase = "";
+    if (obj.containsKey("ssid")) ssid = obj["ssid"].as<String>();
+    if (obj.containsKey("passphrase")) passphrase = obj["passphrase"].as<String>();
+    bool reboot;
+    if (ssid.compareTo(settings.WIFI.ssid) != 0) reboot = true;
+    if (passphrase.compareTo(settings.WIFI.passphrase) != 0) reboot = true;
+    if (!settings.WIFI.ssidExists(ssid.c_str()) && ssid.length() > 0) {
+      server.send(400, _encoding_json, "{\"status\":\"ERROR\",\"desc\":\"WiFi Network Does not exist\"}");
     }
     else {
-      server.send(201, _encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
+      SETCHARPROP(settings.WIFI.ssid, ssid.c_str(), sizeof(settings.WIFI.ssid));
+      SETCHARPROP(settings.WIFI.passphrase, passphrase.c_str(), sizeof(settings.WIFI.passphrase));
+      settings.WIFI.save();
+      settings.WIFI.print();
+      server.send(201, _encoding_json, "{\"status\":\"OK\",\"desc\":\"Successfully set server connection\"}");
+      if (reboot) {
+        Serial.println("Rebooting ESP for new WiFi settings...");
+        rebootDelay.reboot = true;
+        rebootDelay.rebootTime = millis() + 1000;
+      }
     }
+  }
+  else {
+    server.send(201, _encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
   }
 }
 void Web::handleModuleSettings(WebServer &server) {
@@ -328,32 +308,25 @@ void Web::handleNetworkSettings(WebServer &server) {
 }
 void Web::handleConnectMQTT(WebServer &server) {
   if(server.method() == HTTP_OPTIONS) { server.send(200, "OK"); return; }
-  JsonDocument doc;
-  DeserializationError err = deserializeJson(doc, server.arg("plain"));
-  if (err) {
-    webServer.handleDeserializationError(server, err);
-    return;
+  JsonDocument doc; JsonObject obj;
+  if (!parseBody(server, doc, obj)) return;
+  HTTPMethod method = server.method();
+  Serial.print("Saving MQTT ");
+  Serial.print(F("HTTP Method: "));
+  Serial.println(server.method());
+  if (method == HTTP_POST || method == HTTP_PUT) {
+    mqtt.disconnect();
+    settings.MQTT.fromJSON(obj);
+    settings.MQTT.save();
+    JsonResponse resp;
+    resp.beginResponse(&server, g_content, sizeof(g_content));
+    resp.beginObject();
+    settings.MQTT.toJSON(resp);
+    resp.endObject();
+    resp.endResponse();
   }
   else {
-    JsonObject obj = doc.as<JsonObject>();
-    HTTPMethod method = server.method();
-    Serial.print("Saving MQTT ");
-    Serial.print(F("HTTP Method: "));
-    Serial.println(server.method());
-    if (method == HTTP_POST || method == HTTP_PUT) {
-      mqtt.disconnect();
-      settings.MQTT.fromJSON(obj);
-      settings.MQTT.save();
-      JsonResponse resp;
-      resp.beginResponse(&server, g_content, sizeof(g_content));
-      resp.beginObject();
-      settings.MQTT.toJSON(resp);
-      resp.endObject();
-      resp.endResponse();
-    }
-    else {
-      server.send(201, "application/json", "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
-    }
+    server.send(201, "application/json", "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
   }
 }
 void Web::handleMQTTSettings(WebServer &server) {

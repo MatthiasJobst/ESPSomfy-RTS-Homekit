@@ -11,6 +11,7 @@
 #include "SomfyController.h"
 #include "WResp.h"
 #include "Web.h"
+#include "WebHelpers.h"
 #include "MQTT.h"
 #include "GitOTA.h"
 #include "SomfyNetwork.h"
@@ -162,18 +163,11 @@ void Web::handleLogin(WebServer &server) {
     memset(password, 0x00, sizeof(password));
     memset(pin, 0x00, sizeof(pin));
     if(server.hasArg("plain")) {
-      JsonDocument docin;
-      DeserializationError err = deserializeJson(docin, server.arg("plain"));
-      if (err) {
-        this->handleDeserializationError(server, err);
-        return;
-      }
-      else {
-          JsonObject objin = docin.as<JsonObject>();
-          if(objin.containsKey("username") && objin["username"]) strlcpy(username, objin["username"], sizeof(username));
-          if(objin.containsKey("password") && objin["password"]) strlcpy(password, objin["password"], sizeof(password));
-          if(objin.containsKey("pin") && objin["pin"]) strlcpy(pin, objin["pin"], sizeof(pin));
-      }
+      JsonDocument doc; JsonObject obj;
+      if (!parseBody(server, doc, obj)) return;
+      if(obj.containsKey("username") && obj["username"]) strlcpy(username, obj["username"], sizeof(username));
+      if(obj.containsKey("password") && obj["password"]) strlcpy(password, obj["password"], sizeof(password));
+      if(obj.containsKey("pin") && obj["pin"]) strlcpy(pin, obj["pin"], sizeof(pin));
     }
     else {
       if(server.hasArg("username")) strlcpy(username, server.arg("username").c_str(), sizeof(username));
@@ -325,23 +319,16 @@ void Web::handleRepeatCommand(WebServer& server) {
     if(server.hasArg("repeat")) repeat = atoi(server.arg("repeat").c_str());
     if(server.hasArg("stepSize")) stepSize = atoi(server.arg("stepSize").c_str());
     if(shadeId == 255 && groupId == 255 && server.hasArg("plain")) {
-      JsonDocument doc;
-      DeserializationError err = deserializeJson(doc, server.arg("plain"));
-      if (err) {
-        this->handleDeserializationError(server, err);
-        return;
+      JsonDocument doc; JsonObject obj;
+      if (!parseBody(server, doc, obj)) return;
+      if (obj.containsKey("shadeId")) shadeId = obj["shadeId"];
+      if(obj.containsKey("groupId")) groupId = obj["groupId"];
+      if(obj.containsKey("stepSize")) stepSize = obj["stepSize"];
+      if (obj.containsKey("command")) {
+          String scmd = obj["command"];
+          command = translateSomfyCommand(scmd);
       }
-      else {
-        JsonObject obj = doc.as<JsonObject>();
-        if (obj.containsKey("shadeId")) shadeId = obj["shadeId"];
-        if(obj.containsKey("groupId")) groupId = obj["groupId"];
-        if(obj.containsKey("stepSize")) stepSize = obj["stepSize"];
-        if (obj.containsKey("command")) {
-            String scmd = obj["command"];
-            command = translateSomfyCommand(scmd);
-        }
-        if (obj.containsKey("repeat")) repeat = obj["repeat"].as<uint8_t>();
-      }
+      if (obj.containsKey("repeat")) repeat = obj["repeat"].as<uint8_t>();
     }
     //JsonDocument sdoc;
     //JsonObject sobj = sdoc.to<JsonObject>();
@@ -411,26 +398,19 @@ void Web::handleGroupCommand(WebServer &server) {
     }
     else if (server.hasArg("plain")) {
       Serial.println("Sending Group Command");
-      JsonDocument doc;
-      DeserializationError err = deserializeJson(doc, server.arg("plain"));
-      if (err) {
-        this->handleDeserializationError(server, err);
+      JsonDocument doc; JsonObject obj;
+      if (!parseBody(server, doc, obj)) return;
+      if (obj.containsKey("groupId")) groupId = obj["groupId"];
+      else {
+        server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group id was supplied.\"}"));
         return;
       }
-      else {
-        JsonObject obj = doc.as<JsonObject>();
-        if (obj.containsKey("groupId")) groupId = obj["groupId"];
-        else {
-          server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group id was supplied.\"}"));
-          return;
-        }
-        if (obj.containsKey("command")) {
-          String scmd = obj["command"];
-          command = translateSomfyCommand(scmd);
-        }
-        if(obj.containsKey("repeat")) repeat = obj["repeat"].as<uint8_t>();
-        if(obj.containsKey("stepSize")) stepSize = obj["stepSize"].as<uint8_t>();
+      if (obj.containsKey("command")) {
+        String scmd = obj["command"];
+        command = translateSomfyCommand(scmd);
       }
+      if(obj.containsKey("repeat")) repeat = obj["repeat"].as<uint8_t>();
+      if(obj.containsKey("stepSize")) stepSize = obj["stepSize"].as<uint8_t>();
     }
     else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group object supplied.\"}"));
     SomfyGroup * group = somfy.getGroupById(groupId);
@@ -540,30 +520,23 @@ void Web::handleSetSensor(WebServer &server) {
   int8_t windy = (server.hasArg("windy")) ? atoi(server.arg("windy").c_str()) : -1;
   int8_t repeat = (server.hasArg("repeat")) ? atoi(server.arg("repeat").c_str()) : -1;
   if(server.hasArg("plain")) {
-    JsonDocument doc;
-    DeserializationError err = deserializeJson(doc, server.arg("plain"));
-    if (err) {
-      this->handleDeserializationError(server, err);
-      return;
+    JsonDocument doc; JsonObject obj;
+    if (!parseBody(server, doc, obj)) return;
+    if(obj.containsKey("shadeId")) shadeId = obj["shadeId"].as<uint8_t>();
+    if(obj.containsKey("groupId")) groupId = obj["groupId"].as<uint8_t>();
+    if(obj.containsKey("sunny")) {
+      if(obj["sunny"].is<bool>())
+        sunny = obj["sunny"].as<bool>() ? 1 : 0;
+      else
+        sunny = obj["sunny"].as<int8_t>();
     }
-    else {
-      JsonObject obj = doc.as<JsonObject>();
-      if(obj.containsKey("shadeId")) shadeId = obj["shadeId"].as<uint8_t>();
-      if(obj.containsKey("groupId")) groupId = obj["groupId"].as<uint8_t>();
-      if(obj.containsKey("sunny")) {
-        if(obj["sunny"].is<bool>())
-          sunny = obj["sunny"].as<bool>() ? 1 : 0;
-        else
-          sunny = obj["sunny"].as<int8_t>();
-      }
-      if(obj.containsKey("windy")) {
-        if(obj["windy"].is<bool>())
-          windy = obj["windy"].as<bool>() ? 1 : 0;
-        else
-          windy = obj["windy"].as<int8_t>();
-      }
-      if(obj.containsKey("repeat")) repeat = obj["repeat"].as<uint8_t>();
+    if(obj.containsKey("windy")) {
+      if(obj["windy"].is<bool>())
+        windy = obj["windy"].as<bool>() ? 1 : 0;
+      else
+        windy = obj["windy"].as<int8_t>();
     }
+    if(obj.containsKey("repeat")) repeat = obj["repeat"].as<uint8_t>();
   }
   if(shadeId != 255) {
     SomfyShade *shade = somfy.getShadeById(shadeId);
