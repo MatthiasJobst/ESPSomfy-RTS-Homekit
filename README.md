@@ -7,9 +7,13 @@ NOTE: THIS HAS BEEN CREATED WITH THE HELP OF AI.
 
 For all technical details like how to build the appropriate device, please refer to [ESPSomfy-RTS](https://github.com/rstrouse/ESPSomfy-RTS). This project has followed the same approach.
 
-## Hardware
+## Hardware requirements
 
-Tested on a **Seeed Studio XIAO ESP32-S3** with a **CC1101 433 MHz radio module**.
+### Flash size
+The HomeKit branch **requires a minimum of 8 MB flash**. The HomeKit Accessory Protocol (HAP) stack adds pinned partitions near the top of flash, and two OTA app slots at 3 MB each leave no room to fit within a 4 MB device. Devices with 4 MB flash (e.g. standard ESP32, ESP32-C3) are not supported by this fork.
+
+### Tested hardware
+
 
 ### CC1101 wiring (ESP32-S3)
 
