@@ -15,6 +15,7 @@
 #include "SomfyController.h"
 #include "WResp.h"
 #include "Web.h"
+#include "WebHelpers.h"
 
 extern SomfyShadeController somfy;
 extern Web webServer;
@@ -63,33 +64,26 @@ void Web::handleGroup(WebServer &server) {
     }
   }
   else if (method == HTTP_PUT || method == HTTP_POST) {
-    // We are updating an existing group.
-    if (server.hasArg("plain")) {
+      // We are updating an existing group.
+      if (server.hasArg("plain")) {
       Serial.println("Updating a group");
-      JsonDocument doc;
-      DeserializationError err = deserializeJson(doc, server.arg("plain"));
-      if (err) {
-        this->handleDeserializationError(server, err);
-        return;
-      }
-      else {
-        JsonObject obj = doc.as<JsonObject>();
-        if (obj.containsKey("groupId")) {
-          SomfyGroup* group = somfy.getGroupById(obj["groupId"]);
-          if (group) {
-            group->fromJSON(obj);
-            group->save();
-            JsonResponse resp;
-            resp.beginResponse(&server, g_content, sizeof(g_content));
-            resp.beginObject();
-            group->toJSON(resp);
-            resp.endObject();
-            resp.endResponse();
-          }
-          else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group Id not found.\"}"));
+      JsonDocument doc; JsonObject obj;
+      if (!parseBody(server, doc, obj)) return;
+      if (obj.containsKey("groupId")) {
+        SomfyGroup* group = somfy.getGroupById(obj["groupId"]);
+        if (group) {
+          group->fromJSON(obj);
+          group->save();
+          JsonResponse resp;
+          resp.beginResponse(&server, g_content, sizeof(g_content));
+          resp.beginObject();
+          group->toJSON(resp);
+          resp.endObject();
+          resp.endResponse();
         }
-        else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group id was supplied.\"}"));
+        else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group Id not found.\"}"));
       }
+      else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group id was supplied.\"}"));
     }
     else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group object supplied.\"}"));
   }
@@ -150,26 +144,19 @@ void Web::handleAddGroup(WebServer &server) {
   SomfyGroup * group = nullptr;
   if (method == HTTP_POST || method == HTTP_PUT) {
     Serial.println("Adding a group");
-    JsonDocument doc;
-    DeserializationError err = deserializeJson(doc, server.arg("plain"));
-    if (err) {
-      webServer.handleDeserializationError(server, err);
+    JsonDocument doc; JsonObject obj;
+    if (!parseBody(server, doc, obj)) return;
+    Serial.println("Counting shades");
+    if (somfy.groupCount() > SOMFY_MAX_GROUPS) {
+      server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Maximum number of groups exceeded.\"}"));
       return;
     }
     else {
-      JsonObject obj = doc.as<JsonObject>();
-      Serial.println("Counting shades");
-      if (somfy.groupCount() > SOMFY_MAX_GROUPS) {
-        server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Maximum number of groups exceeded.\"}"));
+      Serial.println("Adding group");
+      group = somfy.addGroup(obj);
+      if (!group) {
+        server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Error adding group.\"}"));
         return;
-      }
-      else {
-        Serial.println("Adding group");
-        group = somfy.addGroup(obj);
-        if (!group) {
-          server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Error adding group.\"}"));
-          return;
-        }
       }
     }
   }
@@ -193,30 +180,23 @@ void Web::handleSaveGroup(WebServer &server) {
   if (method == HTTP_PUT || method == HTTP_POST) {
     if (server.hasArg("plain")) {
       Serial.println("Updating a group");
-      JsonDocument doc;
-      DeserializationError err = deserializeJson(doc, server.arg("plain"));
-      if (err) {
-        webServer.handleDeserializationError(server, err);
-        return;
-      }
-      else {
-        JsonObject obj = doc.as<JsonObject>();
-        if (obj.containsKey("groupId")) {
-          SomfyGroup* group = somfy.getGroupById(obj["groupId"]);
-          if (group) {
-            group->fromJSON(obj);
-            group->save();
-            JsonResponse resp;
-            resp.beginResponse(&server, g_content, sizeof(g_content));
-            resp.beginObject();
-            group->toJSON(resp);
-            resp.endObject();
-            resp.endResponse();
-          }
-          else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group Id not found.\"}"));
+      JsonDocument doc; JsonObject obj;
+      if (!parseBody(server, doc, obj)) return;
+      if (obj.containsKey("groupId")) {
+        SomfyGroup* group = somfy.getGroupById(obj["groupId"]);
+        if (group) {
+          group->fromJSON(obj);
+          group->save();
+          JsonResponse resp;
+          resp.beginResponse(&server, g_content, sizeof(g_content));
+          resp.beginObject();
+          group->toJSON(resp);
+          resp.endObject();
+          resp.endResponse();
         }
-        else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group id was supplied.\"}"));
+        else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group Id not found.\"}"));
       }
+      else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group id was supplied.\"}"));
     }
     else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group object supplied.\"}"));
   }
@@ -276,17 +256,10 @@ void Web::handleDeleteGroup(WebServer &server) {
     }
     else if (server.hasArg("plain")) {
       Serial.println("Deleting a group");
-      JsonDocument doc;
-      DeserializationError err = deserializeJson(doc, server.arg("plain"));
-      if (err) {
-        webServer.handleDeserializationError(server, err);
-        return;
-      }
-      else {
-        JsonObject obj = doc.as<JsonObject>();
-        if (obj.containsKey("groupId")) groupId = obj["groupId"];
-        else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group id was supplied.\"}"));
-      }
+      JsonDocument doc; JsonObject obj;
+      if (!parseBody(server, doc, obj)) return;
+      if (obj.containsKey("groupId")) groupId = obj["groupId"];
+      else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group id was supplied.\"}"));
     }
     else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group object supplied.\"}"));
   }
@@ -305,30 +278,23 @@ void Web::handleLinkToGroup(WebServer &server) {
   if (method == HTTP_PUT || method == HTTP_POST) {
     if (server.hasArg("plain")) {
       Serial.println("Linking a shade to a group");
-      JsonDocument doc;
-      DeserializationError err = deserializeJson(doc, server.arg("plain"));
-      if (err) {
-        webServer.handleDeserializationError(server, err);
-        return;
-      }
-      else {
-        JsonObject obj = doc.as<JsonObject>();
-        uint8_t shadeId = obj.containsKey("shadeId") ? obj["shadeId"] : 0;
-        uint8_t groupId = obj.containsKey("groupId") ? obj["groupId"] : 0;
-        if(groupId == 0) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group id not provided.\"}")); return; }
-        if(shadeId == 0) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Shade id not provided.\"}")); return; }
-        SomfyGroup * group = somfy.getGroupById(groupId);
-        if(!group) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group id not found.\"}")); return; }
-        SomfyShade * shade = somfy.getShadeById(shadeId);
-        if(!shade) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Shade id not found.\"}")); return; }
-        group->linkShade(shadeId);
-        JsonResponse resp;
-        resp.beginResponse(&server, g_content, sizeof(g_content));
-        resp.beginObject();
-        group->toJSON(resp);
-        resp.endObject();
-        resp.endResponse();
-      }
+      JsonDocument doc; JsonObject obj;
+      if (!parseBody(server, doc, obj)) return;
+      uint8_t shadeId = obj.containsKey("shadeId") ? obj["shadeId"] : 0;
+      uint8_t groupId = obj.containsKey("groupId") ? obj["groupId"] : 0;
+      if(groupId == 0) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group id not provided.\"}")); return; }
+      if(shadeId == 0) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Shade id not provided.\"}")); return; }
+      SomfyGroup * group = somfy.getGroupById(groupId);
+      if(!group) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group id not found.\"}")); return; }
+      SomfyShade * shade = somfy.getShadeById(shadeId);
+      if(!shade) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Shade id not found.\"}")); return; }
+      group->linkShade(shadeId);
+      JsonResponse resp;
+      resp.beginResponse(&server, g_content, sizeof(g_content));
+      resp.beginObject();
+      group->toJSON(resp);
+      resp.endObject();
+      resp.endResponse();
     }
     else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No linking object supplied.\"}"));
   }
@@ -341,30 +307,23 @@ void Web::handleUnlinkFromGroup(WebServer &server) {
   if (method == HTTP_PUT || method == HTTP_POST) {
     if (server.hasArg("plain")) {
       Serial.println("Unlinking a shade from a group");
-      JsonDocument doc;
-      DeserializationError err = deserializeJson(doc, server.arg("plain"));
-      if (err) {
-        webServer.handleDeserializationError(server, err);
-        return;
-      }
-      else {
-        JsonObject obj = doc.as<JsonObject>();
-        uint8_t shadeId = obj.containsKey("shadeId") ? obj["shadeId"] : 0;
-        uint8_t groupId = obj.containsKey("groupId") ? obj["groupId"] : 0;
-        if(groupId == 0) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group id not provided.\"}")); return; }
-        if(shadeId == 0) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Shade id not provided.\"}")); return; }
-        SomfyGroup * group = somfy.getGroupById(groupId);
-        if(!group) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group id not found.\"}")); return; }
-        SomfyShade * shade = somfy.getShadeById(shadeId);
-        if(!shade) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Shade id not found.\"}")); return; }
-        group->unlinkShade(shadeId);
-        JsonResponse resp;
-        resp.beginResponse(&server, g_content, sizeof(g_content));
-        resp.beginObject();
-        group->toJSON(resp);
-        resp.endObject();
-        resp.endResponse();
-      }
+      JsonDocument doc; JsonObject obj;
+      if (!parseBody(server, doc, obj)) return;
+      uint8_t shadeId = obj.containsKey("shadeId") ? obj["shadeId"] : 0;
+      uint8_t groupId = obj.containsKey("groupId") ? obj["groupId"] : 0;
+      if(groupId == 0) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group id not provided.\"}")); return; }
+      if(shadeId == 0) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Shade id not provided.\"}")); return; }
+      SomfyGroup * group = somfy.getGroupById(groupId);
+      if(!group) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group id not found.\"}")); return; }
+      SomfyShade * shade = somfy.getShadeById(shadeId);
+      if(!shade) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Shade id not found.\"}")); return; }
+      group->unlinkShade(shadeId);
+      JsonResponse resp;
+      resp.beginResponse(&server, g_content, sizeof(g_content));
+      resp.beginObject();
+      group->toJSON(resp);
+      resp.endObject();
+      resp.endResponse();
     }
     else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No unlinking object supplied.\"}"));
   }

@@ -16,6 +16,7 @@
 #include "SomfyController.h"
 #include "WResp.h"
 #include "Web.h"
+#include "WebHelpers.h"
 
 extern ConfigSettings settings;
 extern SomfyShadeController somfy;
@@ -30,15 +31,6 @@ extern const char _response_404[];
 // ---------------------------------------------------------------------------
 // File-local helpers — shared by all handlers in this translation unit
 // ---------------------------------------------------------------------------
-
-// Parse the JSON body from server.arg("plain"). Populates doc and obj.
-// Returns false and sends a 500 error if deserialization fails.
-static bool parseBody(WebServer &server, JsonDocument &doc, JsonObject &obj) {
-    DeserializationError err = deserializeJson(doc, server.arg("plain"));
-    if (err) { webServer.handleDeserializationError(server, err); return false; }
-    obj = doc.as<JsonObject>();
-    return true;
-}
 
 // Look up a shade by id. Sends a 500 error and returns nullptr if not found.
 static SomfyShade* requireShade(WebServer &server, uint8_t shadeId) {
