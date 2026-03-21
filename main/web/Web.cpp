@@ -3,6 +3,7 @@
 #include <LittleFS.h>
 #include <Update.h>
 #include <esp_task_wdt.h>
+#include "esp_log.h"
 #include "mbedtls/md.h"
 #include "ConfigSettings.h"
 #include "ConfigFile.h"
@@ -16,6 +17,7 @@
 #include "GitOTA.h"
 #include "SomfyNetwork.h"
 #include "HomeKit.h"
+#include "Sockets.h"
 
 extern ConfigSettings settings;
 extern SSDPClass SSDP;
@@ -25,11 +27,13 @@ extern Web webServer;
 extern MQTTClass mqtt;
 extern GitUpdater git;
 extern SomfyNetwork net;
+extern SocketEmitter sockEmit;
 
 //#define WEB_MAX_RESPONSE 34768
 #define WEB_MAX_RESPONSE 4096
 char g_content[WEB_MAX_RESPONSE];
 
+static const char *TAG = "Web";
 
 // General responses
 extern const char _response_404[] = "404: Service Not Found";
@@ -43,7 +47,7 @@ extern const char _encoding_json[] = "application/json";
 WebServer apiServer(8081);
 WebServer server(80);
 void Web::startup() {
-  Serial.println("Launching web server...");
+  ESP_LOGI(TAG, "Launching web server...");
 }
 void Web::loop() {
   server.handleClient();
@@ -71,12 +75,12 @@ void Web::handleDeserializationError(WebServer &server, DeserializationError &er
     }
 }
 bool Web::isAuthenticated(WebServer &server, bool cfg) {
-  Serial.println("Checking authentication");
+  ESP_LOGI(TAG, "Checking authentication");
   if(settings.Security.type == security_types::None) return true;
   else if(!cfg && (settings.Security.permissions & static_cast<uint8_t>(security_permissions::ConfigOnly)) == 0x01) return true;
   else if(server.hasHeader("apikey")) {
     // Api key was supplied.
-    Serial.println("Checking API Key...");
+    ESP_LOGI(TAG, "Checking API Key...");
     char token[65];
     memset(token, 0x00, sizeof(token));
     this->createAPIToken(server.client().remoteIP(), token);
@@ -86,7 +90,7 @@ bool Web::isAuthenticated(WebServer &server, bool cfg) {
   }
   else {
     // Send a 401
-    Serial.println("Not authenticated...");
+    ESP_LOGI(TAG, "Not authenticated...");
     server.send(401, "Unauthorized API Key");
     return false;
   }
@@ -106,14 +110,14 @@ bool Web::createAPIToken(const char *payload, char *token) {
     mbedtls_md_hmac_starts(&ctx, (const unsigned char *)settings.serverId, strlen(settings.serverId));
     mbedtls_md_hmac_update(&ctx, (const unsigned char *)payload, strlen(payload)); 
     mbedtls_md_hmac_finish(&ctx, hmacResult);
-    Serial.print("Hash: ");
+    ESP_LOGI(TAG, "Hash: ");
     token[0] = '\0';
     for(int i = 0; i < sizeof(hmacResult); i++){
         char str[3];
         sprintf(str, "%02x", (int)hmacResult[i]);
         strcat(token, str);
     }
-    Serial.println(token);
+    ESP_LOGI(TAG, "Token: %s", token);
     return true;
 }
 bool Web::createAPIToken(const IPAddress ipAddress, char *token) {
@@ -124,7 +128,7 @@ bool Web::createAPIToken(const IPAddress ipAddress, char *token) {
     return true;
 }
 void Web::handleLogout(WebServer &server) {
-  Serial.println("Logging out of webserver");
+  ESP_LOGI(TAG, "Logging out of webserver");
   server.sendHeader("Location", "/");
   server.sendHeader("Cache-Control", "no-cache");
   server.sendHeader("Set-Cookie", "ESPSOMFYID=0");
@@ -145,7 +149,7 @@ void Web::handleLogin(WebServer &server) {
       server.send(200, _encoding_json, g_content);
       return;
     }
-    Serial.println("Web logging in...");
+    ESP_LOGI(TAG, "Web logging in...");
     char username[33] = "";
     char password[33] = "";
     char pin[5] = "";
@@ -166,8 +170,7 @@ void Web::handleLogin(WebServer &server) {
     }
     // At this point we should have all the data we need to login.
     if(settings.Security.type == security_types::PinEntry) {
-      Serial.print("Validating pin ");
-      Serial.println(pin);
+      ESP_LOGI(TAG, "Validating pin %s", pin);
       if(strlen(pin) == 0 || strcmp(pin, settings.Security.pin) != 0) {
         obj["success"] = false;
         obj["msg"] = "Invalid Pin Entry";
@@ -179,6 +182,7 @@ void Web::handleLogin(WebServer &server) {
       }
     }
     else if(settings.Security.type == security_types::Password) {
+      ESP_LOGI(TAG, "Validating username %s and password %s", username, password);
       if(strlen(username) == 0 || strlen(password) == 0 || strcmp(username, settings.Security.username) != 0 || strcmp(password, settings.Security.password) != 0) {
         obj["success"] = false;
         obj["msg"] = "Invalid username or password";
@@ -200,19 +204,30 @@ void Web::handleStreamFile(WebServer &server, const char *filename, const char *
   }
   esp_task_wdt_reset();
   // Load the index html page from the data directory.
-  Serial.print("Loading file ");
-  Serial.println(filename);
+  ESP_LOGI(TAG, "Loading file %s", filename);
   File file = LittleFS.open(filename, "r");
   if (!file) {
-    Serial.print("Error opening");
-    Serial.println(filename);
+    ESP_LOGE(TAG, "Error opening %s", filename);
     server.send(500, _encoding_text, "Error opening file");
+    return;
   }
-  esp_task_wdt_delete(NULL);
-  server.streamFile(file, encoding);
+  // Stream the file in 1 KB chunks. Poll the WebSocket server every 4 chunks
+  // (~4 KB) so a new WS connection upgrade request is never starved while a
+  // large file (e.g. somfy.js ~128 KB) is being transferred.
+  server.setContentLength(file.size());
+  server.send(200, encoding, "");      // Send status + headers; body follows via sendContent
+  static uint8_t streamBuf[1024];
+  uint8_t chunkCount = 0;
+  while (file.available() && server.client().connected()) {
+    int n = file.read(streamBuf, sizeof(streamBuf));
+    if (n > 0) server.sendContent((const char *)streamBuf, n);
+    esp_task_wdt_reset();
+    if (++chunkCount == 4) {
+      chunkCount = 0;
+      sockEmit.loop();
+    }
+  }
   file.close();
-  esp_task_wdt_add(NULL);
-  esp_task_wdt_reset();
 }
 void Web::handleController(WebServer &server) {
   HTTPMethod method = server.method();
@@ -374,7 +389,7 @@ void Web::handleGroupCommand(WebServer &server) {
       if(server.hasArg("stepSize")) stepSize = atoi(server.arg("stepSize").c_str());
     }
     else if (server.hasArg("plain")) {
-      Serial.println("Sending Group Command");
+      ESP_LOGI(TAG, "Sending Group Command");
       JsonDocument doc; JsonObject obj;
       if (!parseBody(server, doc, obj)) return;
       if (obj.containsKey("groupId")) groupId = obj["groupId"];
@@ -392,8 +407,7 @@ void Web::handleGroupCommand(WebServer &server) {
     else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group object supplied.\"}"));
     SomfyGroup * group = somfy.getGroupById(groupId);
     if (group) {
-      Serial.print("Received:");
-      Serial.println(server.arg("plain"));
+      ESP_LOGI(TAG, "Received: %s", server.arg("plain").c_str());
       // Send the command to the group.
       group->sendCommand(command, repeat >= 0 ? repeat : group->repeats, stepSize);
       JsonResponse resp;
@@ -413,7 +427,7 @@ void Web::handleGroupCommand(WebServer &server) {
 void Web::handleDiscovery(WebServer &server) {
   HTTPMethod method = apiServer.method();
   if (method == HTTP_POST || method == HTTP_GET) {
-    Serial.println("Discovery Requested");
+    ESP_LOGI(TAG, "Discovery Requested");
     char connType[10] = "Unknown";
     if(net.connType == conn_types_t::ethernet) strcpy(connType, "Ethernet");
     else if(net.connType == conn_types_t::wifi) strcpy(connType, "Wifi");
@@ -472,15 +486,15 @@ void Web::handleBackup(WebServer &server, bool attach) {
       }
     }
     snprintf(filename, sizeof(filename), "attachment; filename=\"ESPSomfyRTS %s.backup\"", iso);
-    Serial.println(filename);
+    ESP_LOGI(TAG, "%s", filename);
     server.sendHeader(F("Content-Disposition"), filename);
     server.sendHeader(F("Access-Control-Expose-Headers"), F("Content-Disposition"));
   }
-  Serial.println("Saving current shade information");
+  ESP_LOGI(TAG, "Saving current shade information");
   somfy.writeBackup();
   File file = LittleFS.open("/controller.backup", "r");
   if (!file) {
-    Serial.println("Error opening shades.cfg");
+    ESP_LOGE(TAG, "Error opening shades.cfg");
     server.send(500, _encoding_text, "shades.cfg");
     return;
   }
@@ -549,25 +563,23 @@ void Web::handleSetSensor(WebServer &server) {
 }
 void Web::handleNotFound(WebServer &server) {
     HTTPMethod method = server.method();
-    Serial.printf("Request %s 404-%d ", server.uri().c_str(), method);
+    ESP_LOGI(TAG, "Request %s 404-%d ", server.uri().c_str(), method);
     switch (method) {
     case HTTP_POST:
-      Serial.print("POST ");
+      ESP_LOGI(TAG, "POST ");
       break;
     case HTTP_GET:
-      Serial.print("GET ");
+      ESP_LOGI(TAG, "GET ");
       break;
     case HTTP_PUT:
-      Serial.print("PUT ");
+      ESP_LOGI(TAG, "PUT ");
       break;
     case HTTP_OPTIONS:
-      Serial.println("OPTIONS ");
+      ESP_LOGI(TAG, "OPTIONS ");
       server.send(200, "OK");
       return;
     default:
-      Serial.print("[");
-      Serial.print(method);
-      Serial.print("]");
+      ESP_LOGI(TAG, "[%d]", method);
       break;
 
     }
@@ -577,7 +589,7 @@ void Web::handleNotFound(WebServer &server) {
 void Web::handleReboot(WebServer &server) {
   HTTPMethod method = server.method();
   if (method == HTTP_POST || method == HTTP_PUT) {
-    Serial.println("Rebooting ESP...");
+    ESP_LOGI(TAG, "Rebooting ESP...");
     rebootDelay.reboot = true;
     rebootDelay.rebootTime = millis() + 500;
     server.send(200, "application/json", "{\"status\":\"OK\",\"desc\":\"Successfully started reboot\"}");
@@ -587,13 +599,11 @@ void Web::handleReboot(WebServer &server) {
   }
 }
 void Web::begin() {
-  Serial.println("Creating Web MicroServices...");
-  server.enableCORS(true);
+  ESP_LOGI(TAG, "Creating Web MicroServices...");
   const char *keys[1] = {"apikey"};
   server.collectHeaders(keys, 1);
   // API Server Handlers
   apiServer.collectHeaders(keys, 1);
-  apiServer.enableCORS(true);
   apiServer.on("/discovery",            []() { webServer.handleDiscovery(apiServer); });
   apiServer.on("/rooms",                []() { webServer.handleGetRooms(apiServer); });
   apiServer.on("/shades",               []() { webServer.handleGetShades(apiServer); });
@@ -635,7 +645,11 @@ void Web::begin() {
   server.on("/backup",             []() { webServer.handleBackup(server, true); });
   server.on("/restore", HTTP_POST, []() { webServer.handleRestore(server); },
                                    []() { webServer.handleRestoreUpload(server); });
-  server.on("/index.js",           []() { webServer.sendCacheHeaders(604800); webServer.handleStreamFile(server, "/index.js", "text/javascript"); });
+  server.on("/index.js",           []() { webServer.sendCacheHeaders(604800); webServer.handleStreamFile(server, "/index.js",    "text/javascript"); });
+  server.on("/ui.js",              []() { webServer.sendCacheHeaders(604800); webServer.handleStreamFile(server, "/ui.js",       "text/javascript"); });
+  server.on("/settings.js",        []() { webServer.sendCacheHeaders(604800); webServer.handleStreamFile(server, "/settings.js", "text/javascript"); });
+  server.on("/somfy.js",           []() { webServer.sendCacheHeaders(604800); webServer.handleStreamFile(server, "/somfy.js",    "text/javascript"); });
+  server.on("/extras.js",          []() { webServer.sendCacheHeaders(604800); webServer.handleStreamFile(server, "/extras.js",   "text/javascript"); });
   server.on("/qrcode.min.js",      []() { webServer.sendCacheHeaders(604800); webServer.handleStreamFile(server, "/qrcode.min.js", "text/javascript"); });
   server.on("/main.css",           []() { webServer.sendCacheHeaders(604800); webServer.handleStreamFile(server, "/main.css", "text/css"); });
   server.on("/widgets.css",        []() { webServer.sendCacheHeaders(604800); webServer.handleStreamFile(server, "/widgets.css", "text/css"); });

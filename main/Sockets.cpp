@@ -2,6 +2,7 @@
 #include <ArduinoJson.h>
 #include <WebSocketsServer.h>
 #include <esp_task_wdt.h>
+#include "esp_log.h"
 #include "Sockets.h"
 #include "ConfigSettings.h"
 #include "SomfyController.h"
@@ -14,8 +15,10 @@ extern SomfyShadeController somfy;
 extern SocketEmitter sockEmit;
 extern GitUpdater git;
 
+static const char *TAG = "Sockets";
+uint16_t socketsPort = 8080;
 
-WebSocketsServer sockServer = WebSocketsServer(8080);
+WebSocketsServer sockServer = WebSocketsServer(socketsPort);
 
 #define MAX_SOCK_RESPONSE 2048
 static char g_response[MAX_SOCK_RESPONSE];
@@ -53,21 +56,6 @@ uint8_t room_t::activeClients() {
   }
   return n;
 }
-/*********************************************************************
- * ClientSocketEvent class members
- ********************************************************************/
-/*
-void ClientSocketEvent::prepareMessage(const char *evt, const char *payload) {
-  if(strlen(payload) + 5 >= sizeof(this->msg)) Serial.printf("Socket buffer overflow %d > 2048\n", strlen(payload) + 5 + strlen(evt));
-    snprintf(this->msg, sizeof(this->msg), "42[%s,%s]", evt, payload);
-}
-void ClientSocketEvent::prepareMessage(const char *evt, JsonDocument &doc) {
-  memset(this->msg, 0x00, sizeof(this->msg));
-  snprintf(this->msg, sizeof(this->msg), "42[%s,", evt);
-  serializeJson(doc, &this->msg[strlen(this->msg)], sizeof(this->msg) - strlen(this->msg) - 2);
-  strcat(this->msg, "]");
-}
-*/
 
 /*********************************************************************
  * SocketEmitter class members
@@ -79,12 +67,11 @@ void SocketEmitter::begin() {
   sockServer.begin();
   sockServer.enableHeartbeat(20000, 10000, 3);
   sockServer.onEvent(this->wsEvent);
-  Serial.println("Socket Server Started...");
-  //settings.printAvailHeap();
+  ESP_LOGI(TAG, "Socket Server Started on port %d", socketsPort);
 }
 void SocketEmitter::loop() {
   this->initClients();
-  sockServer.loop();  
+  sockServer.loop();
 }
 JsonSockEvent *SocketEmitter::beginEmit(const char *evt) {
   this->json.beginEvent(&sockServer, evt, g_response, sizeof(g_response));
@@ -108,7 +95,7 @@ void SocketEmitter::initClients() {
     uint8_t num = this->newClients[i];
     if(num != 255) {
       if(sockServer.clientIsConnected(num)) {
-        Serial.printf("Initializing Socket Client %u\n", num);
+        ESP_LOGI(TAG, "Initializing Socket Client %u", num);
         esp_task_wdt_reset();
         settings.emitSockets(num);
         somfy.emitState(num);
@@ -139,15 +126,15 @@ void SocketEmitter::wsEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t
     switch(type) {
         case WStype_ERROR:
             if(length > 0)
-              Serial.printf("Socket Error: %s\n", payload);
+              ESP_LOGE(TAG, "Socket Error: %s", payload);
             else
-              Serial.println("Socket Error: \n");
+              ESP_LOGE(TAG, "Socket Error: \n");
             break;
         case WStype_DISCONNECTED:
             if(length > 0)
-              Serial.printf("Socket [%u] Disconnected!\n [%s]", num, payload);
+              ESP_LOGI(TAG, "WS [%u] Disconnected! [%s]", num, payload);
             else
-              Serial.printf("Socket [%u] Disconnected!\n", num);
+              ESP_LOGI(TAG, "WS [%u] Disconnected!", num);
             for(uint8_t i = 0; i < SOCK_MAX_ROOMS; i++) {
               sockEmit.rooms[i].leave(num);
             }
@@ -155,10 +142,9 @@ void SocketEmitter::wsEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t
         case WStype_CONNECTED:
             {
                 IPAddress ip = sockServer.remoteIP(num);
-                Serial.printf("Socket [%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
+                ESP_LOGI(TAG, "WS [%u] Connected from %d.%d.%d.%d url: %s", num, ip[0], ip[1], ip[2], ip[3], payload);
                 // Send all the current shade settings to the client.
                 sockServer.sendTXT(num, "Connected");
-                //sockServer.loop();
                 sockEmit.delayInit(num);
             }
             break;
@@ -167,16 +153,16 @@ void SocketEmitter::wsEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t
               // In this instance the client wants to join a room.  Let's do some
               // work to get the ordinal of the room that the client wants to join.
               uint8_t roomNum = atoi((char *)&payload[5]);
-              Serial.printf("Client %u joining room %u\n", num, roomNum);
+              ESP_LOGI(TAG, "Client %u joining room %u", num, roomNum);
               if(roomNum < SOCK_MAX_ROOMS) sockEmit.rooms[roomNum].join(num);
             }
             else if(strncmp((char *)payload, "leave:", 6) == 0) {
               uint8_t roomNum = atoi((char *)&payload[6]);
-              Serial.printf("Client %u leaving room %u\n", num, roomNum);
+              ESP_LOGI(TAG, "Client %u leaving room %u", num, roomNum);
               if(roomNum < SOCK_MAX_ROOMS) sockEmit.rooms[roomNum].leave(num);
             }
             else {
-              Serial.printf("Socket [%u] text: %s\n", num, payload);
+              ESP_LOGI(TAG, "Socket [%u] text: %s", num, payload);
             }
             // send message to client
             // webSocket.sendTXT(num, "message here");
@@ -185,19 +171,20 @@ void SocketEmitter::wsEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t
             // sockServer.broadcastTXT("message here");
             break;
         case WStype_BIN:
-            Serial.printf("[%u] get binary length: %u\n", num, length);
+            ESP_LOGI(TAG, "[%u] get binary length: %u", num, length);
             //hexdump(payload, length);
 
             // send message to client
             // sockServer.sendBIN(num, payload, length);
             break;
-        case WStype_PONG:
-            //Serial.printf("Pong from %u\n", num);
-            break;
-        case WStype_PING:
-            //Serial.printf("Ping from %u\n", num);
-            break;
+          case WStype_PING:
+              ESP_LOGI(TAG, "WS [%u] Ping received", num);
+              break;
+          case WStype_PONG:
+              ESP_LOGI(TAG, "WS [%u] Pong received", num);
+              break;
         default:
+            ESP_LOGI(TAG, "WS [%u] Unhandled Event: %d", num, type);
             break;
     }  
 }

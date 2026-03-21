@@ -7,6 +7,7 @@ class MQTTClass {
   public:
     uint64_t lastConnect = 0;
     bool suspended = false;
+    volatile bool connecting = false;  // true while background connect task runs
     char clientId[32] = {'\0'};
     bool begin();
     bool loop();

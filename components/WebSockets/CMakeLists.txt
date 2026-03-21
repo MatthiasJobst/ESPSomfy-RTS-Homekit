@@ -16,3 +16,8 @@ idf_component_register(
     REQUIRES
         arduino-esp32
 )
+
+# The default WEBSOCKETS_TCP_TIMEOUT is 5000 ms.  It controls the per-character
+# timeout inside readStringUntil('\n') during the WS HTTP-upgrade header parse.
+# 200 ms is plenty for local WiFi and keeps the worst-case stall short.
+target_compile_definitions(__idf_WebSockets PRIVATE "WEBSOCKETS_TCP_TIMEOUT=200")

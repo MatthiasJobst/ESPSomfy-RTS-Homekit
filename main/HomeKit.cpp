@@ -202,6 +202,16 @@ void HomeKitClass::begin() {
         free(payload);
     }
 
+    // Lower hap-loop task priority below our main loop (10) so HAP processing
+    // never starves sockServer.loop() / web server polling on the same core.
+    // Default is HAP_MAIN_THREAD_PRIORITY=7; we drop it to 5 (same as httpd).
+    {
+        hap_cfg_t cfg;
+        hap_get_config(&cfg);
+        cfg.task_priority = 5;
+        hap_set_config(&cfg);
+    }
+
     hap_start();
     _started = true;
     ESP_LOGI(TAG, "HomeKit bridge started");

@@ -7,6 +7,7 @@
 #include <WiFi.h>
 #include <LittleFS.h>
 #include <esp_task_wdt.h>
+#include "esp_log.h"
 #include "ConfigSettings.h"
 #include "SomfyNetwork.h"
 #include "Web.h"
@@ -26,25 +27,30 @@ SomfyShadeController somfy;
 MQTTClass mqtt;
 GitUpdater git;
 
+static const char *TAG = "Main";
+
 uint32_t oldheap = 0;
 void setup() {
-  // Raise loop task priority above HAP httpd task (priority 5) so it cannot pre-empt
-  // the WebSocket / web server poll loop. Must be first line of setup().
+  // Raise loop task priority above the HAP main task so it cannot pre-empt
+  // the WebSocket / web server poll loop.  HAP is configured to run at
+  // priority 5 (see HomeKit.cpp); we run at 6 to stay above it while still
+  // being pre-emptable by IDF system tasks (lwIP/wifi at 23, etc.).
+  // Must be first line of setup().
   vTaskPrioritySet(NULL, 6);
-  Serial.begin(115200);
-  Serial.println();
-  Serial.println("Startup/Boot....");
-  Serial.println("Mounting File System...");
-  if(LittleFS.begin(true)) Serial.println("File system mounted successfully");
-  else Serial.println("Error mounting file system");
+  ESP_LOGI(TAG, "Startup/Boot....");
+  ESP_LOGI(TAG, "Mounting File System...");
+  if(LittleFS.begin(true)) ESP_LOGI(TAG, "File system mounted successfully");
+  else ESP_LOGE(TAG, "Error mounting file system");
   settings.begin();
   if(WiFi.status() == WL_CONNECTED) WiFi.disconnect(true);
   delay(10);
-  Serial.println();
+  ESP_LOGI(TAG, "Initializing web server...");
   webServer.startup();
   webServer.begin();
   delay(1000);
+  ESP_LOGI(TAG, "Setting up network...");
   net.setup();
+  ESP_LOGI(TAG, "Initializing Somfy controller...");
   somfy.begin();
   // homekit.begin() is deferred — called in SomfyNetwork::setConnected() after mDNS is up.
   //git.checkForUpdate();
@@ -57,9 +63,7 @@ void setup() {
 
 void loop() {
   if(rebootDelay.reboot && millis() > rebootDelay.rebootTime) {
-    Serial.print("Rebooting after ");
-    Serial.print(rebootDelay.rebootTime);
-    Serial.println("ms");
+    ESP_LOGI(TAG, "Rebooting after %d ms", rebootDelay.rebootTime - (millis() - rebootDelay.rebootTime));
     net.end();
     ESP.restart();
     return;
@@ -67,11 +71,11 @@ void loop() {
   uint32_t timing = millis();
 
   net.loop();
-  if(millis() - timing > 100) Serial.printf("Timing Net: %ldms\n", millis() - timing);
+  if(millis() - timing > 100) ESP_LOGI(TAG, "Timing Net: %ldms", millis() - timing);
   timing = millis();
   esp_task_wdt_reset();
   somfy.loop();
-  if(millis() - timing > 100) Serial.printf("Timing Somfy: %ldms\n", millis() - timing);
+  if(millis() - timing > 100) ESP_LOGI(TAG, "Timing Somfy: %ldms", millis() - timing);
   timing = millis();
   esp_task_wdt_reset();
   if(net.connected() || net.softAPOpened) {
@@ -81,14 +85,16 @@ void loop() {
     }
     webServer.loop();
     esp_task_wdt_reset();
-    if(millis() - timing > 100) Serial.printf("Timing WebServer: %ldms\n", millis() - timing);
+    if(millis() - timing > 100) ESP_LOGI(TAG, "Timing WebServer: %ldms", millis() - timing);
     esp_task_wdt_reset();
-    timing = millis();
-    sockEmit.loop();
-    if(millis() - timing > 100) Serial.printf("Timing Socket: %ldms\n", millis() - timing);
-    esp_task_wdt_reset();
-    timing = millis();
   }
+  // Poll WebSocket unconditionally — must run every iteration regardless of
+  // WiFi/AP state so the HTTP-101 upgrade handshake is never starved.
+  timing = millis();
+  sockEmit.loop();
+  if(millis() - timing > 100) ESP_LOGI(TAG, "Timing Socket: %ldms", millis() - timing);
+  esp_task_wdt_reset();
+  timing = millis();
   if(rebootDelay.reboot && millis() > rebootDelay.rebootTime) {
     net.end();
     ESP.restart();

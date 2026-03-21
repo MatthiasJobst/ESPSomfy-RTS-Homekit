@@ -2,11 +2,15 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <esp_task_wdt.h>
+#include <freertos/task.h>
+#include "esp_log.h"
 #include "ConfigSettings.h"
 #include "MQTT.h"
 #include "SomfyController.h"
 #include "SomfyNetwork.h"
 #include "Utils.h"
+
+static const char *TAG = "MQTT";
 
 WiFiClient tcpClient;
 PubSubClient mqttClient(tcpClient);
@@ -35,22 +39,31 @@ void MQTTClass::reset() {
   this->connect();
 }
 bool MQTTClass::loop() {
-  if(settings.MQTT.enabled && !rebootDelay.reboot && !this->suspended && !mqttClient.connected()) {
+  if(settings.MQTT.enabled && !rebootDelay.reboot && !this->suspended && !mqttClient.connected() && !this->connecting) {
     esp_task_wdt_reset();
-    if(!this->connected() && net.connected()) this->connect();
+    if(!this->connected() && net.connected()) {
+      // Offload the blocking TCP connect to a background task so the main loop
+      // (and sockServer.loop()) is never stalled waiting for the broker.
+      this->lastConnect = millis(); // throttle: don't spam tasks
+      this->connecting = true;
+      xTaskCreate([](void *arg) {
+        MQTTClass *m = static_cast<MQTTClass *>(arg);
+        esp_task_wdt_add(NULL);
+        m->connect();
+        esp_task_wdt_delete(NULL);
+        m->connecting = false;
+        vTaskDelete(NULL);
+      }, "mqttConnect", 8192, this, 1, NULL);
+    }
   }
   esp_task_wdt_reset();
-  if(settings.MQTT.enabled) mqttClient.loop();
+  if(settings.MQTT.enabled && !this->connecting) mqttClient.loop();
   return true;
 }
 void MQTTClass::receive(const char *topic, byte*payload, uint32_t length) {
   esp_task_wdt_reset(); // Make sure we do not reboot here.
-  Serial.print("MQTT Topic:");
-  Serial.print(topic);
-  Serial.print(" payload:");
-  for(uint32_t i=0; i<length; i++)
-    Serial.print((char)payload[i]);
-  Serial.println();
+  ESP_LOGI(TAG, "MQTT Topic: %s", topic);
+  ESP_LOGI(TAG, "MQTT Payload: %.*s", length, payload);
 
   // We need to start at the last slash in the data
   uint8_t len = strlen(topic);
@@ -97,14 +110,8 @@ void MQTTClass::receive(const char *topic, byte*payload, uint32_t length) {
   for(uint8_t j = 0; j < length && j < sizeof(value); j++)
     value[j] = payload[j];
   
-  Serial.print("MQTT type:[");
-  Serial.print(entityType);
-  Serial.print("] command:[");
-  Serial.print(command);
-  Serial.print("] entityId:");
-  Serial.print(entityId);
-  Serial.print(" value:");
-  Serial.println(value);
+  ESP_LOGI(TAG, "MQTT type:[%s] command:[%s] entityId:[%s]", entityType, command, entityId);
+  ESP_LOGI(TAG, "MQTT value:[%s]", value);
   if(strncmp(entityType, "shades", sizeof(entityType)) == 0) {
     SomfyShade* shade = somfy.getShadeById(atoi(entityId));
     if (shade) {
@@ -204,8 +211,7 @@ bool MQTTClass::connect() {
         snprintf(lwtTopic, sizeof(lwtTopic), "%s/status", settings.MQTT.rootTopic);
       esp_task_wdt_reset();
       if(mqttClient.connect(this->clientId, settings.MQTT.username, settings.MQTT.password, lwtTopic, 0, true, "offline")) {
-        Serial.print("Successfully connected MQTT client ");
-        Serial.println(this->clientId);
+        ESP_LOGI(TAG, "Successfully connected MQTT client %s", this->clientId);
         this->publish("status", "online", true);
         this->publish("ipAddress", settings.IP.ip.toString().c_str(), true);
         this->publish("host", settings.hostname, true);
@@ -228,14 +234,13 @@ bool MQTTClass::connect() {
         this->subscribe("groups/+/sunny/set");
         this->subscribe("groups/+/windy/set");
         mqttClient.setCallback(MQTTClass::receive);
-        Serial.println("MQTT Startup Completed");
+        ESP_LOGI(TAG, "MQTT Startup Completed");
         esp_task_wdt_reset();
         this->lastConnect = millis();
         return true;
       }
       else {
-        Serial.print("MQTT Connection failed for: ");
-        Serial.println(mqttClient.state());
+        ESP_LOGE(TAG, "MQTT Connection failed for: %d", mqttClient.state());
         this->lastConnect = millis();
         return false;
       }
@@ -273,8 +278,7 @@ bool MQTTClass::unsubscribe(const char *topic) {
       snprintf(top, sizeof(top), "%s/%s", settings.MQTT.rootTopic, topic);
     else
       strlcpy(top, topic, sizeof(top));
-    Serial.print("MQTT Unsubscribed from:");
-    Serial.println(top);
+    ESP_LOGI(TAG, "MQTT Unsubscribed from: %s", top);
     return mqttClient.unsubscribe(top);
   }
   return true;
@@ -287,8 +291,7 @@ bool MQTTClass::subscribe(const char *topic) {
       snprintf(top, sizeof(top), "%s/%s", settings.MQTT.rootTopic, topic);
     else
       strlcpy(top, topic, sizeof(top));
-    Serial.print("MQTT Subscribed to:");
-    Serial.println(top);
+    ESP_LOGI(TAG, "MQTT Subscribed to: %s", top);
     return mqttClient.subscribe(top);
   }
   return true;
@@ -302,6 +305,9 @@ bool MQTTClass::publish(const char *topic, const char *payload, bool retain) {
       strlcpy(top, topic, sizeof(top));
     esp_task_wdt_reset(); // Make sure we do not reboot here.
     mqttClient.publish(top, payload, retain);
+    ESP_LOGI(TAG, "MQTT Published to: %s", top);
+    ESP_LOGI(TAG, "MQTT Payload: %s", payload);
+
     return true;
   }
   return false;
@@ -319,6 +325,7 @@ bool MQTTClass::unpublish(const char *topic) {
       strlcpy(top, topic, sizeof(top));
     esp_task_wdt_reset(); // Make sure we do not reboot here.
     mqttClient.publish(top, (const uint8_t *)"", 0, true);
+    ESP_LOGI(TAG, "MQTT Unpublished from: %s", top);
     return true;
   }
   return false;

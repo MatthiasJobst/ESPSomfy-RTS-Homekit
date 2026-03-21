@@ -53,6 +53,7 @@ class GitUpdater {
     int partition = 0;
     void checkForUpdate();
     bool beginUpdate(const char *release);
+    volatile bool pendingEmit = false;  // Set by background check task; main loop calls emitUpdateCheck().
     bool endUpdate();
     int8_t downloadFile();
     void setFirmwareFile();

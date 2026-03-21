@@ -34,6 +34,8 @@ extern char g_content[WEB_MAX_RESPONSE];
 extern const char _encoding_html[];
 extern const char _encoding_json[];
 
+static const char *TAG = "WebSettings";
+
 // ============================================================
 // Settings handlers
 // ============================================================
@@ -68,8 +70,7 @@ void Web::handleSaveSecurity(WebServer &server) {
   JsonDocument doc;
   DeserializationError err = deserializeJson(doc, server.arg("plain"));
   if (err) {
-    Serial.print("Error parsing JSON ");
-    Serial.println(err.c_str());
+    ESP_LOGE(TAG, "Error parsing JSON %s", err.c_str());
     String msg = err.c_str();
     server.send(400, _encoding_html, "Error parsing JSON body<br>" + msg);
   }
@@ -104,8 +105,7 @@ void Web::handleSaveRadio(WebServer &server) {
   JsonDocument doc;
   DeserializationError err = deserializeJson(doc, server.arg("plain"));
   if (err) {
-    Serial.print("Error parsing JSON ");
-    Serial.println(err.c_str());
+    ESP_LOGE(TAG, "Error parsing JSON %s", err.c_str());
     String msg = err.c_str();
     server.send(400, _encoding_html, "Error parsing JSON body<br>" + msg);
   }
@@ -136,9 +136,7 @@ void Web::handleGetRadio(WebServer &server) {
   resp.endResponse();
 }
 void Web::handleSetGeneral(WebServer &server) {
-  Serial.print("Plain: ");
-  Serial.print(server.method());
-  Serial.println(server.arg("plain"));
+  ESP_LOGI(TAG, "Plain: %d %s", server.method(), server.arg("plain").c_str());
   JsonDocument doc; JsonObject obj;
   if (!parseBody(server, doc, obj)) return;
   HTTPMethod method = server.method();
@@ -164,8 +162,7 @@ void Web::handleSetNetwork(WebServer &server) {
   JsonDocument doc;
   DeserializationError err = deserializeJson(doc, server.arg("plain"));
   if (err) {
-    Serial.print("Error parsing JSON ");
-    Serial.println(err.c_str());
+    ESP_LOGE(TAG, "Error parsing JSON %s", err.c_str());
     String msg = err.c_str();
     server.send(400, _encoding_html, "Error parsing JSON body<br>" + msg);
   }
@@ -200,7 +197,7 @@ void Web::handleSetNetwork(WebServer &server) {
         settings.Ethernet.save();
       }
       if (reboot) {
-        Serial.println("Rebooting ESP for new Network settings...");
+        ESP_LOGI(TAG, "Rebooting ESP for new Network settings...");
         rebootDelay.reboot = true;
         rebootDelay.rebootTime = millis() + 1000;
       }
@@ -212,7 +209,7 @@ void Web::handleSetNetwork(WebServer &server) {
   }
 }
 void Web::handleSetIP(WebServer &server) {
-  Serial.println("Setting IP...");
+  ESP_LOGI(TAG, "Setting IP...");
   JsonDocument doc; JsonObject obj;
   if (!parseBody(server, doc, obj)) return;
   HTTPMethod method = server.method();
@@ -226,7 +223,7 @@ void Web::handleSetIP(WebServer &server) {
   }
 }
 void Web::handleConnectWifi(WebServer &server) {
-  Serial.println("Settings WIFI connection...");
+  ESP_LOGI(TAG, "Settings WIFI connection...");
   JsonDocument doc; JsonObject obj;
   if (!parseBody(server, doc, obj)) return;
   HTTPMethod method = server.method();
@@ -248,7 +245,7 @@ void Web::handleConnectWifi(WebServer &server) {
       settings.WIFI.print();
       server.send(201, _encoding_json, "{\"status\":\"OK\",\"desc\":\"Successfully set server connection\"}");
       if (reboot) {
-        Serial.println("Rebooting ESP for new WiFi settings...");
+        ESP_LOGI(TAG, "Rebooting ESP for new WiFi settings...");
         rebootDelay.reboot = true;
         rebootDelay.rebootTime = millis() + 1000;
       }
@@ -290,9 +287,7 @@ void Web::handleConnectMQTT(WebServer &server) {
   JsonDocument doc; JsonObject obj;
   if (!parseBody(server, doc, obj)) return;
   HTTPMethod method = server.method();
-  Serial.print("Saving MQTT ");
-  Serial.print(F("HTTP Method: "));
-  Serial.println(server.method());
+  ESP_LOGI(TAG, "Saving MQTT HTTP Method: %d", server.method());
   if (method == HTTP_POST || method == HTTP_PUT) {
     mqtt.disconnect();
     settings.MQTT.fromJSON(obj);
