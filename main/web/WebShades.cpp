@@ -11,6 +11,7 @@
 //   - Linking and unlinking physical remotes (handleLinkRemote, handleUnlinkRemote)
 
 #include <WebServer.h>
+#include <esp_log.h>
 #include "ConfigSettings.h"
 #include "Utils.h"
 #include "SomfyController.h"
@@ -27,6 +28,8 @@ extern char g_content[WEB_MAX_RESPONSE];
 extern const char _encoding_text[];
 extern const char _encoding_json[];
 extern const char _response_404[];
+
+static const char* TAG = "WebShades";
 
 // ---------------------------------------------------------------------------
 // File-local helpers — shared by all handlers in this translation unit
@@ -82,7 +85,7 @@ void Web::handleShadeCommand(WebServer& server) {
       if(server.hasArg("stepSize")) stepSize = atoi(server.arg("stepSize").c_str());
     }
     else if (server.hasArg("plain")) {
-      Serial.println("Sending Shade Command");
+      ESP_LOGI(TAG, "Sending Shade Command");
       JsonDocument doc; JsonObject obj;
       if (!parseBody(server, doc, obj)) return;
       if (obj.containsKey("shadeId")) shadeId = obj["shadeId"];
@@ -98,7 +101,7 @@ void Web::handleShadeCommand(WebServer& server) {
     else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No shade object supplied.\"}"));
     SomfyShade* shade = requireShade(server, shadeId);
     if (shade) {
-      Serial.print("Received:"); Serial.println(server.arg("plain"));
+      ESP_LOGI(TAG, "Received: %s", server.arg("plain").c_str());
       if (target <= 100)
           shade->moveToTarget(shade->transformPosition(target));
       else
@@ -122,7 +125,7 @@ void Web::handleTiltCommand(WebServer &server) {
       else if(server.hasArg("target")) target = atoi(server.arg("target").c_str());
     }
     else if (server.hasArg("plain")) {
-      Serial.println("Sending Shade Tilt Command");
+      ESP_LOGI(TAG, "Sending Shade Tilt Command");
       JsonDocument doc; JsonObject obj;
       if (!parseBody(server, doc, obj)) return;
       if (obj.containsKey("shadeId")) shadeId = obj["shadeId"];
@@ -136,7 +139,7 @@ void Web::handleTiltCommand(WebServer &server) {
     else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No shade object supplied.\"}"));
     SomfyShade* shade = requireShade(server, shadeId);
     if (shade) {
-      Serial.print("Received:"); Serial.println(server.arg("plain"));
+      ESP_LOGI(TAG, "Received: %s", server.arg("plain").c_str());
       if(target <= 100)
         shade->moveToTiltTarget(shade->transformPosition(target));
       else
@@ -190,15 +193,15 @@ void Web::handleAddShade(WebServer &server) {
   HTTPMethod method = server.method();
   SomfyShade* shade = nullptr;
   if (method == HTTP_POST || method == HTTP_PUT) {
-    Serial.println("Adding a shade");
+    ESP_LOGI(TAG, "Adding a shade");
     JsonDocument doc; JsonObject obj;
     if (!parseBody(server, doc, obj)) return;
-    Serial.println("Counting shades");
+    ESP_LOGI(TAG, "Counting shades");
     if (somfy.shadeCount() > SOMFY_MAX_SHADES) {
       server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Maximum number of shades exceeded.\"}"));
       return;
     }
-    Serial.println("Adding shade");
+    ESP_LOGI(TAG, "Adding shade");
     shade = somfy.addShade(obj);
     if (!shade) {
       server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Error adding shade.\"}"));
@@ -213,7 +216,7 @@ void Web::handleSaveShade(WebServer &server) {
   HTTPMethod method = server.method();
   if (method == HTTP_PUT || method == HTTP_POST) {
     if (server.hasArg("plain")) {
-      Serial.println("Updating a shade");
+      ESP_LOGI(TAG, "Updating a shade");
       JsonDocument doc; JsonObject obj;
       if (!parseBody(server, doc, obj)) return;
       if (obj.containsKey("shadeId")) {
@@ -241,7 +244,7 @@ void Web::handleDeleteShade(WebServer &server) {
       shadeId = atoi(server.arg("shadeId").c_str());
     }
     else if (server.hasArg("plain")) {
-      Serial.println("Deleting a shade");
+      ESP_LOGI(TAG, "Deleting a shade");
       JsonDocument doc; JsonObject obj;
       if (!parseBody(server, doc, obj)) return;
       if (obj.containsKey("shadeId")) shadeId = obj["shadeId"];
@@ -362,7 +365,7 @@ static void repeaterLinkOp(WebServer &server, bool link) {
   if (method == HTTP_PUT || method == HTTP_POST) {
     uint32_t address = 0;
     if (server.hasArg("plain")) {
-      Serial.println(link ? "Linking a repeater" : "Unlinking a repeater");
+      ESP_LOGI(TAG, "%s a repeater", link ? "Linking" : "Unlinking");
       JsonDocument doc; JsonObject obj;
       if (!parseBody(server, doc, obj)) return;
       if (obj.containsKey("address")) address = obj["address"];
@@ -396,7 +399,7 @@ static void remoteLinkOp(WebServer &server, bool link) {
   HTTPMethod method = server.method();
   if (method == HTTP_PUT || method == HTTP_POST) {
     if (server.hasArg("plain")) {
-      if (link) Serial.println("Linking a remote");
+      if (link) ESP_LOGI(TAG, "Linking a remote");
       JsonDocument doc; JsonObject obj;
       if (!parseBody(server, doc, obj)) return;
       if (obj.containsKey("shadeId")) {

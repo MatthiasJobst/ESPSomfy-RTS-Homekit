@@ -10,6 +10,7 @@
 //   - Linking and unlinking shades from groups (handleLinkToGroup, handleUnlinkFromGroup)
 
 #include <WebServer.h>
+#include <esp_log.h>
 #include "ConfigSettings.h"
 #include "Utils.h"
 #include "SomfyController.h"
@@ -25,6 +26,8 @@ extern char g_content[WEB_MAX_RESPONSE];
 extern const char _encoding_text[];
 extern const char _encoding_json[];
 extern const char _response_404[];
+
+static const char *TAG = "WebGroups";
 
 void Web::handleGetGroups(WebServer &server) {
     HTTPMethod method = server.method();
@@ -62,7 +65,7 @@ void Web::handleGroup(WebServer &server) {
   else if (method == HTTP_PUT || method == HTTP_POST) {
       // We are updating an existing group.
       if (server.hasArg("plain")) {
-      Serial.println("Updating a group");
+      ESP_LOGI(TAG, "Updating a group");
       JsonDocument doc; JsonObject obj;
       if (!parseBody(server, doc, obj)) return;
       if (obj.containsKey("groupId")) {
@@ -103,9 +106,9 @@ void Web::handleGetNextGroup(WebServer &server) {
 
 void Web::handleGroupSortOrder(WebServer &server) {
   JsonDocument doc;
-  Serial.print("Plain: ");
-  Serial.print(server.method());
-  Serial.println(server.arg("plain"));
+  ESP_LOGI(TAG, "Plain: ");
+  ESP_LOGI(TAG, "Method: %d", server.method());
+  ESP_LOGI(TAG, "Plain: %s", server.arg("plain").c_str());
   DeserializationError err = deserializeJson(doc, server.arg("plain"));
   if (err) {
     webServer.handleDeserializationError(server, err);
@@ -136,16 +139,16 @@ void Web::handleAddGroup(WebServer &server) {
   HTTPMethod method = server.method();
   SomfyGroup * group = nullptr;
   if (method == HTTP_POST || method == HTTP_PUT) {
-    Serial.println("Adding a group");
+    ESP_LOGI(TAG, "Adding a group");
     JsonDocument doc; JsonObject obj;
     if (!parseBody(server, doc, obj)) return;
-    Serial.println("Counting shades");
+    ESP_LOGI(TAG, "Counting shades");
     if (somfy.groupCount() > SOMFY_MAX_GROUPS) {
       server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Maximum number of groups exceeded.\"}"));
       return;
     }
     else {
-      Serial.println("Adding group");
+      ESP_LOGI(TAG, "Adding group");
       group = somfy.addGroup(obj);
       if (!group) {
         server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Error adding group.\"}"));
@@ -170,7 +173,7 @@ void Web::handleSaveGroup(WebServer &server) {
   HTTPMethod method = server.method();
   if (method == HTTP_PUT || method == HTTP_POST) {
     if (server.hasArg("plain")) {
-      Serial.println("Updating a group");
+      ESP_LOGI(TAG, "Updating a group");
       JsonDocument doc; JsonObject obj;
       if (!parseBody(server, doc, obj)) return;
       if (obj.containsKey("groupId")) {
@@ -242,7 +245,7 @@ void Web::handleDeleteGroup(WebServer &server) {
       groupId = atoi(server.arg("groupId").c_str());
     }
     else if (server.hasArg("plain")) {
-      Serial.println("Deleting a group");
+      ESP_LOGI(TAG, "Deleting a group");
       JsonDocument doc; JsonObject obj;
       if (!parseBody(server, doc, obj)) return;
       if (obj.containsKey("groupId")) groupId = obj["groupId"];
@@ -262,7 +265,7 @@ void Web::handleLinkToGroup(WebServer &server) {
   HTTPMethod method = server.method();
   if (method == HTTP_PUT || method == HTTP_POST) {
     if (server.hasArg("plain")) {
-      Serial.println("Linking a shade to a group");
+      ESP_LOGI(TAG, "Linking a shade to a group");
       JsonDocument doc; JsonObject obj;
       if (!parseBody(server, doc, obj)) return;
       uint8_t shadeId = obj.containsKey("shadeId") ? obj["shadeId"] : 0;
@@ -289,7 +292,7 @@ void Web::handleUnlinkFromGroup(WebServer &server) {
   HTTPMethod method = server.method();
   if (method == HTTP_PUT || method == HTTP_POST) {
     if (server.hasArg("plain")) {
-      Serial.println("Unlinking a shade from a group");
+      ESP_LOGI(TAG, "Unlinking a shade from a group");
       JsonDocument doc; JsonObject obj;
       if (!parseBody(server, doc, obj)) return;
       uint8_t shadeId = obj.containsKey("shadeId") ? obj["shadeId"] : 0;

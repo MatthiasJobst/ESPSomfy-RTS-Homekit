@@ -11,6 +11,7 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <esp_task_wdt.h>
+#include <esp_log.h>
 #include "ConfigSettings.h"
 #include "Utils.h"
 #include "SomfyController.h"
@@ -29,6 +30,8 @@ extern SomfyNetwork net;
 extern char g_content[WEB_MAX_RESPONSE];
 extern const char _encoding_json[];
 
+static const char* TAG = "WebUtils";
+
 void Web::handleGetNextShade(WebServer &server) {
   uint8_t shadeId = somfy.getNextShadeId();
   JsonResponse resp;
@@ -45,9 +48,7 @@ void Web::handleGetNextShade(WebServer &server) {
 
 void Web::handleShadeSortOrder(WebServer &server) {
   JsonDocument doc;
-  Serial.print("Plain: ");
-  Serial.print(server.method());
-  Serial.println(server.arg("plain"));
+  ESP_LOGI(TAG, "Plain: %s", server.arg("plain").c_str());
   DeserializationError err = deserializeJson(doc, server.arg("plain"));
   if (err) {
     webServer.handleDeserializationError(server, err);
@@ -79,9 +80,7 @@ void Web::handleScanAPs(WebServer &server) {
   if(net.softAPOpened) WiFi.disconnect(false);
   int n = WiFi.scanNetworks(false, true);
   esp_task_wdt_add(NULL);
-  Serial.print("Scanned ");
-  Serial.print(n);
-  Serial.println(" networks");
+  ESP_LOGI(TAG, "Scanned %d networks", n);
   JsonResponse resp;
   resp.beginResponse(&server, g_content, sizeof(g_content));
   resp.beginObject();

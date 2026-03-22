@@ -8,6 +8,7 @@
 //   - CRUD operations: add, save, delete (handleAddRoom, handleSaveRoom, handleDeleteRoom)
 
 #include <WebServer.h>
+#include <esp_log.h>
 #include "ConfigSettings.h"
 #include "Utils.h"
 #include "SomfyController.h"
@@ -22,6 +23,8 @@ extern char g_content[WEB_MAX_RESPONSE];
 extern const char _encoding_text[];
 extern const char _encoding_json[];
 extern const char _response_404[];
+
+static const char* TAG = "WebRooms";
 
 void Web::handleGetRooms(WebServer &server) {
     HTTPMethod method = server.method();
@@ -59,7 +62,7 @@ void Web::handleRoom(WebServer &server) {
   else if (method == HTTP_PUT || method == HTTP_POST) {
     // We are updating an existing room.
     if (server.hasArg("plain")) {
-      Serial.println("Updating a room");
+      ESP_LOGI(TAG, "Updating a room");
       JsonDocument doc;
       DeserializationError err = deserializeJson(doc, server.arg("plain"));
       if (err) {
@@ -108,9 +111,8 @@ void Web::handleGetNextRoom(WebServer &server) {
 
 void Web::handleRoomSortOrder(WebServer &server) {
   JsonDocument doc;
-  Serial.print("Plain: ");
-  Serial.print(server.method());
-  Serial.println(server.arg("plain"));
+  ESP_LOGI(TAG, "Plain: %s", server.arg("plain").c_str());
+  ESP_LOGI(TAG, "Method: %d", server.method());
   DeserializationError err = deserializeJson(doc, server.arg("plain"));
   if (err) {
     webServer.handleDeserializationError(server, err);
@@ -140,7 +142,7 @@ void Web::handleAddRoom(WebServer &server) {
   HTTPMethod method = server.method();
   SomfyRoom * room = nullptr;
   if (method == HTTP_POST || method == HTTP_PUT) {
-    Serial.println("Adding a room");
+    ESP_LOGI(TAG, "Adding a room");
     JsonDocument doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
     if (err) {
@@ -149,13 +151,13 @@ void Web::handleAddRoom(WebServer &server) {
     }
     else {
       JsonObject obj = doc.as<JsonObject>();
-      Serial.println("Counting rooms");
+      ESP_LOGI(TAG, "Counting rooms");
       if (somfy.roomCount() > SOMFY_MAX_ROOMS) {
         server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Maximum number of rooms exceeded.\"}"));
         return;
       }
       else {
-        Serial.println("Adding room");
+        ESP_LOGI(TAG, "Adding room");
         room = somfy.addRoom(obj);
         if (!room) {
           server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Error adding room.\"}"));
@@ -181,7 +183,7 @@ void Web::handleSaveRoom(WebServer &server) {
   HTTPMethod method = server.method();
   if (method == HTTP_PUT || method == HTTP_POST) {
     if (server.hasArg("plain")) {
-      Serial.println("Updating a room");
+      ESP_LOGI(TAG, "Updating a room");
       JsonDocument doc;
       DeserializationError err = deserializeJson(doc, server.arg("plain"));
       if (err) {
@@ -219,7 +221,7 @@ void Web::handleDeleteRoom(WebServer &server) {
       roomId = atoi(server.arg("roomId").c_str());
     }
     else if (server.hasArg("plain")) {
-      Serial.println("Deleting a Room");
+      ESP_LOGI(TAG,"Deleting a Room");
       JsonDocument doc;
       DeserializationError err = deserializeJson(doc, server.arg("plain"));
       if (err) {

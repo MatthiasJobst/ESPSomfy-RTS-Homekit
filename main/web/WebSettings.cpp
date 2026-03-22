@@ -11,6 +11,7 @@
 
 #include <WiFi.h>
 #include <WebServer.h>
+#include <esp_log.h>
 #include "ConfigSettings.h"
 #include "Utils.h"
 #include "SomfyController.h"

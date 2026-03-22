@@ -12,6 +12,7 @@
 #include <LittleFS.h>
 #include <Update.h>
 #include <esp_task_wdt.h>
+#include <esp_log.h>
 #include "ConfigSettings.h"
 #include "ConfigFile.h"
 #include "Utils.h"
@@ -33,11 +34,13 @@ extern char g_content[WEB_MAX_RESPONSE];
 extern const char _encoding_text[];
 extern const char _encoding_json[];
 
+static const char *TAG = "WebOTA";
+
 void Web::handleDownloadFirmware(WebServer &server) {
   GitRepo repo;
   GitRelease *rel = nullptr;
   int8_t err = repo.getReleases();
-  Serial.println("downloadFirmware called...");
+  ESP_LOGI(TAG, "downloadFirmware called...");
   if(err == 0) {
     if(server.hasArg("ver")) {
       if(strcmp(server.arg("ver").c_str(), "latest") == 0) rel = &repo.releases[0];
@@ -76,10 +79,11 @@ void Web::handleDownloadFirmware(WebServer &server) {
 void Web::handleRestore(WebServer &server) {
   server.sendHeader("Connection", "close");
   if(webServer.uploadSuccess) {
+    ESP_LOGI(TAG, "Restoring Shade settings");
     server.send(200, _encoding_json, "{\"status\":\"Success\",\"desc\":\"Restoring Shade settings\"}");
     restore_options_t opts;
     if(server.hasArg("data")) {
-      Serial.println(server.arg("data"));
+      ESP_LOGI(TAG, "Restore data: %s", server.arg("data").c_str());
       StaticJsonDocument<256> doc;
       DeserializationError err = deserializeJson(doc, server.arg("data"));
       if (err) {
@@ -92,11 +96,11 @@ void Web::handleRestore(WebServer &server) {
       }
     }
     else {
-      Serial.println("No restore options sent.  Using defaults...");
+      ESP_LOGI(TAG, "No restore options sent.  Using defaults...");
       opts.shades = true;
     }
     ShadeConfigFile::restore(&somfy, "/shades.tmp", opts);
-    Serial.println("Rebooting ESP for restored settings...");
+    ESP_LOGI(TAG, "Rebooting ESP for restored settings...");
     rebootDelay.reboot = true;
     rebootDelay.rebootTime = millis() + 1000;
   }
@@ -106,7 +110,7 @@ void Web::handleRestoreUpload(WebServer &server) {
   HTTPUpload& upload = server.upload();
   if (upload.status == UPLOAD_FILE_START) {
     webServer.uploadSuccess = false;
-    Serial.printf("Restore: %s\n", upload.filename.c_str());
+    ESP_LOGI(TAG, "Restore: %s", upload.filename.c_str());
     File fup = LittleFS.open("/shades.tmp", "w");
     fup.close();
   }
@@ -131,7 +135,7 @@ void Web::handleUpdateFirmwareUpload(WebServer &server) {
   HTTPUpload& upload = server.upload();
   if (upload.status == UPLOAD_FILE_START) {
     webServer.uploadSuccess = false;
-    Serial.printf("Update: %s - %d\n", upload.filename.c_str(), upload.totalSize);
+    ESP_LOGI(TAG, "Update: %s - %d", upload.filename.c_str(), upload.totalSize);
     if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
       Update.printError(Serial);
     }
@@ -141,23 +145,24 @@ void Web::handleUpdateFirmwareUpload(WebServer &server) {
     }
   }
   else if(upload.status == UPLOAD_FILE_ABORTED) {
-    Serial.printf("Upload of %s aborted\n", upload.filename.c_str());
+    ESP_LOGE(TAG, "Upload of %s aborted", upload.filename.c_str());
     Update.abort();
   }
   else if (upload.status == UPLOAD_FILE_WRITE) {
     if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
       Update.printError(Serial);
-      Serial.printf("Upload of %s aborted invalid size %d\n", upload.filename.c_str(), upload.currentSize);
+      ESP_LOGE(TAG, "Upload of %s aborted invalid size %d", upload.filename.c_str(), upload.currentSize);
       Update.abort();
     }
   }
   else if (upload.status == UPLOAD_FILE_END) {
     if (Update.end(true)) {
-      Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+      ESP_LOGI(TAG, "Update Success: %u\nRebooting...\n", upload.totalSize);
       webServer.uploadSuccess = true;
     }
     else {
       Update.printError(Serial);
+      ESP_LOGE(TAG, "Update failed");
     }
   }
   esp_task_wdt_reset();
@@ -173,7 +178,7 @@ void Web::handleUpdateShadeConfig(WebServer &server) {
 void Web::handleUpdateShadeConfigUpload(WebServer &server) {
   HTTPUpload& upload = server.upload();
   if (upload.status == UPLOAD_FILE_START) {
-    Serial.printf("Update: shades.cfg\n");
+    ESP_LOGI(TAG, "Update: shades.cfg");
     File fup = LittleFS.open("/shades.tmp", "w");
     fup.close();
   }
@@ -201,7 +206,7 @@ void Web::handleUpdateApplicationUpload(WebServer &server) {
   HTTPUpload& upload = server.upload();
   if (upload.status == UPLOAD_FILE_START) {
     webServer.uploadSuccess = false;
-    Serial.printf("Update: %s %d\n", upload.filename.c_str(), upload.totalSize);
+    ESP_LOGI(TAG, "Update: %s %d", upload.filename.c_str(), upload.totalSize);
     if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_SPIFFS)) {
       Update.printError(Serial);
     }
@@ -211,21 +216,21 @@ void Web::handleUpdateApplicationUpload(WebServer &server) {
     }
   }
   else if(upload.status == UPLOAD_FILE_ABORTED) {
-    Serial.printf("Upload of %s aborted\n", upload.filename.c_str());
+    ESP_LOGE(TAG, "Upload of %s aborted", upload.filename.c_str());
     Update.abort();
     somfy.commit();
   }
   else if (upload.status == UPLOAD_FILE_WRITE) {
     if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
       Update.printError(Serial);
-      Serial.printf("Upload of %s aborted invalid size %d\n", upload.filename.c_str(), upload.currentSize);
+      ESP_LOGE(TAG, "Upload of %s aborted invalid size %d", upload.filename.c_str(), upload.currentSize);
       Update.abort();
     }
   }
   else if (upload.status == UPLOAD_FILE_END) {
     if (Update.end(true)) {
       webServer.uploadSuccess = true;
-      Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+      ESP_LOGI(TAG, "Update Success: %u\nRebooting...\n", upload.totalSize);
       somfy.commit();
     }
     else {
