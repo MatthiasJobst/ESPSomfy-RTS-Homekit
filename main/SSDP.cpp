@@ -1,6 +1,7 @@
 #include <functional>
 #include <inttypes.h>
 #include <AsyncUDP.h>
+#include <esp_log.h>
 #include "Utils.h"
 #include "ConfigSettings.h"
 #include "SSDP.h"
@@ -14,6 +15,8 @@
 //#define DEBUG_SSDP Serial
 //#define DEBUG_SSDP_PACKET Serial
 extern ConfigSettings settings;
+
+static const char* TAG = "SSDP";
 
 static const char _ssdp_uuid_template[] PROGMEM = "C2496952-5610-47E6-A968-2FC1%02X%02X%02X%02X";
 static const char _ssdp_serial_number_template[] PROGMEM = "ESP32-%02x%02x%02x";
@@ -194,12 +197,12 @@ bool SSDPClass::begin() {
     return false;
   }
   for(uint8_t i = 0; i < this->m_cdeviceTypes; i++) {
-    Serial.printf("SSDP: %s - %s\n", this->deviceTypes[i].deviceType, this->deviceTypes[i].isActive ? "true" : "false");
+    ESP_LOGI(TAG, "SSDP: %s - %s", this->deviceTypes[i].deviceType, this->deviceTypes[i].isActive ? "true" : "false");
   }
   this->isStarted = true;
   this->_sendByeBye();
   this->_sendNotify();
-  Serial.println("Connected to SSDP..."); 
+  ESP_LOGI(TAG, "Connected to SSDP..."); 
   return true;
 }
 void SSDPClass::end() { 
@@ -210,7 +213,7 @@ void SSDPClass::end() {
   if(this->_server.connected()) {
     this->_sendByeBye();
     this->_server.close();
-    Serial.println("Disconnected from SSDP...");
+    ESP_LOGI(TAG, "Disconnected from SSDP...");
   }
   this->isStarted = false;
   // Clear out the last notified so if the user starts us up again it will notify
@@ -600,7 +603,7 @@ void SSDPClass::_addToSendQueue(IPAddress addr, uint16_t port, UPNPDeviceType *d
       ssdp_response_t *q = &this->sendQueue[i];
       if(q->address == addr && q->port == port && q->responseType == responseType) {
         #ifdef DEBUG_SSDP
-        DEBUG_SSDP.printf("There is already a response to this query in slot %u\n", i);
+        ESP_LOGD(TAG, "There is already a response to this query in slot %u", i);
         #endif
         return;
       }
@@ -610,8 +613,8 @@ void SSDPClass::_addToSendQueue(IPAddress addr, uint16_t port, UPNPDeviceType *d
   for(uint8_t i = 0; i < SSDP_QUEUE_SIZE; i++) {
     if(!this->sendQueue[i].waiting) {
         #ifdef DEBUG_SSDP
-        DEBUG_SSDP.printf("Queueing SSDP response in slot %u\n", i);
-        DEBUG_SSDP.println("*********************************");
+        ESP_LOGD(TAG, "Queueing SSDP response in slot %u", i);
+        ESP_LOGD(TAG, "*********************************");
         #endif
         ssdp_response_t *q = &this->sendQueue[i];
         q->dev = d;
@@ -626,7 +629,7 @@ void SSDPClass::_addToSendQueue(IPAddress addr, uint16_t port, UPNPDeviceType *d
   }
   // If we made it here then there were was not space available on the queue.
   #ifdef DEBUG_SSDP
-  DEBUG_SSDP.println("The SSDP response queue was full.  Dropping request");
+  ESP_LOGW(TAG, "The SSDP response queue was full.  Dropping request");
   #endif
 }
 void SSDPClass::_sendQueuedResponses() {
@@ -636,8 +639,7 @@ void SSDPClass::_sendQueuedResponses() {
       if(q->sendTime < millis()) {
           // Send the response and delete the pointer.
           #ifdef DEBUG_SSDP
-            DEBUG_SSDP.print("Sending SSDP queued response ");
-            DEBUG_SSDP.println(i);
+            ESP_LOGD(TAG, "Sending SSDP queued response %d", i);
           #endif
           this->_sendResponse(q->address, q->port, q->dev, q->st, q->responseType);
           q->waiting = false;
@@ -647,28 +649,28 @@ void SSDPClass::_sendQueuedResponses() {
   }
 }
 void SSDPClass::_printPacket(ssdp_packet_t *pkt) {
-  Serial.printf("Rec: %lu\n", pkt->recvd);
+  ESP_LOGI(TAG, "Rec: %lu", pkt->recvd);
   switch(pkt->method) {
     case NONE:
-      Serial.println("Method: NONE");
+      ESP_LOGI(TAG, "Method: NONE");
       break;
     case SEARCH:
-      Serial.println("Method: SEARCH");
+      ESP_LOGI(TAG, "Method: SEARCH");
       break;
     case NOTIFY:
-      Serial.println("Method: NOTIFY");
+      ESP_LOGI(TAG, "Method: NOTIFY");
       break;
     default:
-      Serial.println("Method: UNKOWN");
+      ESP_LOGI(TAG, "Method: UNKNOWN");
       break;
   }
-  Serial.printf("ST: %s\n", pkt->st);
-  Serial.printf("MAN: %s\n", pkt->man);
-  Serial.printf("AGENT: %s\n", pkt->agent);
-  Serial.printf("HOST: %s\n", pkt->host);
-  Serial.printf("MX: %d\n", pkt->mx);
-  Serial.printf("type: %d\n", pkt->type);
-  Serial.printf("valid: %d\n", pkt->valid);
+  ESP_LOGI(TAG, "ST: %s", pkt->st);
+  ESP_LOGI(TAG, "MAN: %s", pkt->man);
+  ESP_LOGI(TAG, "AGENT: %s", pkt->agent);
+  ESP_LOGI(TAG, "HOST: %s", pkt->host);
+  ESP_LOGI(TAG, "MX: %d", pkt->mx);
+  ESP_LOGI(TAG, "type: %d", pkt->type);
+  ESP_LOGI(TAG, "valid: %d", pkt->valid);
 }
 void SSDPClass::_processRequest(AsyncUDPPacket &p) {
   // This pending BS should probably be for unicast request only but we will play along for now.
@@ -683,7 +685,7 @@ void SSDPClass::_processRequest(AsyncUDPPacket &p) {
     // Check to see if we have anything to respond to from this packet.
     if(strcmp("ssdp:all", pkt.st) == 0) {
       #ifdef DEBUG_SSDP
-      DEBUG_SSDP.println("---------------   ALL   ---------------------");
+      ESP_LOGD(TAG, "---------------   ALL   ---------------------");
       this->_printPacket(&pkt);
       #endif
       for(uint8_t i = 0; i < this->m_cdeviceTypes; i++) {
@@ -698,7 +700,7 @@ void SSDPClass::_processRequest(AsyncUDPPacket &p) {
     else if(strcmp("upnp:rootdevice", pkt.st) == 0) {
       UPNPDeviceType *dev = &this->deviceTypes[0];
       #ifdef DEBUG_SSDP
-      DEBUG_SSDP.println("---------------   ROOT   ---------------------");
+      ESP_LOGD(TAG, "---------------   ROOT   ---------------------");
       this->_printPacket(&pkt);
       #endif
       if(pkt.type == MULTICAST) 
@@ -717,7 +719,7 @@ void SSDPClass::_processRequest(AsyncUDPPacket &p) {
       if(dev) {
         #ifdef DEBUG_SSDP
         this->_printPacket(&pkt);
-        DEBUG_SSDP.println("--------------   ACCEPT   --------------------");
+        ESP_LOGD(TAG, "--------------   ACCEPT   --------------------");
         #endif
         if(pkt.type == MULTICAST)
           this->_addToSendQueue(IPAddress(SSDP_MULTICAST_ADDR), SSDP_PORT, dev, pkt.st, useUUID ? response_types_t::uuid : response_types_t::root, pkt.mx);
@@ -783,7 +785,7 @@ void SSDPClass::schema(Print &client) {
   }
   client.print(F("</deviceList></device></root>\r\n"));
   #ifdef DEBUG_SSDP
-  DEBUG_SSDP.println("Sending upnp.xml");
+  ESP_LOGD(TAG, "Sending upnp.xml");
   #endif
 }
 /*
