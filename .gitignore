@@ -16,3 +16,4 @@ build/
 sdkconfig
 managed_components/
 dependencies.locksdkconfig.old
+.claude/settings.local.json

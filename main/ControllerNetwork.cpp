@@ -323,7 +323,7 @@ void ControllerNetwork::setConnected(conn_types_t connType) {
     }
     ESP_LOGI(TAG, "Disconnected %d times", this->connectAttempts - 1);
   }
-  SSDP.setHTTPPort(80);
+  SSDP.setHTTPPort(APP_HTTP_PORT);
   SSDP.setSchemaURL(0, SSDP_SCHEMA_URL);
   SSDP.setChipId(0, this->getChipId());
   SSDP.setDeviceType(0, SSDP_DEVICE_TYPE);
@@ -346,7 +346,7 @@ void ControllerNetwork::setConnected(conn_types_t connType) {
   safe_wdt_reset();
   if(MDNS.begin(settings.hostname)) {
     ESP_LOGI(TAG, "MDNS Responder Started: serverId=%s", settings.serverId);
-    MDNS.addService("http", "tcp", 80);
+    MDNS.addService("http", "tcp", APP_HTTP_PORT);
   }
   // begin() is idempotent (_started guard inside) — safe to call on every
   // reconnect. ESP-IDF mDNS re-announces _hap._tcp automatically on WiFi reconnect.

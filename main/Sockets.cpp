@@ -4,6 +4,7 @@
 #include <esp_task_wdt.h>
 #include "esp_log.h"
 #include "Sockets.h"
+#include "AppConfig.h"
 #include "ConfigSettings.h"
 #include "SomfyController.h"
 #include "ControllerNetwork.h"
@@ -16,7 +17,7 @@ extern SocketEmitter sockEmit;
 extern GitUpdater git;
 
 static const char *TAG = "Sockets";
-uint16_t socketsPort = 8080;
+uint16_t socketsPort = APP_WS_PORT;
 
 WebSocketsServer sockServer = WebSocketsServer(socketsPort);
 

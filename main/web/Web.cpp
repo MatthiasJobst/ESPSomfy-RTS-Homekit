@@ -44,8 +44,8 @@ extern const char _encoding_text[] = "text/plain";
 extern const char _encoding_html[] = "text/html";
 extern const char _encoding_json[] = "application/json";
 
-WebServer apiServer(8081);
-WebServer server(80);
+WebServer apiServer(APP_API_PORT);
+WebServer server(APP_HTTP_PORT);
 void Web::startup() {
   ESP_LOGI(TAG, "Launching web server...");
 }
