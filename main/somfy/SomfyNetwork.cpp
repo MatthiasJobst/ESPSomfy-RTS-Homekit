@@ -318,36 +318,29 @@ void SomfyNetwork::setConnected(conn_types_t connType) {
     ESP_LOGI(TAG, "Disconnected %d times", this->connectAttempts - 1);
   }
   SSDP.setHTTPPort(80);
-  SSDP.setSchemaURL(0, "upnp.xml");
+  SSDP.setSchemaURL(0, SSDP_SCHEMA_URL);
   SSDP.setChipId(0, this->getChipId());
-  SSDP.setDeviceType(0, "urn:schemas-rstrouse-org:device:ESPSomfyRTS:1");
+  SSDP.setDeviceType(0, SSDP_DEVICE_TYPE);
   SSDP.setName(0, settings.hostname);
   
   //SSDP.setSerialNumber(0, "C2496952-5610-47E6-A968-2FC19737A0DB");
   //SSDP.setUUID(0, settings.uuid);
-  SSDP.setModelName(0, "ESPSomfy RTS");
-  if(strlen(settings.chipModel) == 0) SSDP.setModelNumber(0, "ESP32");
+  SSDP.setModelName(0, SSDP_MODEL_NAME);
+  if(strlen(settings.chipModel) == 0) SSDP.setModelNumber(0, SSDP_MODEL_NUMBER_DEFAULT);
   else {
     char sModel[20] = "";
     snprintf(sModel, sizeof(sModel), "ESP32-%s", settings.chipModel);
     SSDP.setModelNumber(0, sModel);
   }
-  SSDP.setModelURL(0, "https://github.com/rstrouse/ESPSomfy-RTS");
-  SSDP.setManufacturer(0, "rstrouse");
-  SSDP.setManufacturerURL(0, "https://github.com/rstrouse");
-  SSDP.setURL(0, "/");
+  SSDP.setModelURL(0, SSDP_MODEL_URL);
+  SSDP.setManufacturer(0, SSDP_MANUFACTURER);
+  SSDP.setManufacturerURL(0, SSDP_MANUFACTURER_URL);
+  SSDP.setURL(0, SSDP_PRESENTATION_URL);
   SSDP.setActive(0, true);
   safe_wdt_reset();
   if(MDNS.begin(settings.hostname)) {
     ESP_LOGI(TAG, "MDNS Responder Started: serverId=%s", settings.serverId);
     MDNS.addService("http", "tcp", 80);
-    //MDNS.addServiceTxt("http", "tcp", "board", "ESP32");
-    //MDNS.addServiceTxt("http", "tcp", "model", "ESPSomfyRTS");
-    
-    MDNS.addService("espsomfy_rts", "tcp", 8080);
-    MDNS.addServiceTxt("espsomfy_rts", "tcp", "serverId", String(settings.serverId));
-    MDNS.addServiceTxt("espsomfy_rts", "tcp", "model", "ESPSomfyRTS");
-    MDNS.addServiceTxt("espsomfy_rts", "tcp", "version", String(settings.fwVersion.name));
   }
   // begin() is idempotent (_started guard inside) — safe to call on every
   // reconnect. ESP-IDF mDNS re-announces _hap._tcp automatically on WiFi reconnect.
