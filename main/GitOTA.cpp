@@ -13,14 +13,14 @@
 #include "SomfyController.h"
 #include "Web.h"
 #include "WResp.h"
-#include "SomfyNetwork.h"
+#include "ControllerNetwork.h"
 
 extern ConfigSettings settings;
 extern SocketEmitter sockEmit;
 extern SomfyShadeController somfy;
 extern rebootDelay_t rebootDelay;
 extern Web webServer;
-extern SomfyNetwork net;
+extern ControllerNetwork net;
 
 #define GIT_REPO "MatthiasJobst/ESPSomfy-RTS"
 #define MAX_BUFF_SIZE 4096

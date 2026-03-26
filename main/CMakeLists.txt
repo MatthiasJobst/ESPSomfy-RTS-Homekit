@@ -9,7 +9,7 @@ idf_component_register(
         "GitOTA.cpp"
         "HomeKit.cpp"
         "MQTT.cpp"
-        "somfy/SomfyNetwork.cpp"
+        "ControllerNetwork.cpp"
         "Sockets.cpp"
         "somfy/SomfyFrame.cpp"
         "somfy/SomfyTransceiver.cpp"

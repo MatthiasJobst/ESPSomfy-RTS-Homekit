@@ -18,13 +18,13 @@
 #include "WResp.h"
 #include "Web.h"
 #include "GitOTA.h"
-#include "SomfyNetwork.h"
+#include "ControllerNetwork.h"
 
 extern ConfigSettings settings;
 extern SomfyShadeController somfy;
 extern Web webServer;
 extern GitUpdater git;
-extern SomfyNetwork net;
+extern ControllerNetwork net;
 
 #define WEB_MAX_RESPONSE 4096
 extern char g_content[WEB_MAX_RESPONSE];

@@ -6,7 +6,7 @@
 #include "esp_log.h"
 #include "HomeKit.h"
 #include "ConfigSettings.h"
-#include "SomfyNetwork.h"
+#include "ControllerNetwork.h"
 #include "Web.h"
 #include "Sockets.h"
 #include "Utils.h"
@@ -18,10 +18,10 @@ extern Web webServer;
 extern SocketEmitter sockEmit;
 extern MQTTClass mqtt;
 extern rebootDelay_t rebootDelay;
-extern SomfyNetwork net;
+extern ControllerNetwork net;
 extern SomfyShadeController somfy;
 
-static const char *TAG = "SomfyNetwork";
+static const char *TAG = "ControllerNetwork";
 static unsigned long _lastHeapEmit = 0;
 
 static bool _apScanning = false;
@@ -37,13 +37,14 @@ static inline void safe_wdt_reset() {
   if(esp_task_wdt_status(NULL) == ESP_OK) esp_task_wdt_reset();
 }
 
-void SomfyNetwork::end() {
+void ControllerNetwork::end() {
   SSDP.end();
   mqtt.end();
   sockEmit.end();
   delay(100);
 }
-bool SomfyNetwork::setup() {
+
+bool ControllerNetwork::setup() {
   WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
   WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);
   WiFi.persistent(false);
@@ -60,7 +61,8 @@ bool SomfyNetwork::setup() {
   sockEmit.begin();
   return true;
 }
-conn_types_t SomfyNetwork::preferredConnType() {
+
+conn_types_t ControllerNetwork::preferredConnType() {
   switch(settings.connType) {
     case conn_types_t::wifi:    
       return settings.WIFI.ssid[0] != '\0' ? conn_types_t::wifi : conn_types_t::ap;
@@ -75,7 +77,8 @@ conn_types_t SomfyNetwork::preferredConnType() {
       return settings.connType; 
   }
 }
-void SomfyNetwork::loop() {
+
+void ControllerNetwork ::loop() {
   // ORDER OF OPERATIONS:
   // ----------------------------------------------
   // 1. If we are in the middle of a connection process we need to simply bail after the connect method.  The
@@ -166,7 +169,8 @@ void SomfyNetwork::loop() {
   }
   else if(!settings.ssdpBroadcast && SSDP.isStarted) SSDP.end();
 }
-bool SomfyNetwork::changeAP(const uint8_t *bssid, const int32_t channel) {
+
+bool ControllerNetwork::changeAP(const uint8_t *bssid, const int32_t channel) {
   safe_wdt_reset(); // Make sure we do not reboot here.
   if(SSDP.isStarted) SSDP.end();
   mqtt.disconnect();
@@ -179,7 +183,8 @@ bool SomfyNetwork::changeAP(const uint8_t *bssid, const int32_t channel) {
   this->connectStart = millis();
   return false;
 }
-void SomfyNetwork::emitSockets() {
+
+void ControllerNetwork::emitSockets() {
   this->emitHeap();
   if(this->needsBroadcast || 
     (this->connType == conn_types_t::wifi && (abs(abs(WiFi.RSSI()) - abs(this->lastRSSI)) > 1 || WiFi.channel() != this->lastChannel))) {
@@ -188,7 +193,8 @@ void SomfyNetwork::emitSockets() {
     this->needsBroadcast = false;
   }
 }
-void SomfyNetwork::emitSockets(uint8_t num) {
+
+void ControllerNetwork::emitSockets(uint8_t num) {
   if(this->connType == conn_types_t::ethernet) {
       JsonSockEvent *json = sockEmit.beginEmit("ethernet");
       json->beginObject();
@@ -232,7 +238,7 @@ void SomfyNetwork::emitSockets(uint8_t num) {
   }
   this->emitHeap(num);
 }
-void SomfyNetwork::setConnected(conn_types_t connType) {
+void ControllerNetwork::setConnected(conn_types_t connType) {
   safe_wdt_reset();
   this->connType = connType;
   this->connectTime = millis();
@@ -355,7 +361,8 @@ void SomfyNetwork::setConnected(conn_types_t connType) {
   settings.printAvailHeap();
   this->needsBroadcast = true;
 }
-bool SomfyNetwork::connectWired() {
+
+bool ControllerNetwork::connectWired() {
   if(ETH.linkUp()) {
     // If the ethernet link is re-established then we need to shut down wifi.
     if(WiFi.status() == WL_CONNECTED) {
@@ -417,7 +424,8 @@ bool SomfyNetwork::connectWired() {
   this->connectStart = millis();
   return true;
 }
-void SomfyNetwork::updateHostname() {
+
+void ControllerNetwork::updateHostname() {
   if(settings.hostname[0] != '\0' && this->connected()) {
     if(this->connType == conn_types_t::ethernet &&
       strcmp(settings.hostname, ETH.getHostname()) != 0) {
@@ -434,7 +442,8 @@ void SomfyNetwork::updateHostname() {
      }
   }
 }
-bool SomfyNetwork::connectWiFi(const uint8_t *bssid, const int32_t channel) {
+
+bool ControllerNetwork::connectWiFi(const uint8_t *bssid, const int32_t channel) {
   if(this->softAPOpened && WiFi.softAPgetStationNum() > 0) {
     // There is a client connected to the soft AP.  We do not want to close out the connection.  While both the
     // Soft AP and a wifi connection can coexist on ESP32 the performance is abysmal.
@@ -500,7 +509,8 @@ bool SomfyNetwork::connectWiFi(const uint8_t *bssid, const int32_t channel) {
   this->connectStart = millis();
   return true;
 }
-bool SomfyNetwork::connect(conn_types_t ctype) {
+
+bool ControllerNetwork::connect(conn_types_t ctype) {
   safe_wdt_reset();
   if(this->connecting()) return true;
   if(this->disconnectTime == 0) this->disconnectTime = millis();
@@ -525,7 +535,8 @@ bool SomfyNetwork::connect(conn_types_t ctype) {
   
   return true;
 }
-uint32_t SomfyNetwork::getChipId() {
+
+uint32_t ControllerNetwork::getChipId() {
   uint32_t chipId = 0;
   uint64_t mac = ESP.getEfuseMac();
   for(int i=0; i<17; i=i+8) {
@@ -533,7 +544,8 @@ uint32_t SomfyNetwork::getChipId() {
   }
   return chipId;
 }
-bool SomfyNetwork::getStrongestAP(const char *ssid, uint8_t *bssid, int32_t *channel) {
+
+bool ControllerNetwork::getStrongestAP(const char *ssid, uint8_t *bssid, int32_t *channel) {
   // The new AP must be at least 10dbm greater.
   int32_t strength = this->connected() ? WiFi.RSSI() + 10 : -127;
   int32_t chan = -1;
@@ -552,7 +564,8 @@ bool SomfyNetwork::getStrongestAP(const char *ssid, uint8_t *bssid, int32_t *cha
   WiFi.scanDelete();
   return chan > 0;
 }
-bool SomfyNetwork::openSoftAP() {
+
+bool ControllerNetwork::openSoftAP() {
   if(this->softAPOpened || this->openingSoftAP) return true;
   if(this->connected()) WiFi.disconnect(false);
   this->openingSoftAP = true;
@@ -562,7 +575,8 @@ bool SomfyNetwork::openSoftAP() {
   delay(200);
   return true;
 }
-bool SomfyNetwork::connected() {
+
+bool ControllerNetwork::connected() {
   if(this->connecting()) return false;
   else if(this->connType == conn_types_t::unset) return false;
   else if(this->connType == conn_types_t::wifi) return WiFi.status() == WL_CONNECTED;
@@ -570,18 +584,20 @@ bool SomfyNetwork::connected() {
   else return this->connType != conn_types_t::unset;
   return false;
 }
-bool SomfyNetwork::connecting() {
+
+bool ControllerNetwork::connecting() {
   if(this->_connecting && millis() > this->connectStart + CONNECT_TIMEOUT) this->_connecting = false; 
   return this->_connecting; 
 }
-void SomfyNetwork::clearConnecting() { this->_connecting = false; }
-void SomfyNetwork::networkEvent(WiFiEvent_t event) {
+
+void ControllerNetwork::clearConnecting() { this->_connecting = false; }
+
+void ControllerNetwork::networkEvent(WiFiEvent_t event) {
   switch(event) {
     case ARDUINO_EVENT_WIFI_READY:
       ESP_LOGI(TAG, "(evt) WiFi interface ready"); break;
     case ARDUINO_EVENT_WIFI_SCAN_DONE:           
       ESP_LOGI(TAG, "(evt) Completed scan for access points (%d)", WiFi.scanComplete()); 
-      //ESP_LOGI(TAG, "(evt) Completed scan for access points");
       net.lastWifiScan = millis();
       break;
     case ARDUINO_EVENT_WIFI_STA_START:
@@ -652,7 +668,8 @@ void SomfyNetwork::networkEvent(WiFiEvent_t event) {
       break;
   }
 }
-void SomfyNetwork::emitHeap(uint8_t num) {
+
+void ControllerNetwork::emitHeap(uint8_t num) {
   bool bEmit = false;
   bool bTimeEmit = millis() - _lastHeapEmit > 15000;
   bool bRoomEmit = false;

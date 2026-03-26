@@ -15,7 +15,7 @@
 #include "WebHelpers.h"
 #include "MQTT.h"
 #include "GitOTA.h"
-#include "SomfyNetwork.h"
+#include "ControllerNetwork.h"
 #include "HomeKit.h"
 #include "Sockets.h"
 
@@ -26,7 +26,7 @@ extern SomfyShadeController somfy;
 extern Web webServer;
 extern MQTTClass mqtt;
 extern GitUpdater git;
-extern SomfyNetwork net;
+extern ControllerNetwork net;
 extern SocketEmitter sockEmit;
 
 //#define WEB_MAX_RESPONSE 34768

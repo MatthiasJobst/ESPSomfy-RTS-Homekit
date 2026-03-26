@@ -20,7 +20,7 @@
 #include "WebHelpers.h"
 #include "MQTT.h"
 #include "GitOTA.h"
-#include "SomfyNetwork.h"
+#include "ControllerNetwork.h"
 
 extern ConfigSettings settings;
 extern rebootDelay_t rebootDelay;
@@ -28,7 +28,7 @@ extern SomfyShadeController somfy;
 extern Web webServer;
 extern MQTTClass mqtt;
 extern GitUpdater git;
-extern SomfyNetwork net;
+extern ControllerNetwork net;
 
 #define WEB_MAX_RESPONSE 4096
 extern char g_content[WEB_MAX_RESPONSE];

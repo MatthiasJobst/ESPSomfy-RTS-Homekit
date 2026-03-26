@@ -1,13 +1,18 @@
+/*
+ * ControllerNetwork
+ * -----------------
+ * This class manages network connectivity for the SomfyController project, handling both Ethernet and WiFi connections.
+ * It provides logic for connection management, failover between interfaces, SoftAP setup, and network status reporting.
+ * The class also integrates with mDNS, SSDP, and other network services to support device discovery and communication.
+ */
+#ifndef CONTROLLERNETWORK_H
+#define CONTROLLERNETWORK_H
+
 #include <Arduino.h>
-
-#ifndef Network_h
-#define Network_h
-
-//enum class conn_types_t : byte;
 
 #define CONNECT_TIMEOUT 20000
 #define SSID_SCAN_INTERVAL 60000
-class SomfyNetwork {
+class ControllerNetwork {
   protected:
     unsigned long lastEmit = 0;
     unsigned long lastMDNS = 0;
@@ -44,8 +49,6 @@ class SomfyNetwork {
     void setConnected(conn_types_t connType);
     bool getStrongestAP(const char *ssid, uint8_t *bssid, int32_t *channel);
     bool changeAP(const uint8_t *bssid, const int32_t channel);
-    //int getStrengthByMac(const char *mac);
-    //int getStrengthBySSID(const char *ssid);
     void updateHostname();
     bool setup();
     void loop();
@@ -56,4 +59,5 @@ class SomfyNetwork {
     uint32_t getChipId();
     static void networkEvent(WiFiEvent_t event);
 };
+
 #endif

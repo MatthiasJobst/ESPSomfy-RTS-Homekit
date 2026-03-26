@@ -9,7 +9,7 @@
 #include <esp_task_wdt.h>
 #include "esp_log.h"
 #include "ConfigSettings.h"
-#include "SomfyNetwork.h"
+#include "ControllerNetwork.h"
 #include "Web.h"
 #include "Sockets.h"
 #include "Utils.h"
@@ -21,7 +21,7 @@
 ConfigSettings settings;
 Web webServer;
 SocketEmitter sockEmit;
-SomfyNetwork net;
+ControllerNetwork net;
 rebootDelay_t rebootDelay;
 SomfyShadeController somfy;
 MQTTClass mqtt;
@@ -52,7 +52,7 @@ void setup() {
   net.setup();
   ESP_LOGI(TAG, "Initializing Somfy controller...");
   somfy.begin();
-  // homekit.begin() is deferred — called in SomfyNetwork::setConnected() after mDNS is up.
+  // homekit.begin() is deferred — called in ControllerNetwork::setConnected() after mDNS is up.
   //git.checkForUpdate();
   // IDF v5: WDT API uses a config struct. arduino-esp32 may have already
   // initialized the WDT; use reconfigure to set our preferred timeout.
