@@ -7,12 +7,14 @@
 #include <SPI.h>
 #include <esp_task_wdt.h>
 #include <esp_chip_info.h>
+#include "esp_log.h"
 #include "SomfyTransceiver.h"
 #include "SomfyController.h"
 #include "Sockets.h"
 #include "MQTT.h"
 #include "GitOTA.h"
 
+static const char *TAG = "SomfyTransceiver";
 // Module-level state (Transceiver private)
 uint8_t rxmode = 0;   // 0=off 1=receive 3=frequency-scan
 uint8_t bit_length = 56;  // current protocol frame width; set by apply(), read by sendCommand()
@@ -72,7 +74,7 @@ void Transceiver::sendFrame(byte *frame, uint8_t sync, uint8_t bitLength) {
     // pulse it only sends an initial pulse.  There is no further delay after this.
     
     // Wake-up pulse
-    //Serial.printf("Sending wakeup pulse: %d\n", sync);
+    ESP_LOGD(TAG, "Sending wakeup pulse: %d", sync);
     REG_WRITE(GPIO_OUT_W1TS_REG, pin);
     delayMicroseconds(10920);
     //delayMicroseconds(9415);
@@ -284,7 +286,7 @@ void Transceiver::beginFrequencyScan() {
     markFreq = currFreq = 433.0f;
     markRSSI = -100;
     ELECHOUSE_cc1101.setMHZ(currFreq);
-    Serial.printf("Begin frequency scan on Pin #%d\n", this->config.RXPin);
+    ESP_LOGI(TAG, "Begin frequency scan on Pin #%d", this->config.RXPin);
     attachInterrupt(interruptPin, handleReceive, CHANGE);
     this->emitFrequencyScan();
   }
@@ -349,7 +351,7 @@ void Transceiver::emitFrequencyScan(uint8_t num) {
 bool Transceiver::receive(somfy_rx_t *rx) {
     // Check to see if there is anything in the buffer
     if(rx_queue.length > 0) {
-      //Serial.printf("Processing receive %d\n", rx_queue.length);
+      ESP_LOGD(TAG, "Processing receive %d", rx_queue.length);
       rx_queue.pop(rx);
       this->frame.decodeFrame(rx);
       this->emitFrame(&this->frame, rx);
@@ -434,7 +436,7 @@ void Transceiver::enableReceive(void) {
       ELECHOUSE_cc1101.SetRx();
       //attachInterrupt(interruptPin, handleReceive, FALLING);
       attachInterrupt(interruptPin, handleReceive, CHANGE);
-      Serial.printf("Enabled receive on Pin #%d Timing: %ld\n", this->config.RXPin, millis() - timing);
+      ESP_LOGI(TAG, "Enabled receive on Pin #%d Timing: %ld", this->config.RXPin, millis() - timing);
     }
 }
 
@@ -450,15 +452,7 @@ void Transceiver::toJSON(JsonResponse& json) {
     this->config.toJSON(json);
     json.endObject();
 }
-/*
 
-bool Transceiver::toJSON(JsonObject& obj) {
-    //Serial.println("Setting Transceiver Json");
-    JsonObject objConfig = obj.createNestedObject("config");
-    this->config.toJSON(objConfig);
-    return true;
-}
-*/
 bool Transceiver::fromJSON(JsonObject& obj) {
     if (obj.containsKey("config")) {
       JsonObject objConfig = obj["config"];
@@ -492,7 +486,7 @@ bool Transceiver::end() {
 }
 
 void transceiver_config_t::fromJSON(JsonObject& obj) {
-    //Serial.print("Deserialize Radio JSON ");
+    ESP_LOGD(TAG, "Deserialize Radio JSON Config");
     if(obj.containsKey("type")) this->type = obj["type"];
     if(obj.containsKey("CSNPin")) this->CSNPin = obj["CSNPin"];
     if(obj.containsKey("MISOPin")) this->MISOPin = obj["MISOPin"];
@@ -531,7 +525,7 @@ void transceiver_config_t::fromJSON(JsonObject& obj) {
     if (obj.containsKey("appendStatus")) this->appendStatus = obj["appendStatus"];
     if (obj.containsKey("printBuffer")) this->printBuffer = obj["printBuffer"];
     */
-    Serial.printf("SCK:%u MISO:%u MOSI:%u CSN:%u RX:%u TX:%u\n", this->SCKPin, this->MISOPin, this->MOSIPin, this->CSNPin, this->RXPin, this->TXPin);
+    ESP_LOGI(TAG, "SCK:%u MISO:%u MOSI:%u CSN:%u RX:%u TX:%u", this->SCKPin, this->MISOPin, this->MOSIPin, this->CSNPin, this->RXPin, this->TXPin);
 }
 
 void transceiver_config_t::toJSON(JsonResponse &json) {
@@ -550,50 +544,7 @@ void transceiver_config_t::toJSON(JsonResponse &json) {
     json.addElem("enabled", this->enabled);
     json.addElem("radioInit", this->radioInit);
 }
-/*
 
-void transceiver_config_t::toJSON(JsonObject& obj) {
-    obj["type"] = this->type;
-    obj["TXPin"] = this->TXPin;
-    obj["RXPin"] = this->RXPin;
-    obj["SCKPin"] = this->SCKPin;
-    obj["MOSIPin"] = this->MOSIPin;
-    obj["MISOPin"] = this->MISOPin;
-    obj["CSNPin"] = this->CSNPin;
-    obj["rxBandwidth"] = this->rxBandwidth; // float
-    obj["frequency"] = this->frequency;  // float
-    obj["deviation"] = this->deviation;  // float
-    obj["txPower"] = this->txPower;
-    obj["proto"] = static_cast<uint8_t>(this->proto);
-    //obj["internalCCMode"] = this->internalCCMode;
-    //obj["modulationMode"] = this->modulationMode;
-    //obj["channel"] = this->channel;
-    //obj["channelSpacing"] = this->channelSpacing; // float
-    //obj["dataRate"] = this->dataRate; // float
-    //obj["syncMode"] = this->syncMode;
-    //obj["syncWordHigh"] = this->syncWordHigh;
-    //obj["syncWordLow"] = this->syncWordLow;
-    //obj["addrCheckMode"] = this->addrCheckMode;
-    //obj["checkAddr"] = this->checkAddr;
-    //obj["dataWhitening"] = this->dataWhitening;
-    //obj["pktFormat"] = this->pktFormat;
-    //obj["pktLengthMode"] = this->pktLengthMode;
-    //obj["pktLength"] = this->pktLength;
-    //obj["useCRC"] = this->useCRC;
-    //obj["autoFlushCRC"] = this->autoFlushCRC;
-    //obj["disableDCFilter"] = this->disableDCFilter;
-    //obj["enableManchester"] = this->enableManchester;
-    //obj["enableFEC"] = this->enableFEC;
-    //obj["minPreambleBytes"] = this->minPreambleBytes;
-    //obj["pqtThreshold"] = this->pqtThreshold;
-    //obj["appendStatus"] = this->appendStatus;
-    //obj["printBuffer"] = somfy.transceiver.printBuffer;
-    obj["enabled"] = this->enabled;
-    obj["radioInit"] = this->radioInit;
-    //Serial.print("Serialize Radio JSON ");
-    //Serial.printf("SCK:%u MISO:%u MOSI:%u CSN:%u RX:%u TX:%u\n", this->SCKPin, this->MISOPin, this->MOSIPin, this->CSNPin, this->RXPin, this->TXPin);
-}
-*/
 void transceiver_config_t::save() {
     pref.begin("CC1101");
     pref.clear();
@@ -640,13 +591,13 @@ void transceiver_config_t::save() {
     */
     pref.end();
    
-    Serial.print("Save Radio Settings ");
-    Serial.printf("SCK:%u MISO:%u MOSI:%u CSN:%u RX:%u TX:%u\n", this->SCKPin, this->MISOPin, this->MOSIPin, this->CSNPin, this->RXPin, this->TXPin);
+    ESP_LOGI(TAG, "Save Radio Settings ");
+    ESP_LOGI(TAG, "SCK:%u MISO:%u MOSI:%u CSN:%u RX:%u TX:%u", this->SCKPin, this->MISOPin, this->MOSIPin, this->CSNPin, this->RXPin, this->TXPin);
 }
 
 void transceiver_config_t::removeNVSKey(const char *key) {
   if(pref.isKey(key)) {
-    Serial.printf("Removing NVS Key: CC1101.%s\n", key);
+    ESP_LOGI(TAG, "Removing NVS Key: CC1101.%s", key);
     pref.remove(key);
   }
 }
@@ -656,7 +607,7 @@ void transceiver_config_t::load() {
     esp_chip_info(&ci);
     switch(ci.model) {
       case esp_chip_model_t::CHIP_ESP32S3:
-        Serial.println("Setting S3 Transceiver Defaults...");
+        ESP_LOGI(TAG, "Setting S3 Transceiver Defaults...");
         this->TXPin = 15;
         this->RXPin = 14;
         this->MOSIPin = 11;
@@ -744,8 +695,8 @@ void transceiver_config_t::apply() {
       this->radioInit = false;
       pref.end();
       if(!radioInit) return;
-      Serial.print("Applying radio settings ");
-      Serial.printf("Setting Data Pins RX:%u TX:%u\n", this->RXPin, this->TXPin);
+      ESP_LOGI(TAG, "Applying radio settings ");
+      ESP_LOGI(TAG, "Setting Data Pins RX:%u TX:%u", this->RXPin, this->TXPin);
       // Configure all pins through the GPIO matrix before SPI/CC1101 init.
       // Without this, ESP32-S3 reports "IO x is not set as GPIO" and the SPI
       // transfer hangs, triggering the watchdog.
@@ -761,8 +712,8 @@ void transceiver_config_t::apply() {
         ELECHOUSE_cc1101.setGDO0(this->TXPin); // This pin may be shared.
       else
         ELECHOUSE_cc1101.setGDO(this->TXPin, this->RXPin); // GDO0, GDO2
-      Serial.printf("Setting SPI Pins SCK:%u MISO:%u MOSI:%u CSN:%u\n", this->SCKPin, this->MISOPin, this->MOSIPin, this->CSNPin);
-      Serial.println("Radio Pins Configured!");
+      ESP_LOGI(TAG, "Setting SPI Pins SCK:%u MISO:%u MOSI:%u CSN:%u", this->SCKPin, this->MISOPin, this->MOSIPin, this->CSNPin);
+      ESP_LOGI(TAG, "Radio Pins Configured!");
       ELECHOUSE_cc1101.Init();
       ELECHOUSE_cc1101.setCCMode(0);                            // set config for internal transmission mode.
       ELECHOUSE_cc1101.setMHZ(this->frequency);                 // Here you can set your basic frequency. The lib calculates the frequency automatically (default = 433.92).The cc1101 can: 300-348 MHZ, 387-464MHZ and 779-928MHZ. Read More info from datasheet.
@@ -798,11 +749,11 @@ void transceiver_config_t::apply() {
     
       
       if (!ELECHOUSE_cc1101.getCC1101()) {
-          Serial.println("Error setting up the radio");
+          ESP_LOGI(TAG, "Error setting up the radio");
           this->radioInit = false;
       }
       else {
-          Serial.println("Successfully set up the radio");
+          ESP_LOGI(TAG, "Successfully set up the radio");
           somfy.transceiver.enableReceive();
           this->radioInit = true;
       }
@@ -865,7 +816,7 @@ void Transceiver::loop() {
     for(uint8_t i = 0; i < SOMFY_MAX_REPEATERS; i++) {
       if(somfy.repeaters[i] == frame.remoteAddress) {
         tx_queue.push(&rx);
-        Serial.println("Queued repeater frame...");
+        ESP_LOGI(TAG, "Queued repeater frame...");
         break;
       }
     }
@@ -879,26 +830,16 @@ void Transceiver::loop() {
       somfy_tx_t tx;
       
       tx_queue.pop(&tx);
-      Serial.printf("Sending frame %d - %d-BIT [", tx.hwsync, tx.bit_length);
+      ESP_LOGI(TAG, "Sending frame %d - %d-BIT [", tx.hwsync, tx.bit_length);
       for(uint8_t j = 0; j < 10; j++) {
-        Serial.print(tx.payload[j]);
-        if(j < 9) Serial.print(", ");
+        ESP_LOGI(TAG, "%d", tx.payload[j]);
+        if(j < 9) ESP_LOGI(TAG, ", ");
       }
-      Serial.println("]");
+      ESP_LOGI(TAG, "]");
+
       this->sendFrame(tx.payload, tx.hwsync, tx.bit_length);
       tx_queue.delay_time = millis() + TX_QUEUE_DELAY;
       
-      /*
-      while(tx_queue.length > 0 && tx_queue.pop(&tx)) {
-        Serial.printf("Sending frame %d - %d-BIT [", tx.hwsync, tx.bit_length);
-        for(uint8_t j = 0; j < 10; j++) {
-          Serial.print(tx.payload[j]);
-          if(j < 9) Serial.print(", ");
-        }
-        Serial.println("]");
-        this->sendFrame(tx.payload, tx.hwsync, tx.bit_length);
-      }
-      */
       this->endTransmit();
     }
   }

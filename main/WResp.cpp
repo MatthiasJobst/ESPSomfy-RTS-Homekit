@@ -1,4 +1,8 @@
+#include "esp_log.h"
 #include "WResp.h"
+
+static const char *TAG = "WResp";
+
 void JsonSockEvent::beginEvent(WebSocketsServer *server, const char *evt, char *buff, size_t buffSize) {
   this->server = server;
   this->buff = buff;
@@ -24,8 +28,8 @@ void JsonSockEvent::_safecat(const char *val, bool escape) {
   size_t len = (escape ? this->calcEscapedLength(val) : strlen(val)) + strlen(this->buff);
   if(escape) len += 2;
   if(len >= this->buffSize) {
-    Serial.printf("Socket exceeded buffer size %d - %d\n", this->buffSize, len);
-    Serial.println(this->buff);
+    ESP_LOGW(TAG, "Socket exceeded buffer size %d - %d", this->buffSize, len);
+    ESP_LOGW(TAG, "%s", this->buff);
     return;
   }
   if(escape) strcat(this->buff, "\"");
@@ -48,7 +52,7 @@ void JsonResponse::endResponse() {
 void JsonResponse::send() {
     if(!this->_headersSent) server->send_P(200, "application/json", this->buff);
     else server->sendContent(this->buff);
-    //Serial.printf("Sent %d bytes %d\n", strlen(this->buff), this->buffSize);
+    ESP_LOGD(TAG, "Sent %d bytes %d", strlen(this->buff), this->buffSize);
     this->buff[0] = 0x00;
     this->_headersSent = true;
 }

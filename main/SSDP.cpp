@@ -12,8 +12,7 @@
 #define SSDP_URI_SIZE     2
 #define SSDP_BUFFER_SIZE  64
 #define SSDP_MULTICAST_ADDR 239, 255, 255, 250
-//#define DEBUG_SSDP Serial
-//#define DEBUG_SSDP_PACKET Serial
+
 extern ConfigSettings settings;
 
 static const char* TAG = "SSDP";
@@ -128,14 +127,10 @@ char * UPNPDeviceType::getUSN(response_types_t responseType) {
   return this->m_usn;
 }
 char * UPNPDeviceType::getUSN(const char *st) { 
-  //#ifdef DEBUG_SSDP
-  //DEBUG_SSDP.print("GETUSN ST: ");
-  //DEBUG_SSDP.println(st);
-  //DEBUG_SSDP.print("GETUSN UUID: ");
-  //DEBUG_SSDP.println(this->uuid);
-  //DEBUG_SSDP.print("sizeof(this->m_usn)");
-  //DEBUG_SSDP.println(sizeof(this->m_usn));
-  //#endif
+  ESP_LOGD(TAG, "GETUSN ST: %s", st);
+  ESP_LOGD(TAG, "GETUSN UUID: %s", this->uuid);
+  ESP_LOGD(TAG, "sizeof(this->m_usn): %d", sizeof(this->m_usn));
+  ESP_LOGD(TAG, "RESUSN UUID: %s", this->m_usn);
   if(strncmp("upnp:rootdevice", st, strlen(st)) == 0) {
     snprintf_P(this->m_usn, sizeof(this->m_usn) - 1, _ssdp_usn_root_template, this->uuid); 
   }
@@ -146,10 +141,7 @@ char * UPNPDeviceType::getUSN(const char *st) {
   else {
     snprintf_P(this->m_usn, sizeof(this->m_usn) - 1, _ssdp_usn_uuid_template, this->uuid); 
   }
-  //#ifdef DEBUG_SSDP
-  //DEBUG_SSDP.print("RESUSN UUID: ");
-  //DEBUG_SSDP.println(this->m_usn);
-  //#endif
+  ESP_LOGD(TAG, "RESUSN UUID: %s", this->m_usn);
   return this->m_usn; 
 }
 void UPNPDeviceType::setChipId(uint32_t chipId) {
@@ -173,10 +165,7 @@ bool SSDPClass::begin() {
   if(this->_server.connected()) this->end();
   //assert(NULL == _server);
   if(_server.connected()) {
-    #ifdef DEBUG_SSDP
-    DEBUG_SSDP.println(PSTR("Already connected to SSDP."));
-    this->isStarted = true;
-    #endif
+    ESP_LOGD(TAG, "Already connected to SSDP.");
     return false;
   }
   this->bootId = Timestamp::epoch();
@@ -187,13 +176,7 @@ bool SSDPClass::begin() {
   this->configId = (settings.fwVersion.major * 100) + (settings.fwVersion.minor * 10) + settings.fwVersion.build;
   _server.onPacket([](void * arg, AsyncUDPPacket& packet) { ((SSDPClass*)(arg))->_processRequest(packet); }, this);
   if(!_server.listenMulticast(IPAddress(SSDP_MULTICAST_ADDR), SSDP_PORT)) {
-    #ifdef DEBUG_SSDP
-    IPAddress mcast(SSDP_MULTICAST_ADDR);
-    DEBUG_SSDP.println(PSTR("Error starting SSDP listener on: "));
-    DEBUG_SSDP.print(mcast);
-    DEBUG_SSDP.print(":");
-    DEBUG_SSDP.println(SSDP_PORT);
-    #endif
+    ESP_LOGE(TAG, "Error starting SSDP listener on: %s:%d", IPAddress(SSDP_MULTICAST_ADDR).toString().c_str(), SSDP_PORT);
     return false;
   }
   for(uint8_t i = 0; i < this->m_cdeviceTypes; i++) {
@@ -207,9 +190,7 @@ bool SSDPClass::begin() {
 }
 void SSDPClass::end() { 
   if(!this->_server || !this->_server.connected()) return; // server isn't connected nothing to do
-  #ifdef DEBUG_SSDP
-  DEBUG_SSDP.printf(PSTR("SSDP end ...\n "));
-  #endif
+  ESP_LOGD(TAG, "SSDP end ...");
   if(this->_server.connected()) {
     this->_sendByeBye();
     this->_server.close();
@@ -395,9 +376,7 @@ void SSDPClass::_sendResponse(IPAddress addr, uint16_t port, UPNPDeviceType *d, 
   IPAddress ip = this->localIP();
   char *pbuff = (char *)malloc(strlen_P(_ssdp_response_template)+1);
   if(!pbuff) {
-    #ifdef DEBUG_SSDP
-    DEBUG_SSDP.println("Out of memory for SSDP response");
-    #endif
+    ESP_LOGE(TAG, "Out of memory for SSDP response");
     return;
   }
   strcpy_P(pbuff, _ssdp_response_template);
@@ -416,44 +395,24 @@ void SSDPClass::_sendResponse(IPAddress addr, uint16_t port, UPNPDeviceType *d, 
   free(pbuff);
 }
 void SSDPClass::_sendResponse(IPAddress addr, uint16_t port, const char *buff) {
-  #ifdef DEBUG_SSDP
-  DEBUG_SSDP.print("Sending Response to ");
-  DEBUG_SSDP.print(IPAddress(addr));
-  DEBUG_SSDP.print(":");
-  DEBUG_SSDP.println(port);
-  DEBUG_SSDP.println(buff);
-  #endif
-  
+  ESP_LOGD(TAG, "Sending Response to %s:%u", IPAddress(addr).toString().c_str(), port);
+  ESP_LOGD(TAG, "%s", buff);
+
   _server.writeTo((const uint8_t *)buff, strlen(buff), addr, port);
 }
 void SSDPClass::_sendNotify() {
   for(uint8_t i = 0; i < this->m_cdeviceTypes; i++) {
     UPNPDeviceType *dev = &this->deviceTypes[i];
-    if(i == 0 && (strlen(dev->deviceType) == 0 || !dev->isActive)) Serial.printf("The device type is empty: %s\n", dev->isActive ? "true" : "false");
+    if(i == 0 && (strlen(dev->deviceType) == 0 || !dev->isActive)) ESP_LOGW(TAG, "The device type is empty: %s", dev->isActive ? "true" : "false");
     if(strlen(dev->deviceType) > 0 && dev->isActive) {
       unsigned long elapsed = (millis() - dev->lastNotified);
       if(!dev->lastNotified || (elapsed * 5) > (this->_interval * 1000)) {
-        #ifdef DEBUG_SSDP
-        DEBUG_SSDP.print(dev->deviceType);
-        DEBUG_SSDP.print(" Time since last notified: ");
-        DEBUG_SSDP.print(elapsed/1000);
-        DEBUG_SSDP.print("sec ");
-        DEBUG_SSDP.print(this->_interval);
-        DEBUG_SSDP.println("sec");
-        #endif
+        ESP_LOGD(TAG, "%s Time since last notified: %lu sec %u sec", dev->deviceType, elapsed/1000, this->_interval);
         this->_sendNotify(dev, i == 0);
       }
       else {
-        /*
-        #ifdef DEBUG_SSDP
-        DEBUG_SSDP.print(dev->deviceType);
-        DEBUG_SSDP.print(" Time since last notified: ");
-        DEBUG_SSDP.print(elapsed/1000);
-        DEBUG_SSDP.print("sec ");
-        DEBUG_SSDP.print(this->_interval);
-        DEBUG_SSDP.println("sec -- SKIPPING");
-        #endif
-        */
+        ESP_LOGD(TAG, "%s Time since last notified: %lu sec %u sec -- SKIPPING", dev->deviceType, elapsed/1000, this->_interval);
+        ESP_LOGD(TAG, "%u sec -- SKIPPING", this->_interval);
       }
     }
   }
@@ -461,10 +420,8 @@ void SSDPClass::_sendNotify() {
 void SSDPClass::_sendNotify(const char *msg) {
     //_server->append(msg, strlen(msg));
     //_server->send(IPAddress(SSDP_MULTICAST_ADDR), SSDP_PORT);
-    #ifdef DEBUG_SSDP
-    DEBUG_SSDP.println("--------------- SEND NOTIFY PACKET ----------------");
-    DEBUG_SSDP.println(msg);
-    #endif
+    ESP_LOGD(TAG, "--------------- SEND NOTIFY PACKET ----------------");
+    ESP_LOGD(TAG, "%s", msg);
     _server.writeTo((uint8_t *)msg, strlen(msg), IPAddress(SSDP_MULTICAST_ADDR), SSDP_PORT);
 }
 void SSDPClass::_sendNotify(UPNPDeviceType *d) { this->_sendNotify(d, strcmp(d->deviceType, this->deviceTypes[0].deviceType) == 0); }
@@ -483,9 +440,7 @@ void SSDPClass::_sendNotify(UPNPDeviceType *d, bool root) {
   */
   char *pbuff = (char *)malloc(strlen_P(_ssdp_notify_template)+1);
   if(!pbuff) {
-    #ifdef DEBUG_SSDP
-    DEBUG_SSDP.println(PSTR("Out of memory for SSDP response"));
-    #endif
+    ESP_LOGE(TAG, "Out of memory for SSDP response");
     return;
   }
   strcpy_P(pbuff, _ssdp_notify_template);
@@ -537,12 +492,7 @@ void SSDPClass::_sendByeBye() {
   for(uint8_t i = 0; i < this->m_cdeviceTypes; i++) {
     UPNPDeviceType *dev = &this->deviceTypes[i];
     if(strlen(dev->deviceType) > 0) {
-      #ifdef DEBUG_SSDP
-      DEBUG_SSDP.print(dev->deviceType);
-      DEBUG_SSDP.print(" ");
-      DEBUG_SSDP.print(this->_interval);
-      DEBUG_SSDP.println("sec");
-      #endif
+      ESP_LOGD(TAG, "%s %u sec", dev->deviceType, this->_interval);
       this->_sendByeBye(dev, i == 0);
     }
   }
@@ -602,9 +552,7 @@ void SSDPClass::_addToSendQueue(IPAddress addr, uint16_t port, UPNPDeviceType *d
       // Check to see if this is a reply to the same place.
       ssdp_response_t *q = &this->sendQueue[i];
       if(q->address == addr && q->port == port && q->responseType == responseType) {
-        #ifdef DEBUG_SSDP
         ESP_LOGD(TAG, "There is already a response to this query in slot %u", i);
-        #endif
         return;
       }
     }
@@ -612,10 +560,8 @@ void SSDPClass::_addToSendQueue(IPAddress addr, uint16_t port, UPNPDeviceType *d
   // Find an empty queue slot and fill it.
   for(uint8_t i = 0; i < SSDP_QUEUE_SIZE; i++) {
     if(!this->sendQueue[i].waiting) {
-        #ifdef DEBUG_SSDP
         ESP_LOGD(TAG, "Queueing SSDP response in slot %u", i);
         ESP_LOGD(TAG, "*********************************");
-        #endif
         ssdp_response_t *q = &this->sendQueue[i];
         q->dev = d;
         q->sendTime = millis() + (random(0, sec - 1) * 1000L);
@@ -628,9 +574,7 @@ void SSDPClass::_addToSendQueue(IPAddress addr, uint16_t port, UPNPDeviceType *d
     }
   }
   // If we made it here then there were was not space available on the queue.
-  #ifdef DEBUG_SSDP
   ESP_LOGW(TAG, "The SSDP response queue was full.  Dropping request");
-  #endif
 }
 void SSDPClass::_sendQueuedResponses() {
   for(uint8_t i = 0; i < SSDP_QUEUE_SIZE; i++) {
@@ -638,9 +582,7 @@ void SSDPClass::_sendQueuedResponses() {
       ssdp_response_t *q = &this->sendQueue[i];
       if(q->sendTime < millis()) {
           // Send the response and delete the pointer.
-          #ifdef DEBUG_SSDP
-            ESP_LOGD(TAG, "Sending SSDP queued response %d", i);
-          #endif
+          ESP_LOGD(TAG, "Sending SSDP queued response %d", i);
           this->_sendResponse(q->address, q->port, q->dev, q->st, q->responseType);
           q->waiting = false;
           return;
@@ -649,28 +591,28 @@ void SSDPClass::_sendQueuedResponses() {
   }
 }
 void SSDPClass::_printPacket(ssdp_packet_t *pkt) {
-  ESP_LOGI(TAG, "Rec: %lu", pkt->recvd);
+  ESP_LOGD(TAG, "Rec: %lu", pkt->recvd);
   switch(pkt->method) {
     case NONE:
-      ESP_LOGI(TAG, "Method: NONE");
+      ESP_LOGD(TAG, "Method: NONE");
       break;
     case SEARCH:
-      ESP_LOGI(TAG, "Method: SEARCH");
+      ESP_LOGD(TAG, "Method: SEARCH");
       break;
     case NOTIFY:
-      ESP_LOGI(TAG, "Method: NOTIFY");
+      ESP_LOGD(TAG, "Method: NOTIFY");
       break;
     default:
-      ESP_LOGI(TAG, "Method: UNKNOWN");
+      ESP_LOGD(TAG, "Method: UNKNOWN");
       break;
   }
-  ESP_LOGI(TAG, "ST: %s", pkt->st);
-  ESP_LOGI(TAG, "MAN: %s", pkt->man);
-  ESP_LOGI(TAG, "AGENT: %s", pkt->agent);
-  ESP_LOGI(TAG, "HOST: %s", pkt->host);
-  ESP_LOGI(TAG, "MX: %d", pkt->mx);
-  ESP_LOGI(TAG, "type: %d", pkt->type);
-  ESP_LOGI(TAG, "valid: %d", pkt->valid);
+  ESP_LOGD(TAG, "ST: %s", pkt->st);
+  ESP_LOGD(TAG, "MAN: %s", pkt->man);
+  ESP_LOGD(TAG, "AGENT: %s", pkt->agent);
+  ESP_LOGD(TAG, "HOST: %s", pkt->host);
+  ESP_LOGD(TAG, "MX: %d", pkt->mx);
+  ESP_LOGD(TAG, "type: %d", pkt->type);
+  ESP_LOGD(TAG, "valid: %d", pkt->valid);
 }
 void SSDPClass::_processRequest(AsyncUDPPacket &p) {
   // This pending BS should probably be for unicast request only but we will play along for now.
@@ -684,10 +626,8 @@ void SSDPClass::_processRequest(AsyncUDPPacket &p) {
   if(pkt.valid && pkt.method == SEARCH) {
     // Check to see if we have anything to respond to from this packet.
     if(strcmp("ssdp:all", pkt.st) == 0) {
-      #ifdef DEBUG_SSDP
       ESP_LOGD(TAG, "---------------   ALL   ---------------------");
       this->_printPacket(&pkt);
-      #endif
       for(uint8_t i = 0; i < this->m_cdeviceTypes; i++) {
         UPNPDeviceType *dev = &this->deviceTypes[i];
         if(strlen(this->deviceTypes[i].deviceType) > 0) {
@@ -699,10 +639,6 @@ void SSDPClass::_processRequest(AsyncUDPPacket &p) {
     }
     else if(strcmp("upnp:rootdevice", pkt.st) == 0) {
       UPNPDeviceType *dev = &this->deviceTypes[0];
-      #ifdef DEBUG_SSDP
-      ESP_LOGD(TAG, "---------------   ROOT   ---------------------");
-      this->_printPacket(&pkt);
-      #endif
       if(pkt.type == MULTICAST) 
         this->_addToSendQueue(IPAddress(SSDP_MULTICAST_ADDR), SSDP_PORT, dev, pkt.st, response_types_t::root, pkt.mx);
       else 
@@ -717,10 +653,8 @@ void SSDPClass::_processRequest(AsyncUDPPacket &p) {
       }
       else if(this->_startsWith("urn:", pkt.st)) { dev = this->findDeviceByType(pkt.st); }
       if(dev) {
-        #ifdef DEBUG_SSDP
-        this->_printPacket(&pkt);
         ESP_LOGD(TAG, "--------------   ACCEPT   --------------------");
-        #endif
+        this->_printPacket(&pkt);
         if(pkt.type == MULTICAST)
           this->_addToSendQueue(IPAddress(SSDP_MULTICAST_ADDR), SSDP_PORT, dev, pkt.st, useUUID ? response_types_t::uuid : response_types_t::root, pkt.mx);
         else {
@@ -768,7 +702,7 @@ void SSDPClass::schema(Print &client) {
   for(uint8_t i = 1; i < this->m_cdeviceTypes; i++) {
     UPNPDeviceType *dev = &this->deviceTypes[i];
     if(strlen(dev->deviceType) > 0) {
-        //Serial.print(devList);
+        ESP_LOGD(TAG, "%s", devList);
         client.printf(device_template,
           dev->deviceType,
           dev->friendlyName,
@@ -784,9 +718,7 @@ void SSDPClass::schema(Print &client) {
     }
   }
   client.print(F("</deviceList></device></root>\r\n"));
-  #ifdef DEBUG_SSDP
   ESP_LOGD(TAG, "Sending upnp.xml");
-  #endif
 }
 /*
 void SSDPClass::setDeviceType(uint8_t ndx, UPNPDeviceType *dt) {

@@ -4,6 +4,9 @@
 #include "SomfyFrame.h"
 #include <ELECHOUSE_CC1101_SRC_DRV.h>  // for ELECHOUSE_cc1101.getRssi() in decodeFrame
 #include <Arduino.h>
+#include "esp_log.h"
+
+static const char *TAG = "SomfyFrame";
 
 int sort_asc(const void *cmp1, const void *cmp2) {
   int a = *((uint8_t *)cmp1);
@@ -191,37 +194,30 @@ void somfy_frame_t::decodeFrame(byte* frame) {
     }
     if(this->valid && this->encKey == 0) this->valid = false; 
     if (!this->valid) {
-        Serial.print("INVALID FRAME ");
-        Serial.print("KEY:");
-        Serial.print(this->encKey);
-        Serial.print(" ADDR:");
-        Serial.print(this->remoteAddress);
-        Serial.print(" CMD:");
-        Serial.print(translateSomfyCommand(this->cmd));
-        Serial.print(" RCODE:");
-        Serial.println(this->rollingCode);
-        Serial.println("    KEY  1   2   3   4   5   6  ");
-        Serial.println("--------------------------------");
-        Serial.print("ENC ");
+        ESP_LOGE(TAG, "INVALID FRAME ");
+        ESP_LOGE(TAG, "KEY: %d", this->encKey);
+        ESP_LOGE(TAG, "ADDR: %d", this->remoteAddress);
+        ESP_LOGE(TAG, "CMD: %s", translateSomfyCommand(this->cmd).c_str());
+        ESP_LOGE(TAG, "RCODE: %d", this->rollingCode);
+        ESP_LOGE(TAG, "    KEY  1   2   3   4   5   6  ");
+        ESP_LOGE(TAG, "--------------------------------");
+        ESP_LOGE(TAG, "ENC ");
         for (byte i = 0; i < 10; i++) {
             if (frame[i] < 10)
-                Serial.print("  ");
+                ESP_LOGE(TAG, "  ");
             else if (frame[i] < 100)
-                Serial.print(" ");
-            Serial.print(frame[i]);
-            Serial.print(" ");
+                ESP_LOGE(TAG, " ");
+            ESP_LOGE(TAG, "%d ", frame[i]);
         }
-        Serial.println();
-        Serial.print("DEC ");
+        ESP_LOGE(TAG, "\nDEC ");
         for (byte i = 0; i < 10; i++) {
             if (decoded[i] < 10)
-                Serial.print("  ");
+                ESP_LOGE(TAG, "  ");
             else if (decoded[i] < 100)
-                Serial.print(" ");
-            Serial.print(decoded[i]);
-            Serial.print(" ");
+                ESP_LOGE(TAG, " ");
+            ESP_LOGE(TAG, "%d ", decoded[i]);
         }
-        Serial.println();
+        ESP_LOGE(TAG, "\n");
     }
 }
 
@@ -415,21 +411,14 @@ void somfy_frame_t::encodeFrame(byte *frame) {
 }
 
 void somfy_frame_t::print() {
-    Serial.println("----------- Receiving -------------");
-    Serial.print("RSSI:");
-    Serial.print(this->rssi);
-    Serial.print(" LQI:");
-    Serial.println(this->lqi);
-    Serial.print("CMD:");
-    Serial.print(translateSomfyCommand(this->cmd));
-    Serial.print(" ADDR:");
-    Serial.print(this->remoteAddress);
-    Serial.print(" RCODE:");
-    Serial.println(this->rollingCode);
-    Serial.print("KEY:");
-    Serial.print(this->encKey, HEX);
-    Serial.print(" CS:");
-    Serial.println(this->checksum);
+    ESP_LOGI(TAG, "----------- Receiving -------------");
+    ESP_LOGI(TAG, "RSSI: %d", this->rssi);
+    ESP_LOGI(TAG, "LQI: %d", this->lqi);
+    ESP_LOGI(TAG, "CMD: %s", translateSomfyCommand(this->cmd).c_str());
+    ESP_LOGI(TAG, "ADDR: %d", this->remoteAddress);
+    ESP_LOGI(TAG, "RCODE: %d", this->rollingCode);
+    ESP_LOGI(TAG, "KEY: %X", this->encKey);
+    ESP_LOGI(TAG, "CS: %d", this->checksum);
 }
 
 bool somfy_frame_t::isSynonym(somfy_frame_t &frame) { return this->remoteAddress == frame.remoteAddress && this->cmd != frame.cmd && this->rollingCode == frame.rollingCode; }
@@ -508,7 +497,7 @@ void somfy_tx_queue_t::push(uint8_t hwsync, uint8_t *payload, uint8_t bit_length
 }
 
 void somfy_rx_queue_t::init() { 
-  Serial.println("Initializing RX Queue");
+  ESP_LOGI(TAG, "Initializing RX Queue");
   for (uint8_t i = 0; i < MAX_RX_BUFFER; i++)
     this->items[i].clear();
   memset(&this->index[0], 0xFF, MAX_RX_BUFFER);
@@ -517,7 +506,7 @@ void somfy_rx_queue_t::init() {
 
 bool somfy_rx_queue_t::pop(somfy_rx_t *rx) {
   // Read off the data from the oldest index.
-  //Serial.println("Popping RX Queue");
+  //ESP_LOGI(TAG, "Popping RX Queue");
   for(int8_t i = MAX_RX_BUFFER - 1; i >= 0; i--) {
     if(this->index[i] < MAX_RX_BUFFER) {
       uint8_t ndx = this->index[i];

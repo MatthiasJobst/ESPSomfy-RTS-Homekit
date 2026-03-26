@@ -468,7 +468,7 @@ bool SomfyNetwork::connectWiFi(const uint8_t *bssid, const int32_t channel) {
     }
     this->connTarget = conn_types_t::wifi;
     this->connType = conn_types_t::unset;
-    Serial.println("WiFi begin...");
+    ESP_LOGI(TAG, "WiFi begin...");
     this->_connecting = true;
     WiFi.begin(settings.WIFI.ssid, settings.WIFI.passphrase, channel, bssid);
     this->connectStart = millis();

@@ -133,7 +133,7 @@ int16_t GitRepo::getReleases(uint8_t num) {
           if(size) {
             esp_task_wdt_reset();
             int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
-            //Serial.write(buff, c);
+            ESP_LOGD(TAG, "%.*s", c, buff);
             if(len > 0) len -= c;
             // Now we should have some data.
             for(uint8_t i = 0; i < c; i++) {
@@ -533,7 +533,6 @@ int8_t GitUpdater::downloadFile() {
               }
               int c = stream->readBytes(buff, ((size > MAX_BUFF_SIZE) ? MAX_BUFF_SIZE : size));
               total += c;
-              //Serial.println(total);
               if (Update.write(buff, c) != c) {
                 ESP_LOGE(TAG, "Upload of %s aborted invalid size %d", url, c);
                 free(buff);

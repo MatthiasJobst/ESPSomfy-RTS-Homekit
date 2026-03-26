@@ -2,12 +2,6 @@
 #define utils_h
 #include <Arduino.h>
 
-
-#define DEBUG_SOMFY Serial
-
-
-
-
 [[maybe_unused]] static void SETCHARPROP(char *prop, const char *value, size_t size) {strncpy(prop, value, size); prop[size - 1] = '\0';}
 /*
 namespace util { 

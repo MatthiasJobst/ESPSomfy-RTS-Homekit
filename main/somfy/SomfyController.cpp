@@ -5,6 +5,7 @@
 #include <WebServer.h>
 #include <esp_task_wdt.h>
 #include <esp_chip_info.h>
+#include "esp_log.h"
 #include "Utils.h"
 #include "ConfigSettings.h"
 #include "SomfyController.h"
@@ -20,6 +21,8 @@ extern ConfigSettings settings;
 extern MQTTClass mqtt;
 extern Preferences pref;
 extern GitUpdater git;
+
+static const char *TAG = "SomfyController";
 
 void SomfyShadeController::end() { this->transceiver.disableReceive(); }
 
@@ -66,23 +69,20 @@ void SomfyShadeController::updateGroupFlags() {
 #ifdef USE_NVS
 
 bool SomfyShadeController::loadLegacy() {
-  Serial.println("Loading Legacy shades using NVS");
+  ESP_LOGI(TAG, "Loading Legacy shades using NVS");
   pref.begin("Shades", true);
   pref.getBytes("shadeIds", this->m_shadeIds, sizeof(this->m_shadeIds));
   pref.end();
   for(uint8_t i = 0; i < sizeof(this->m_shadeIds); i++) {
-    if(i != 0) DEBUG_SOMFY.print(",");
-    DEBUG_SOMFY.print(this->m_shadeIds[i]);
+    ESP_LOGD(TAG, "%d,", this->m_shadeIds[i]);
   }
-  DEBUG_SOMFY.println();
+  ESP_LOGD(TAG, "\n");
   sortArray<uint8_t>(this->m_shadeIds, sizeof(this->m_shadeIds));
-  #ifdef DEBUG_SOMFY
   for(uint8_t i = 0; i < sizeof(this->m_shadeIds); i++) {
-    if(i != 0) DEBUG_SOMFY.print(",");
-    DEBUG_SOMFY.print(this->m_shadeIds[i]);
+    if(i != 0) ESP_LOGD(TAG, ",");
+    ESP_LOGD(TAG, "%d,", this->m_shadeIds[i]);
   }
-  DEBUG_SOMFY.println();
-  #endif
+  ESP_LOGD(TAG, "\n");
 
   uint8_t id = 0;
   for(uint8_t i = 0; i < sizeof(this->m_shadeIds); i++) {
@@ -95,15 +95,12 @@ bool SomfyShadeController::loadLegacy() {
     }
     shade->load();
   }
-  #ifdef DEBUG_SOMFY
+
   for(uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
-    DEBUG_SOMFY.print(this->shades[i].getShadeId());
-    DEBUG_SOMFY.print(":");
-    DEBUG_SOMFY.print(this->m_shadeIds[i]);
-    if(i < SOMFY_MAX_SHADES - 1) DEBUG_SOMFY.print(",");
+    ESP_LOGD(TAG, "%d:%d,", this->shades[i].getShadeId(), this->m_shadeIds[i]);
   }
-  Serial.println();
-  #endif
+  ESP_LOGD(TAG, "\n");
+
   #ifdef USE_NVS
   if(!this->useNVS()) {
     pref.begin("Shades");
@@ -119,12 +116,12 @@ bool SomfyShadeController::loadLegacy() {
 bool SomfyShadeController::begin() {
   // Load up all the configuration data.
   //ShadeConfigFile::getAppVersion(this->appVersion);
-  Serial.printf("App Version:%u.%u.%u\n", settings.appVersion.major, settings.appVersion.minor, settings.appVersion.build);
+  ESP_LOGI(TAG, "App Version:%u.%u.%u", settings.appVersion.major, settings.appVersion.minor, settings.appVersion.build);
   #ifdef USE_NVS
   if(!this->useNVS()) {  // At 1.4 we started using the configuration file.  If the file doesn't exist then booh.
     // We need to remove all the extraeneous data from NVS for the shades.  From here on out we
     // will rely on the shade configuration.
-    Serial.println("No longer using NVS");
+    ESP_LOGI(TAG, "No longer using NVS");
     if(ShadeConfigFile::exists()) {
       ShadeConfigFile::load(this);
     }
@@ -149,11 +146,11 @@ bool SomfyShadeController::begin() {
   }
   #endif
   if(ShadeConfigFile::exists()) {
-    Serial.println("shades.cfg exists so we are using that");
+    ESP_LOGI(TAG, "shades.cfg exists so we are using that");
     ShadeConfigFile::load(this);
   }
   else {
-    Serial.println("Starting clean");
+    ESP_LOGI(TAG, "Starting clean");
     #ifdef USE_NVS
     this->loadLegacy();
     #endif
@@ -165,7 +162,7 @@ bool SomfyShadeController::begin() {
   for(uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
     SomfyShade *shade = &this->shades[i];
     if(shade->getShadeId() != 255 && shade->bitLength == 0) {
-      //Serial.printf("Setting bit length to %d\n", this->transceiver.config.type);
+      ESP_LOGD(TAG, "Setting bit length to %d", this->transceiver.config.type);
       shade->bitLength = this->transceiver.config.type;
       saveFlag = true;
     }
@@ -297,8 +294,7 @@ uint8_t SomfyShadeController::getNextShadeId() {
       }
     }
     if(!id_exists) {
-      Serial.print("Got next Shade Id:");
-      Serial.print(i);
+      ESP_LOGI(TAG, "Got next Shade Id:%d", i);
       return i;
     }
   }
@@ -338,8 +334,7 @@ uint8_t SomfyShadeController::getNextGroupId() {
       }
     }
     if(!id_exists) {
-      Serial.print("Got next Group Id:");
-      Serial.print(i);
+      ESP_LOGI(TAG, "Got next Group Id:%d", i);
       return i;
     }
   }
@@ -359,8 +354,7 @@ uint8_t SomfyShadeController::getNextRoomId() {
       }
     }
     if(!id_exists) {
-      Serial.print("Got next room Id:");
-      Serial.print(i);
+      ESP_LOGI(TAG, "Got next room Id:%d", i);
       return i;
     }
   }
@@ -448,7 +442,7 @@ SomfyShade *SomfyShadeController::addShade() {
   if(shade) {
     shade->setShadeId(shadeId);
     shade->sortOrder = this->getMaxShadeOrder() + 1;
-    Serial.printf("Sort order set to %d\n", shade->sortOrder);
+    ESP_LOGI(TAG, "Sort order set to %d", shade->sortOrder);
     this->isDirty = true;
     #ifdef USE_NVS
     if(this->useNVS()) {
@@ -477,25 +471,25 @@ SomfyShade *SomfyShadeController::addShade() {
       pref.begin("Shades");
       pref.remove("shadeIds");
       int x = pref.putBytes("shadeIds", this->m_shadeIds, sizeof(this->m_shadeIds));
-      Serial.printf("WROTE %d bytes to shadeIds\n", x);
+      ESP_LOGI(TAG, "WROTE %d bytes to shadeIds", x);
       pref.end();
       for(uint8_t i = 0; i < sizeof(this->m_shadeIds); i++) {
-        if(i != 0) Serial.print(",");
-        else Serial.print("Shade Ids: ");
-        Serial.print(this->m_shadeIds[i]);
+        if(i != 0) ESP_LOGI(TAG, ",");
+        else ESP_LOGI(TAG, "Shade Ids: ");
+        ESP_LOGI(TAG, "%d", this->m_shadeIds[i]);
       }
-      Serial.println();
+      ESP_LOGI(TAG, "\n");
       pref.begin("Shades");
       pref.getBytes("shadeIds", this->m_shadeIds, sizeof(this->m_shadeIds));
-      Serial.print("LENGTH:");
-      Serial.println(pref.getBytesLength("shadeIds"));
+      ESP_LOGI(TAG, "LENGTH:");
+      ESP_LOGI(TAG, "%d", pref.getBytesLength("shadeIds"));
       pref.end();
       for(uint8_t i = 0; i < sizeof(this->m_shadeIds); i++) {
-        if(i != 0) Serial.print(",");
-        else Serial.print("Shade Ids: ");
-        Serial.print(this->m_shadeIds[i]);
+        if(i != 0) ESP_LOGI(TAG, ",");
+        else ESP_LOGI(TAG, "Shade Ids: ");
+        ESP_LOGI(TAG, "%d", this->m_shadeIds[i]);
       }
-      Serial.println();
+      ESP_LOGI(TAG, "\n");
     }
     #endif
   }
