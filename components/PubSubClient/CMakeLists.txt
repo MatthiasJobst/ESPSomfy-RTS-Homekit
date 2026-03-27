@@ -1,10 +1,8 @@
-set(LIB_DIR "$ENV{HOME}/Documents/Arduino/libraries/PubSubClient/src")
-
 idf_component_register(
     SRCS
-        "${LIB_DIR}/PubSubClient.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/src/src/PubSubClient.cpp"
     INCLUDE_DIRS
-        "${LIB_DIR}"
+        "${CMAKE_CURRENT_LIST_DIR}/src/src"
     REQUIRES
         arduino-esp32
 )

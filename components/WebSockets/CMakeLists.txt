@@ -1,4 +1,4 @@
-set(LIB_DIR "$ENV{HOME}/Documents/Arduino/libraries/WebSockets/src")
+set(LIB_DIR "${CMAKE_CURRENT_LIST_DIR}/src/src")
 
 idf_component_register(
     SRCS
