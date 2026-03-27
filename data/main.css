@@ -134,6 +134,7 @@ input[type=text] {
     font-size: 15px;
     margin-bottom: 14px;
     -webkit-appearance: none;
+    appearance: none;
     background: #fafafa;
     color: #636363;
     border: none;
@@ -148,6 +149,7 @@ input[type=text] {
 select {
     font-size: 15px;
     -webkit-appearance: none;
+    appearance: none;
     background: #fafafa;
     color: #636363;
     border: none;
@@ -602,7 +604,6 @@ div.wait-overlay > .lds-roller {
         width: 100%;
         background: none;
         font-size: .7em;
-        vertical-align: middle;
         margin-top: .15em;
         color: darkslategray;
         top: 0;
@@ -661,7 +662,6 @@ div.wait-overlay > .lds-roller {
         font-size: 1.37em;
         color: silver;
         display: block;
-        vertical-align: middle;
         white-space: nowrap;
         width: 100%;
     }

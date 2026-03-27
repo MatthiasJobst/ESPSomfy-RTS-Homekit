@@ -114,14 +114,40 @@
           rel="apple-touch-startup-image">
 
 
-    <script type="text/javascript" src="index.js?v=2.4.7c"></script>
+    <script type="text/javascript" src="qrcode.min.js"></script>
+    <script type="text/javascript" src="index.js?v=2.4.7h"></script>
+    <script type="text/javascript">
+    // Load remaining scripts one at a time so the ESP32 never receives
+    // more than one file request simultaneously. The browser's preload
+    // scanner would otherwise fetch all <script src> tags in parallel,
+    // overwhelming the single-threaded server.
+    (async function loadScripts() {
+        const ver = '?v=2.4.7c';
+        const scripts = ['ui.js', 'settings.js', 'somfy.js', 'extras.js'];
+        for (const src of scripts) {
+            await new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = src + ver;
+                s.onload = resolve;
+                s.onerror = () => { console.error('Failed to load ' + src); reject(new Error(src)); };
+                document.head.appendChild(s);
+            });
+        }
+        // Scripts are all loaded; wait for the DOM body to be ready before
+        // calling init() which touches elements like divUnauthenticated.
+        if (document.readyState === 'loading') {
+            await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve, { once: true }));
+        }
+        await init();
+    })();
+    </script>
 </head>
 <body>
     <div id="divContainer" class="container main" data-auth="false">
         <div id="divAuthenticated" style="display:none;">
             <div id="divFirmwareUpdate" class="firmware-message" style="display:none;">Firmware Update Available</div>
             <div id="divRadioError" class="header-message">Radio Not Initialized</div>
-            <h1 style="text-align: center;"><img src="icon.png" style="width:50px;float:left;margin-left:1px;margin-top:-10px;" /><span>ESPSomfy RTS</span><span class="button-outline" onclick="ui.toggleConfig();" style="float:right;font-size:1.25rem;display:inline-block;vertical-align:middle;width:38px;height:38px;position:relative;padding-top:4px;"><span style="vertical-align:middle;clear:both;text-align:center;display:inline-block;"><i id="icoConfig" class="icss-gear" style=""></i></span></span></h1>
+            <h1 style="text-align: center;"><img src="icon.png" style="width:50px;float:left;margin-left:1px;margin-top:-10px;" /><span>ESPSomfy RTS</span><span class="button-outline" onclick="ui.toggleConfig();" style="float:right;font-size:1.25rem;vertical-align:middle;width:38px;height:38px;position:relative;padding-top:4px;"><span style="vertical-align:middle;clear:both;text-align:center;display:inline-block;"><i id="icoConfig" class="icss-gear"></i></span></span></h1>
             <div id="divConfigPnl" style="display:none;">
                 <div id="divWiFiStrength" style="margin-top:-10px;text-align:center;font-size:12px;">
                     <div style="display:inline-block;vertical-align:middle;">
@@ -140,7 +166,7 @@
                         <div><span style="text-align:right;display:inline-block;width:57px;color:#00bcd4">Speed:</span><span id="spanEthernetSpeed" style="padding-left:4px;display:inline-block;text-align:left;width:120px;">--</span></div>
                     </div>
                 </div>
-                <div class="tab-container"><span class="selected" data-grpid="divSystemSettings">System</span><span data-grpid="divNetworkSettings">Network</span><span data-grpid="divSomfySettings">Somfy</span><span data-grpid="divRadioSettings">Radio</span></div>
+                <div class="tab-container"><span class="selected" data-grpid="divSystemSettings">System</span><span data-grpid="divNetworkSettings">Network</span><span data-grpid="divHomeKitSettings">HomeKit</span><span data-grpid="divSomfySettings">Somfy</span><span data-grpid="divRadioSettings">Radio</span></div>
                 <div id="divSystemSettings" class="tab-content">
                     <div class="subtab-container"><span class="selected" data-grpid="divSystemOptions">Options</span><span data-grpid="divSecurityOptions">Security</span><span data-grpid="divFirmware">Firmware</span></div>
                     <div id="divSystemOptions" class="subtab-content">
@@ -178,12 +204,12 @@
                     <div id="divSecurityOptions" class="subtab-content" style="display:none;">
                         <div>
                             <div class="field-group" style="display:inline-block;width:100px;vertical-align:middle;">
-                                <select data-bind="security.type" onchange="general.onSecurityTypeChanged();" data-datatype="int" style="width:100%;">
+                                <select id="fldSecurityType" data-bind="security.type" onchange="general.onSecurityTypeChanged();" data-datatype="int" style="width:100%;">
                                     <option value="0" selected>None</option>
                                     <option value="1">Pin Entry</option>
                                     <option value="2">Password</option>
                                 </select>
-                                <label for="fldPinEntry">Security Type</label>
+                                <label for="fldSecurityType">Security Type</label>
                             </div>
                             <div id="divPermissions" class="field-group" style="display:none;vertical-align:middle;float:right;width:auto;">
                                 <input id="cbSecureConfigOnly" data-bind="security.permissions.configOnly" type="checkbox" style="display:inline-block;" />
@@ -193,26 +219,26 @@
                         <div id="divPinSecurity" style="display:none;">
                             <div class="field-group" style="text-align:center;">
                                 <div id="fldPinEntry" style="display:inline-block;" onkeydown="ui.pinKeyPressed(event);">
-                                    <input class="pin-digit" maxlength="1" data-bind="security.pin.d0" onfocus="ui.pinDigitFocus(event);">
-                                    <input class="pin-digit" maxlength="1" data-bind="security.pin.d1" onfocus="ui.pinDigitFocus(event);">
-                                    <input class="pin-digit" maxlength="1" data-bind="security.pin.d2" onfocus="ui.pinDigitFocus(event);">
-                                    <input class="pin-digit" maxlength="1" data-bind="security.pin.d3" onfocus="ui.pinDigitFocus(event);">
+                                    <input id="pin1in" class="pin-digit" maxlength="1" data-bind="security.pin.d0" onfocus="ui.pinDigitFocus(event);">
+                                    <input id="pin2in" class="pin-digit" maxlength="1" data-bind="security.pin.d1" onfocus="ui.pinDigitFocus(event);">
+                                    <input id="pin3in" class="pin-digit" maxlength="1" data-bind="security.pin.d2" onfocus="ui.pinDigitFocus(event);">
+                                    <input id="pin4in" class="pin-digit" maxlength="1" data-bind="security.pin.d3" onfocus="ui.pinDigitFocus(event);">
                                 </div>
                                 <label for="fldPinEntry" style="margin-top:7px;">Enter Pin</label>
                             </div>
                         </div>
                         <div id="divPasswordSecurity" style="display:none;">
                             <div class="field-group">
-                                <input id="fldUsername" name="username" type="text" data-bind="security.username" length=32 placeholder="Username">
+                                <input id="fldUsername" name="username" type="text" data-bind="security.username" length=32 placeholder="Username" autocomplete="username">
                                 <label for="fldUsername">Username</label>
                             </div>
                             <div class="field-group">
-                                <input id="fldPassword" name="password" type="password" data-bind="security.password" length=32 placeholder="Password">
+                                <input id="fldPassword" name="password" type="password" data-bind="security.password" length=32 placeholder="Password" autocomplete="current-password">
                                 <label for="fldPassword">Password</label>
                             </div>
                             <div class="field-group">
-                                <input id="fldReenterPassword" name="password" type="password" data-bind="security.repeatpassword" length=32 placeholder="Re-enter Password">
-                                <label for="fldRenterPassword">Re-enter Password</label>
+                                <input id="fldReenterPassword" name="password" type="password" data-bind="security.repeatpassword" length=32 placeholder="Re-enter Password" autocomplete="current-password">
+                                <label for="fldReenterPassword">Re-enter Password</label>
                             </div>
                         </div>
                         <div class="button-container">
@@ -320,7 +346,7 @@
                                     <label for="selETHPhyType">PHY Chip Type</label>
                                 </div>
                                 <div class="field-group" style="width:20%;display:inline-block;margin-right:7px;">
-                                    <select id="selETHAddress" name="address" placeholder="Address" data-datatype="int" data-bind="ethernet.phyAddress" style="width:100%;"></select>
+                                    <select id="selETHAddress" name="address" placeholder="Address" data-datatype="int" data-bind="ethernet.phyAddress" style="width:100%;" autocomplete="off"></select>
                                     <label for="selETHAddress">Address</label>
                                 </div>
                                 <div class="field-group" style="width:30%;display:inline-block;margin-right:7px;">
@@ -390,7 +416,7 @@
                                 <input id="cbMqttEnabled" name="mqtt-enabled" type="checkbox" data-bind="mqtt.enabled" style="display:inline-block;" />
                                 <label for="cbMqttEnabled" style="display:inline-block;cursor:pointer;">Enable MQTT client</label>
                             </div>
-                            <div class="field-group" style="display:inline-block;width:auto;float:right;">
+                            <div class="field-group" style="width:auto;float:right;">
                                 <input id="cbPubDisco" name="pub-disco" type="checkbox" data-bind="mqtt.pubDisco" style="display:inline-block;margin-left:7px;" onclick="document.getElementById('divDiscoveryTopic').style.display = this.checked ? '' : 'none'" />
                                 <label for="cbPubDisco" style="display:inline-block;cursor:pointer;">Publish Discovery</label>
                             </div>
@@ -400,17 +426,17 @@
                                 <option>MQTT</option>
                                 <option>MQTTS</option>
                             </select>
-                            <span style="">://</span>
+                            <span>://</span>
                             <input name="mqtt-host" type="text" length=64 placeholder="Host" data-bind="mqtt.hostname" style="width:calc(100% - 137px);">
                             <span>:</span>
                             <input name="mqtt-port" type="text" length=5 placeholder="Port" data-bind="mqtt.port" data-datatype="int" style="width:50px;">
                         </div>
                         <div class="field-group">
-                            <input id="fldMqttUsername" name="mqtt-username" type="text" data-bind="mqtt.username" length=32 placeholder="Username">
+                            <input id="fldMqttUsername" name="mqtt-username" type="text" data-bind="mqtt.username" length=32 placeholder="Username" autocomplete="username">
                             <label for="fldMqttUsername">Username</label>
                         </div>
                         <div class="field-group">
-                            <input id="fldMqttPassword" name="mqtt-password" type="text" length=64 data-bind="mqtt.password" placeholder="Password">
+                            <input id="fldMqttPassword" name="mqtt-password" type="text" length=64 data-bind="mqtt.password" placeholder="Password" autocomplete="current-password">
                             <label for="fldMqttPassword">Password</label>
                         </div>
                         <div class="field-group">
@@ -427,6 +453,25 @@
                         </div>
                     </div>
                 </div>
+                <div id="divHomeKitSettings" style="display:none;">
+                    <div id="divHomeKitNotEnabled" style="display:none;padding-top:20px;text-align:center;color:#aaa;font-size:15px;">HomeKit is not enabled on this device.</div>
+                    <div id="divHomeKitContent">
+                        <div style="padding-top:8px;text-align:center;">
+                            <div id="divHKQR" style="display:inline-block;"></div>
+                            <div style="font-size:14px;color:#00bcd4;margin:8px 0 4px;">Setup Code</div>
+                            <div id="spanHKSetupCode" style="font-size:2em;letter-spacing:4px;font-weight:bold;">---</div>
+                        </div>
+                        <hr style="border-color:#333;margin:12px 0;" />
+                        <div>
+                            <div style="font-size:14px;color:#00bcd4;margin-bottom:4px;">Paired Controllers</div>
+                            <div id="spanHKPairedCount" style="font-size:1.4em;">--</div>
+                        </div>
+                        <hr style="border-color:#333;margin:12px 0;" />
+                        <div class="button-container">
+                            <button id="btnHKResetPairings" type="button" onclick="hkit.resetPairings();">Reset Pairings</button>
+                        </div>
+                    </div>
+                </div>
                 <div id="divSomfySettings" style="display:none;">
                     <div class="subtab-container"><span class="selected" data-grpid="divSomfyRooms">Rooms</span><span class="" data-grpid="divSomfyMotors">Shades</span><span data-grpid="divSomfyGroups">Groups</span><span data-grpid="divRepeater">Repeater</span><span class="tabname-virtual-remote" data-grpid="divVirtualRemote"></span></div>
                     <div id="divSomfyRooms" class="subtab-content" style="padding-top:10px;">
@@ -440,7 +485,7 @@
                             </div>
                         </div>
                         <div id="somfyRoom" style="width:100%;display:none;">
-                            <div style="display:inline-block;float:right;position:relative;"><span id="spanRoomId">*</span>/<span id="spanMaxRooms">16</span></div>
+                            <div style="float:right;position:relative;"><span id="spanRoomId">*</span>/<span id="spanMaxRooms">16</span></div>
                             <div class="field-group" style="padding:0px;">
                                 <input id="fldRoomName" name="roomName" data-bind="name" type="text" length=20 placeholder="Name">
                                 <label for="fldRoomName">Name</label>
@@ -467,7 +512,7 @@
                             </div>
                         </div>
                         <div id="somfyShade" style="width:100%;display:none;" data-bitlength="56">
-                            <div style="display:inline-block;float:right;position:relative;"><span id="spanShadeId">*</span>/<span id="spanMaxShades">5</span></div>
+                            <div style="float:right;position:relative;"><span id="spanShadeId">*</span>/<span id="spanMaxShades">5</span></div>
                             <div class="field-group" style="padding:0px;">
                                 <div class="field-group" style="margin-top:-18px;display:inline-block;width:77px;">
                                     <select id="selShadeProto" name="proto" data-bind="proto" data-datatype="int" style="width:100%;" onchange="somfy.onShadeProtoChanged(this);">
@@ -487,17 +532,17 @@
                                     <label for="selShadeBitLength">Bit Length</label>
                                 </div>
                                 <div id="divGPIOControl" class="field-group">
-                                    <div id="divGPIOUp" class="field-group" style="">
+                                    <div id="divGPIOUp" class="field-group">
                                         <select id="selShadeGPIOUp" data-bind="gpioUp" data-datatype="int" style="width:70px;">
                                         </select>
                                         <label for="selShadeGPIOUp">UP</label>
                                     </div>
-                                    <div id="divGPIODown" class="field-group" style="">
+                                    <div id="divGPIODown" class="field-group">
                                         <select id="selShadeGPIODown" data-bind="gpioDown" data-datatype="int" style="width:70px;">
                                         </select>
                                         <label for="selShadeGPIODown">Down</label>
                                     </div>
-                                    <div id="divGPIOMy" class="field-group" style="">
+                                    <div id="divGPIOMy" class="field-group">
                                         <select id="selShadeGPIOMy" data-bind="gpioMy" data-datatype="int" style="width:70px;">
                                         </select>
                                         <label for="selShadeGPIOMy">My</label>
@@ -506,7 +551,7 @@
                                 </div>
                             </div>
                             <div>
-                                <div class="field-group" style="width:127px;display:inline-block;margin-top:-10px;float:left;">
+                                <div class="field-group" style="width:127px;margin-top:-10px;float:left;">
                                     <div class="field-group">
                                         <div class="field-group" style="margin-top:-10px;">
                                             <select id="selShadeType" name="shadeType" data-bind="shadeType" data-datatype="int" style="width:100%;" onchange="somfy.onShadeTypeChanged(this);">
@@ -532,7 +577,7 @@
                                             <label for="selShadeType">Type</label>
                                         </div>
                                         <div id="divShadeAddress" class="field-group" style="margin-top:-15px;">
-                                            <input id="fldShadeAddress" name="shadeAddress" data-bind="remoteAddress" data-datatype="int" type="number" length=5 placeholder="Address" style="width:100%;text-align:right;">
+                                            <input id="fldShadeAddress" name="shadeAddress" data-bind="remoteAddress" data-datatype="int" type="number" length=5 placeholder="Address" style="width:100%;text-align:right;" autocomplete="off">
                                             <label for="fldShadeAddress">Remote Address</label>
                                         </div>
                                     </div>
@@ -584,7 +629,7 @@
                                     <input id="slidStepSize" name="stepSize" type="range" min="1" max="1000" step="1" data-bind="stepSize" data-datatype="int" style="width:100%;" oninput="somfy.stepSizeChanged(this);" />
                                     <label for="slidStepSize" style="display:block;font-size:1em;margin-top:0px;margin-left:7px;">
                                         <span>Step Size (smaller)</span>
-                                        <span style="float:right;display:inline-block;margin-right:7px;">
+                                        <span style="float:right;margin-right:7px;">
                                             <span id="spanStepSize" data-bind="stepSize" data-datatype="int" data-fmttype="number" data-fmtmask="#,##0" style="color:black;"></span><span>(larger)</span>
                                         </span>
                                     </label>
@@ -592,37 +637,37 @@
                             </div>
                             <div id="divLLTrigger" style="margin-top:-10px;">
                                 <div class="field-group">
-                                    <input id="cbLLTrigger" name="hasLLTrigger" data-bind="gpioLLTrigger" type="checkbox" style="" />
+                                    <input id="cbLLTrigger" name="hasLLTrigger" data-bind="gpioLLTrigger" type="checkbox" />
                                     <label for="cbLLTrigger" style="display:block;font-size:1em;margin-top:0px;margin-left:7px;display:inline-block;">Low Level Trigger</label>
                                 </div>
                             </div>
                             <div id="divSunSensor" style="margin-top:-10px;">
                                 <div class="field-group">
-                                    <input id="cbHasSunsensor" name="hasSunSensor" data-bind="sunSensor" type="checkbox" style="" />
+                                    <input id="cbHasSunsensor" name="hasSunSensor" data-bind="sunSensor" type="checkbox" />
                                     <label for="cbHasSunsensor" style="display:block;font-size:1em;margin-top:0px;margin-left:7px;display:inline-block;">Has Sun Sensor</label>
                                 </div>
                             </div>
                             <div id="divLightSwitch" style="margin-top:-10px;">
                                 <div class="field-group">
-                                    <input id="cbHasLight" name="hasLight" data-bind="light" type="checkbox" style="" />
+                                    <input id="cbHasLight" name="hasLight" data-bind="light" type="checkbox" />
                                     <label for="cbHasLight" style="display:block;font-size:1em;margin-top:0px;margin-left:7px;display:inline-block;">Has Light</label>
                                 </div>
                             </div>
                             <div style="margin-top:-10px;" id="divFlipCommands">
                                 <div class="field-group" style="display:inline-block">
-                                    <input id="cbFlipCommands" name="flipCommands" data-bind="flipCommands" type="checkbox" style="" />
+                                    <input id="cbFlipCommands" name="flipCommands" data-bind="flipCommands" type="checkbox" />
                                     <label for="cbFlipCommands" style="display:block;font-size:1em;margin-top:0px;margin-left:7px;display:inline-block;">Invert Commands</label>
                                 </div>
                             </div>
                             <div style="margin-top:-10px;" id="divFlipPosition">
                                 <div class="field-group">
-                                    <input id="cbFlipPosition" name="flipPos" data-bind="flipPosition" type="checkbox" style="" />
+                                    <input id="cbFlipPosition" name="flipPos" data-bind="flipPosition" type="checkbox" />
                                     <label for="cbFlipPosition" style="display:block;font-size:1em;margin-top:0px;margin-left:7px;display:inline-block;">Invert Position (expressed in % of open)</label>
                                 </div>
                             </div>
                             <div style="margin-top:-10px;" id="divSimMy">
                                 <div class="field-group">
-                                    <input id="cbSimMy" name="simMy" data-bind="simMy" type="checkbox" style="" />
+                                    <input id="cbSimMy" name="simMy" data-bind="simMy" type="checkbox" />
                                     <label for="cbSimMy" style="display:block;font-size:1em;margin-top:0px;margin-left:7px;display:inline-block;">Simulate Favorite Position</label>
                                 </div>
                             </div>
@@ -697,7 +742,7 @@
                             </div>
                         </div>
                         <div id="somfyGroup" style="width:100%;display:none;">
-                            <div style="display:inline-block;float:right;position:relative;"><span id="spanGroupId">*</span>/<span id="spanMaxGroups">5</span></div>
+                            <div style="float:right;position:relative;"><span id="spanGroupId">*</span>/<span id="spanMaxGroups">5</span></div>
                             <div class="field-group" style="padding:0px;">
                                 <div class="field-group" style="margin-top:-18px;display:inline-block;width:77px;">
                                     <select id="selGroupProto" name="proto" data-bind="proto" data-datatype="int" style="width:100%;">
@@ -716,7 +761,7 @@
                                 </div>
                             </div>
                             <div>
-                                <div class="field-group" style="width:127px;display:inline-block;margin-top:-10px;float:left;">
+                                <div class="field-group" style="width:127px;margin-top:-10px;float:left;">
                                     <input id="fldShadeAddress" name="shadeAddress" data-bind="remoteAddress" data-datatype="int" type="number" length=5 placeholder="Address" style="width:100%;text-align:right;">
                                     <label for="fldShadeAddress">Remote Address</label>
                                 </div>
@@ -738,7 +783,7 @@
                             </div>
                             <div style="margin-top:-10px;" id="divFlipGrpCommands">
                                 <div class="field-group" style="display:inline-block">
-                                    <input id="cbFlipGrpCommands" name="flipCommands" data-bind="flipCommands" type="checkbox" style="" />
+                                    <input id="cbFlipGrpCommands" name="flipCommands" data-bind="flipCommands" type="checkbox" />
                                     <label for="cbFlipGrpCommands" style="display:block;font-size:1em;margin-top:0px;margin-left:7px;display:inline-block;">Invert Commands</label>
                                 </div>
                             </div>
@@ -803,7 +848,7 @@
                         <div class="vr-button vr-stop vr-80bit">
                             <span>Stop</span>
                             <div>
-                                <div class="button-outline toggle-button" style="width:127px;text-align:center;border-radius:33%;font-size:2em;padding:10px;" data-cmd="stop" onmousedown="somfy.sendVRCommand(this);" ontouchstart="somfy.sendVRCommand(this);"><i class="icss-hand" style=""></i></div>
+                                <div class="button-outline toggle-button" style="width:127px;text-align:center;border-radius:33%;font-size:2em;padding:10px;" data-cmd="stop" onmousedown="somfy.sendVRCommand(this);" ontouchstart="somfy.sendVRCommand(this);"><i class="icss-hand"></i></div>
                             </div>
                         </div>
                         <div class="vr-button vr-updownmy">
@@ -817,7 +862,7 @@
                             <div style="margin-right:7px;width:470px;font-size:.8em;">
                                 <input id="vrslidStepSize" name="stepSize" type="range" min="1" max="127" step="1" style="width:100%;" data-bind="stepSize" value="1" oninput="document.getElementById('vrspanStepSize').innerText = this.value;" />
                                 <div>
-                                    <label style="color:#00bcd4;">Step Size:</label><span id="vrspanStepSize">1</span>
+                                    <label for="vrslidStepSize" style="color:#00bcd4;">Step Size:</label><span id="vrspanStepSize">1</span>
                                 </div>
                             </div>
                             <div>
@@ -828,7 +873,7 @@
                         <div class="vr-button vr-favorite vr-80bit">
                             <span>Favorite</span>
                             <div>
-                                <div class="button-outline toggle-button" style="width:127px;text-align:center;border-radius:33%;font-size:2em;padding:10px;" data-cmd="favorite" onmousedown="somfy.sendVRCommand(this);" ontouchstart="somfy.sendVRCommand(this);"><i class="icss-bookmark" style=""></i></div>
+                                <div class="button-outline toggle-button" style="width:127px;text-align:center;border-radius:33%;font-size:2em;padding:10px;" data-cmd="favorite" onmousedown="somfy.sendVRCommand(this);" ontouchstart="somfy.sendVRCommand(this);"><i class="icss-bookmark"></i></div>
                             </div>
                         </div>
 
@@ -907,7 +952,7 @@
                                 <option value="80">80-BIT</option>
                             </select>
                         </div>
-                        <div class="field-group" style="vertical-align:middle;margin-left:7px;float:right;display:inline-block;width:auto;">
+                        <div class="field-group" style="vertical-align:middle;margin-left:7px;float:right;width:auto;">
                             <input id="cbEnableRadio" name="enableRadio" type="checkbox" data-bind="transceiver.config.enabled" style="display:inline-block;" />
                             <label for="cbEnableRadio" style="display:inline-block;cursor:pointer;">Enable Radio</label>
                         </div>
@@ -945,7 +990,7 @@
                                 <input id="slidFrequency" name="frequency" type="range" min="433000" max="434399" step="1" style="width:100%;" data-bind="transceiver.config.frequency" data-datatype="float" data-mult="1000" oninput="somfy.frequencyChanged(this);" />
                                 <label for="slidFrequency" style="display:block;font-size:1em;margin-top:0px;margin-left:7px;">
                                     <span>Base Frequency </span>
-                                    <span style="float:right;display:inline-block;margin-right:7px;">
+                                    <span style="float:right;margin-right:7px;">
                                         <span id="spanFrequency" style="color:black;" data-bind="transceiver.config.frequency" data-datatype="float" data-fmttype="number" data-fmtmask="#,###.000"></span><span>MHz</span>
                                     </span>
                                 </label>
@@ -954,23 +999,23 @@
                                 <input id="slidRxBandwidth" name="rxBandwidth" type="range" min="5803" max="81250" step="1" style="width:100%;" data-bind="transceiver.config.rxBandwidth" data-setonly="true" data-datatype="float" data-mult="100" oninput="somfy.rxBandwidthChanged(this);" />
                                 <label for="slidRxBandwidth" style="display:block;font-size:1em;margin-top:0px;margin-left:7px;">
                                     <span>RX Bandwidth </span>
-                                    <span style="float:right;display:inline-block;margin-right:7px;">
+                                    <span style="float:right;margin-right:7px;">
                                         <span id="spanRxBandwidth" style="color:black;" data-bind="transceiver.config.rxBandwidth" data-datatype="float" data-fmttype="number" data-fmtmask="#,###.00"></span><span>kHz</span>
                                     </span>
                                 </label>
                             </div>
                             <div class="field-group" style="margin-top:-10px;">
                                 <input id="slidDeviation" name="deviation" type="range" min="158" max="38085" step="1" style="width:100%;" data-bind="transceiver.config.deviation" data-setonly="true" data-datatype="float" data-mult="100" oninput="somfy.deviationChanged(this);" />
-                                <label for="slidDeviation" style="display:block;font-size:1em;margin-top:0px;margin-left:7px;"><span>Frequency Deviation </span><span style="float: right; display: inline-block; margin-right: 7px;"><span id="spanDeviation" data-bind="transceiver.config.deviation" data-datatype="float" data-fmttype="number" data-fmtmask="#,###.00" style="color:black;"></span><span>kHz</span></span></label>
+                                <label for="slidDeviation" style="display:block;font-size:1em;margin-top:0px;margin-left:7px;"><span>Frequency Deviation </span><span style="float: right; margin-right: 7px;"><span id="spanDeviation" data-bind="transceiver.config.deviation" data-datatype="float" data-fmttype="number" data-fmtmask="#,###.00" style="color:black;"></span><span>kHz</span></span></label>
                             </div>
                             <div class="field-group" style="margin-top:-10px;">
                                 <input id="slidTxPower" name="txPower" type="range" min="0" max="10" step="1" style="width:100%;" data-bind="transceiver.config.txPower" data-datatype="index" data-setonly="true" data-values="[-30, -20, -15, -10, -6, 0, 5, 7, 10, 11, 12]" oninput="somfy.txPowerChanged(this);" />
-                                <label for="slidTxPower" style="display:block;font-size:1em;margin-top:0px;margin-left:7px;"><span>TX Power </span><span style="float: right; display: inline-block; margin-right: 7px;"><span id="spanTxPower" data-bind="transceiver.config.txPower" data-datatype="int" data-fmttype="number" data-fmtmask="#,###" style="color:black;"></span><span>dBm</span></span></label>
+                                <label for="slidTxPower" style="display:block;font-size:1em;margin-top:0px;margin-left:7px;"><span>TX Power </span><span style="float: right; margin-right: 7px;"><span id="spanTxPower" data-bind="transceiver.config.txPower" data-datatype="int" data-fmttype="number" data-fmtmask="#,###" style="color:black;"></span><span>dBm</span></span></label>
                             </div>
                         </div>
                         <div style="display:inline-block;vertical-align:top;padding-left:14px;">
-                            <div class="field-group" style="">
-                                <label style="display:block;width:100%;text-align:center;">RSSI: <span id="spanFrameCount" style="color:silver;">0</span></label>
+                            <div class="field-group">
+                                <label for="spanFrameCount"style="display:block;width:100%;text-align:center;">RSSI: <span id="spanFrameCount" style="color:silver;">0</span></label>
                                 <span id="spanRssi" name="rssi" style="display:block;font-size:32px;width:100%;text-align:center;">---</span>
                                 <span style="display: block; color: #00bcd4;width:100%;text-align:center;">dBm</span>
                             </div>
@@ -1012,10 +1057,10 @@
             <div id="divLoginPin" style="display:none;">
                 <div class="field-group" style="text-align:center;">
                     <div id="fldPinEntry" style="display:inline-block;" onkeydown="ui.pinKeyPressed(event);">
-                        <input class="pin-digit" maxlength="1" data-bind="login.pin.d0" onfocus="ui.pinDigitFocus(event);">
-                        <input class="pin-digit" maxlength="1" data-bind="login.pin.d1" onfocus="ui.pinDigitFocus(event);">
-                        <input class="pin-digit" maxlength="1" data-bind="login.pin.d2" onfocus="ui.pinDigitFocus(event);">
-                        <input class="pin-digit" maxlength="1" data-bind="login.pin.d3" onfocus="ui.pinDigitFocus(event);">
+                        <input id="pin1" class="pin-digit" maxlength="1" data-bind="login.pin.d0" onfocus="ui.pinDigitFocus(event);">
+                        <input id="pin2" class="pin-digit" maxlength="1" data-bind="login.pin.d1" onfocus="ui.pinDigitFocus(event);">
+                        <input id="pin3" class="pin-digit" maxlength="1" data-bind="login.pin.d2" onfocus="ui.pinDigitFocus(event);">
+                        <input id="pin4" class="pin-digit" maxlength="1" data-bind="login.pin.d3" onfocus="ui.pinDigitFocus(event);">
                     </div>
                     <label for="fldPinEntry" style="margin-top:7px;">Enter Pin</label>
                 </div>
@@ -1063,6 +1108,9 @@
                         case 'divNetworkSettings':
                             wifi.loadNetwork();
                             break;
+                        case 'divHomeKitSettings':
+                            hkit.load();
+                            break;
                     }
                     let grp = document.getElementById(tab.getAttribute('data-grpid'));
                     if (typeof grp !== 'undefined' && grp) grp.style.display = '';
@@ -1089,25 +1137,6 @@
         document.addEventListener('touchcancel', (event) => {
             mouseDown = false;
         });
-        (async () => { await init(); })();
-                /*
-security.init();
-//(async () => { await general.init(); })();
-general.init();
-wifi.init();
-somfy.init();
-mqtt.init();
-firmware.init();
-*/
-        /*
-        let o = {
-            general: { hostname: 'hostname', ntpServer: 'pool.ntp.org', posixZone: '<-10>10', ssdpBroadcast: true }
-
-        }
-        */
-                //ui.toElement(document.getElementById('divContainer'), o);
-                //console.log(ui.fromElement(document.getElementById('divContainer')));
-                //(async () => { await initSockets(); })();
     </script>
 </body>
 </html>
