@@ -3,7 +3,7 @@
 # CC1101 driver, and esp-homekit-sdk components.
 idf_component_register(
     SRCS
-        "main.cpp"
+        "app_main.cpp"
         "ConfigFile.cpp"
         "ShadeConfigFile.cpp"
         "ConfigSettings.cpp"

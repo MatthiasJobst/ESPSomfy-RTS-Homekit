@@ -17,8 +17,8 @@ CONFIG_FREERTOS_HZ=1000
 # inside a timer callback; default 2048 bytes overflows during pairing
 CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH=8192
 
-# arduino-esp32: let the component own app_main and call setup()/loop()
-CONFIG_AUTOSTART_ARDUINO=y
+# arduino-esp32: we provide app_main() ourselves and call initArduino() directly
+CONFIG_AUTOSTART_ARDUINO=n
 
 # mbedTLS: full certificate bundle for HTTPS (GitHub OTA, MQTT TLS)
 CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y
@@ -26,16 +26,10 @@ CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y
 # mbedTLS: PSK cipher suites — required for NetworkClientSecure/ssl_client.cpp
 CONFIG_MBEDTLS_PSK_MODES=y
 
-# Increase default stack size for the Arduino loop task
-CONFIG_ARDUINO_LOOP_STACK_SIZE=8192
-
-# WDT timeout — matches the 7s set in setup()
+# WDT timeout — matches the 7s set in app_main()
 CONFIG_ESP_TASK_WDT_TIMEOUT_S=10
 
-# Pin Arduino loop/event tasks to core 0 so the HAP httpd task (priority 5,
-# no affinity) schedules itself on core 1 and cannot pre-empt the loop task.
-CONFIG_ARDUINO_RUN_CORE1=y
-CONFIG_ARDUINO_RUNNING_CORE=1
+# Pin Arduino event task to core 1 so it doesn't compete with our main loop task.
 CONFIG_ARDUINO_EVENT_RUN_CORE1=y
 CONFIG_ARDUINO_EVENT_RUNNING_CORE=1
 
