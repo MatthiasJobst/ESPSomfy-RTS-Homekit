@@ -47,7 +47,7 @@ jobs:
           ./mklittlefs/mklittlefs --create data --size 1441792 SomfyController.littlefs.bin
 
       - name: Upload binaries
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: LittleFS
           path: SomfyController.littlefs.bin
