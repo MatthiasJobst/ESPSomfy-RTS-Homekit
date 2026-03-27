@@ -1,7 +1,7 @@
 // SomfyShade.cpp — SomfyShade method implementations: movement control (open/close/stop/
 // my/tilt), position interpolation and transformation, internal-command processing,
 // frame emission and relay, JSON and MQTT I/O, NVS load/save, HomeKit bridge callbacks.
-#include <Preferences.h>
+#include "compat/preferences.h"
 #include <esp_task_wdt.h>
 #include "esp_log.h"
 #include "driver/gpio.h"

@@ -38,6 +38,7 @@ idf_component_register(
         ArduinoJson
         CC1101
         joltwallet__littlefs
+        nvs_flash
         esp_hap_core
         esp_hap_apple_profiles
 )

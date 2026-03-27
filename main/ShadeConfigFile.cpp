@@ -1,4 +1,4 @@
-#include <Preferences.h>
+#include "compat/preferences.h"
 #include "ShadeConfigFile.h"
 #include "esp_log.h"
 

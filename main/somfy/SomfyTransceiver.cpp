@@ -2,7 +2,7 @@
 // frame receive/decode pipeline, frequency scan, all Transceiver::* and
 // transceiver_config_t::* method bodies (send, apply, load/save NVS, JSON I/O).
 // Module-local state: rxmode, bit_length, somfy_rx, rx_queue, tx_queue, freq scan vars.
-#include <Preferences.h>
+#include "compat/preferences.h"
 #include <ELECHOUSE_CC1101_SRC_DRV.h>
 #include <SPI.h>
 #include <esp_task_wdt.h>

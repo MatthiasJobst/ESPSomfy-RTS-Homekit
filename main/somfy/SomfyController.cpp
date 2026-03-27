@@ -1,7 +1,7 @@
 // SomfyController.cpp — SomfyShadeController implementation: startup/shutdown, NVS
 // persistence (load/save/backup/legacy migration), frame processing, group-flag
 // aggregation, repeater management, loop tick (movement check, auto-commit).
-#include <Preferences.h>
+#include "compat/preferences.h"
 #include <WebServer.h>
 #include <esp_task_wdt.h>
 #include <esp_chip_info.h>

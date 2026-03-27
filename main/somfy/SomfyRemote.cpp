@@ -1,7 +1,7 @@
 // SomfyRemote.cpp — Implementations for SomfyRoom, SomfyRemote, SomfyLinkedRemote and
 // SomfyGroup: JSON serialisation/deserialisation, MQTT publishing, rolling-code
 // management, command dispatch to linked shades, and NVS persistence helpers.
-#include <Preferences.h>
+#include "compat/preferences.h"
 #include <esp_task_wdt.h>
 #include "esp_log.h"
 #include "GitOTA.h"

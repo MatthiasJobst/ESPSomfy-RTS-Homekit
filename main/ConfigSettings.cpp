@@ -1,8 +1,8 @@
 #include <Arduino.h>
-#include <LittleFS.h>       // https://github.com/espressif/arduino-esp32/tree/master/libraries/LittleFS
+#include <LittleFS.h>
 #include <time.h>
 #include <WiFi.h>
-#include <Preferences.h>
+#include "compat/preferences.h"
 #include <esp_log.h>
 #include "ConfigSettings.h"
 #include "Utils.h"
