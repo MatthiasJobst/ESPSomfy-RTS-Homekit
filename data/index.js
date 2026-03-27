@@ -455,7 +455,7 @@ function putJSONSync(url, data, cb) {
         xhr.send(JSON.stringify(data));
     } catch (err) { ui.serviceError(document.getElementById('divContainer'), err); }
 }
-var socket;
+var socket = null;
 var tConnect = null;
 var sockIsOpen = false;
 var connecting = false;
@@ -463,7 +463,11 @@ var connects = 0;
 var connectFailed = 0;
 var connectTimeout = null;
 async function initSockets() {
-    if (connecting) return;
+    if (connecting || (socket && socket.readyState === WebSocket.OPEN)) {
+        console.log("WS already active/connecting");
+        return;
+    }
+
     console.log('Connecting to socket...');
     connecting = true;
     if (tConnect) clearTimeout(tConnect);
@@ -662,9 +666,8 @@ async function init() {
         // Start the WebSocket connection early so the TCP handshake
         // runs concurrently with the HTTP init requests below.
         console.log('init: sockets');
-        if ((security.type === 0 || (security.permissions & 0x01) === 0x01) &&
-            (typeof socket === 'undefined' || !socket)) {
-            initSockets();
+        if (security.type === 0 || (security.permissions & 0x01) === 0x01) {
+            await initSockets();
         }
         console.log('init: general');
         general.init();
@@ -682,3 +685,6 @@ async function init() {
         console.error('init() failed:', err);
     }
 }
+window.addEventListener("beforeunload", () => {
+    if (socket) socket.close();
+});
