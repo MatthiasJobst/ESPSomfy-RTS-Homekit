@@ -14,7 +14,7 @@
 #include <esp_task_wdt.h>
 #include <esp_log.h>
 #include "ConfigSettings.h"
-#include "ConfigFile.h"
+#include "ShadeConfigFile.h"
 #include "Utils.h"
 #include "SomfyController.h"
 #include "WResp.h"

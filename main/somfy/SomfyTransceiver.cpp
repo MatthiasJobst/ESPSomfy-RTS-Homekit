@@ -9,6 +9,7 @@
 #include <esp_chip_info.h>
 #include "esp_rom_sys.h"
 #include "esp_log.h"
+#include "driver/gpio.h"
 #include "SomfyTransceiver.h"
 #include "SomfyController.h"
 #include "Sockets.h"
@@ -132,6 +133,8 @@ void Transceiver::sendFrame(byte *frame, uint8_t sync, uint8_t bitLength) {
     esp_rom_delay_us(13717);
   }
 }
+
+void IRAM_ATTR Transceiver::handleReceiveISR(void*) { Transceiver::handleReceive(); }
 
 void RECEIVE_ATTR Transceiver::handleReceive() {
     static unsigned long last_time = 0;
@@ -272,15 +275,16 @@ void Transceiver::beginFrequencyScan() {
     this->disableReceive();
     this->config.apply();
     rxmode = 3;
-    pinMode(this->config.RXPin, INPUT);
-    interruptPin = digitalPinToInterrupt(this->config.RXPin);
+    gpio_set_direction((gpio_num_t)this->config.RXPin, GPIO_MODE_INPUT);
+    interruptPin = this->config.RXPin;
     ELECHOUSE_cc1101.setRxBW(this->config.rxBandwidth);              // Set the Receive Bandwidth in kHz. Value from 58.03 to 812.50. Default is 812.50 kHz.
     ELECHOUSE_cc1101.SetRx();
     markFreq = currFreq = 433.0f;
     markRSSI = -100;
     ELECHOUSE_cc1101.setMHZ(currFreq);
     ESP_LOGI(TAG, "Begin frequency scan on Pin #%d", this->config.RXPin);
-    attachInterrupt(interruptPin, handleReceive, CHANGE);
+    gpio_set_intr_type((gpio_num_t)interruptPin, GPIO_INTR_ANYEDGE);
+    gpio_isr_handler_add((gpio_num_t)interruptPin, Transceiver::handleReceiveISR, NULL);
     this->emitFrequencyScan();
   }
 }
@@ -316,7 +320,7 @@ void Transceiver::processFrequencyScan(bool received) {
 void Transceiver::endFrequencyScan() {
   if(rxmode == 3) {
     rxmode = 0;
-    if(interruptPin > 0) detachInterrupt(interruptPin); 
+    if(interruptPin > 0) gpio_isr_handler_remove((gpio_num_t)interruptPin);
     interruptPin = 0;
     this->config.apply();
     this->emitFrequencyScan();
@@ -415,8 +419,7 @@ void Transceiver::clearReceived(void) {
     //packet_received = false;
     //memset(receive_buffer, 0x00, sizeof(receive_buffer));
     if(this->config.enabled)
-      //attachInterrupt(interruptPin, handleReceive, FALLING);
-      attachInterrupt(interruptPin, handleReceive, CHANGE);
+      gpio_isr_handler_add((gpio_num_t)interruptPin, Transceiver::handleReceiveISR, NULL);
 }
 
 void Transceiver::enableReceive(void) {
@@ -424,20 +427,21 @@ void Transceiver::enableReceive(void) {
     if(rxmode > 0) return;
     if(this->config.enabled) {
       rxmode = 1;
-      pinMode(this->config.RXPin, INPUT);
-      interruptPin = digitalPinToInterrupt(this->config.RXPin);
+      gpio_set_direction((gpio_num_t)this->config.RXPin, GPIO_MODE_INPUT);
+      interruptPin = this->config.RXPin;
       ELECHOUSE_cc1101.SetRx();
-      //attachInterrupt(interruptPin, handleReceive, FALLING);
-      attachInterrupt(interruptPin, handleReceive, CHANGE);
+      gpio_set_intr_type((gpio_num_t)interruptPin, GPIO_INTR_ANYEDGE);
+      gpio_uninstall_isr_service();
+      gpio_install_isr_service(0);
+      gpio_isr_handler_add((gpio_num_t)interruptPin, Transceiver::handleReceiveISR, NULL);
       ESP_LOGI(TAG, "Enabled receive on Pin #%d Timing: %ld", this->config.RXPin, millis() - timing);
     }
 }
 
-void Transceiver::disableReceive(void) { 
+void Transceiver::disableReceive(void) {
   rxmode = 0;
-  if(interruptPin > 0) detachInterrupt(interruptPin); 
+  if(interruptPin > 0) gpio_isr_handler_remove((gpio_num_t)interruptPin);
   interruptPin = 0;
-  
 }
 
 void Transceiver::toJSON(JsonResponse& json) {
@@ -693,14 +697,14 @@ void transceiver_config_t::apply() {
       // Configure all pins through the GPIO matrix before SPI/CC1101 init.
       // Without this, ESP32-S3 reports "IO x is not set as GPIO" and the SPI
       // transfer hangs, triggering the watchdog.
-      pinMode(this->SCKPin,  OUTPUT);
-      pinMode(this->MOSIPin, OUTPUT);
-      pinMode(this->MISOPin, INPUT);
-      pinMode(this->CSNPin,  OUTPUT);
-      digitalWrite(this->CSNPin, HIGH);
+      gpio_set_direction((gpio_num_t)this->SCKPin,  GPIO_MODE_OUTPUT);
+      gpio_set_direction((gpio_num_t)this->MOSIPin, GPIO_MODE_OUTPUT);
+      gpio_set_direction((gpio_num_t)this->MISOPin, GPIO_MODE_INPUT);
+      gpio_set_direction((gpio_num_t)this->CSNPin,  GPIO_MODE_OUTPUT);
+      gpio_set_level((gpio_num_t)this->CSNPin, 1);
       if(this->TXPin != this->RXPin)
-        pinMode(this->TXPin, OUTPUT);
-      pinMode(this->RXPin, INPUT);
+        gpio_set_direction((gpio_num_t)this->TXPin, GPIO_MODE_OUTPUT);
+      gpio_set_direction((gpio_num_t)this->RXPin, GPIO_MODE_INPUT);
       if(this->TXPin == this->RXPin)
         ELECHOUSE_cc1101.setGDO0(this->TXPin); // This pin may be shared.
       else
@@ -843,8 +847,8 @@ somfy_frame_t& Transceiver::lastFrame() { return this->frame; }
 void Transceiver::beginTransmit() {
     if(this->config.enabled) {
       this->disableReceive();
-      pinMode(this->config.TXPin, OUTPUT);
-      digitalWrite(this->config.TXPin, 0);
+      gpio_set_direction((gpio_num_t)this->config.TXPin, GPIO_MODE_OUTPUT);
+      gpio_set_level((gpio_num_t)this->config.TXPin, 0);
       ELECHOUSE_cc1101.SetTx();
     }
 }

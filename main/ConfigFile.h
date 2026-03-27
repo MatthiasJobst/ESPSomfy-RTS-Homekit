@@ -1,7 +1,4 @@
-#include <ArduinoJson.h>
 #include <LittleFS.h>
-#include "SomfyController.h"
-#include "ConfigSettings.h"
 
 #ifndef configfile_h
 #define configfile_h
@@ -65,35 +62,5 @@ class ConfigFile {
     uint32_t readUInt32(const uint32_t defVal = 0);
     bool readBool(const bool defVal = false);
     float readFloat(const float defVal = 0.00);
-};
-class ShadeConfigFile : public ConfigFile {
-  protected:
-    bool writeRepeaterRecord(SomfyShadeController *s);
-    bool writeRoomRecord(SomfyRoom *room);
-    bool writeShadeRecord(SomfyShade *shade);
-    bool writeGroupRecord(SomfyGroup *group);
-    bool writeSettingsRecord();
-    bool writeNetRecord();
-    bool writeTransRecord(transceiver_config_t &cfg);
-    bool readRepeaterRecord(SomfyShadeController *s);
-    bool readRoomRecord(SomfyRoom *room);
-    bool readShadeRecord(SomfyShade *shade);
-    bool readGroupRecord(SomfyGroup *group);
-    bool readSettingsRecord();
-    bool readNetRecord(restore_options_t &opts);
-    bool readTransRecord(transceiver_config_t &cfg);
-  public:
-    static bool exists();
-    static bool load(SomfyShadeController *somfy, const char *filename = "/shades.cfg");
-    static bool restore(SomfyShadeController *somfy, const char *filename, restore_options_t &opts);
-    bool begin(const char *filename, bool readOnly = false);
-    bool begin(bool readOnly = false);
-    bool save(SomfyShadeController *somfy);
-    bool backup(SomfyShadeController *somfy);
-    bool loadFile(SomfyShadeController *somfy, const char *filename = "/shades.cfg");
-    bool restoreFile(SomfyShadeController *somfy, const char *filename, restore_options_t &opts);
-    void end();
-    //bool seekRecordById(uint8_t id);
-    bool validate();
 };
 #endif

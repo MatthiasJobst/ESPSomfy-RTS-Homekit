@@ -4,6 +4,7 @@
 #include <Preferences.h>
 #include <esp_task_wdt.h>
 #include "esp_log.h"
+#include "driver/gpio.h"
 #include "GitOTA.h"
 #include "SomfyShade.h"
 #include "SomfyTransceiver.h"
@@ -205,37 +206,37 @@ void SomfyShade::setGPIOs() {
     else if(this->tiltType == tilt_types::tiltonly)
       dir = this->tiltDirection;
     if(this->shadeType == shade_types::drycontact) {
-      digitalWrite(this->gpioDown, this->currentPos == 100 ? p_on : p_off);
+      gpio_set_level((gpio_num_t)this->gpioDown,this->currentPos == 100 ? p_on : p_off);
       this->gpioDir = this->currentPos == 100 ? 1 : -1;
     }
     else if(this->shadeType == shade_types::drycontact2) {
       if(this->currentPos == 100) {
-        digitalWrite(this->gpioDown, p_off);
-        digitalWrite(this->gpioUp, p_on);
+        gpio_set_level((gpio_num_t)this->gpioDown,p_off);
+        gpio_set_level((gpio_num_t)this->gpioUp,p_on);
       }
       else {
-        digitalWrite(this->gpioUp, p_off);
-        digitalWrite(this->gpioDown, p_on);
+        gpio_set_level((gpio_num_t)this->gpioUp,p_off);
+        gpio_set_level((gpio_num_t)this->gpioDown,p_on);
       }
       this->gpioDir = this->currentPos == 100 ? 1 : -1;
     }
     else {
       switch(dir) {
         case -1:
-          digitalWrite(this->gpioDown, p_off);
-          digitalWrite(this->gpioUp, p_on);
+          gpio_set_level((gpio_num_t)this->gpioDown,p_off);
+          gpio_set_level((gpio_num_t)this->gpioUp,p_on);
           if(dir != this->gpioDir) ESP_LOGI(TAG, "UP: true, DOWN: false");
           this->gpioDir = dir;
           break;
         case 1:
-          digitalWrite(this->gpioUp, p_off);
-          digitalWrite(this->gpioDown, p_on);
+          gpio_set_level((gpio_num_t)this->gpioUp,p_off);
+          gpio_set_level((gpio_num_t)this->gpioDown,p_on);
           if(dir != this->gpioDir) ESP_LOGI(TAG, "UP: false, DOWN: true");
           this->gpioDir = dir;
           break;
         default:
-          digitalWrite(this->gpioUp, p_off);
-          digitalWrite(this->gpioDown, p_off);
+          gpio_set_level((gpio_num_t)this->gpioUp,p_off);
+          gpio_set_level((gpio_num_t)this->gpioDown,p_off);
           if(dir != this->gpioDir) ESP_LOGI(TAG, "UP: false, DOWN: false");
           this->gpioDir = dir;
           break;
@@ -246,9 +247,9 @@ void SomfyShade::setGPIOs() {
     if(millis() > this->gpioRelease) {
       //uint8_t p_on = (this->gpioFlags & (uint8_t)gpio_flags_t::LowLevelTrigger) == 0x00 ? HIGH : LOW;
       uint8_t p_off = (this->gpioFlags & (uint8_t)gpio_flags_t::LowLevelTrigger) == 0x00 ? LOW : HIGH;
-      digitalWrite(this->gpioUp, p_off);
-      digitalWrite(this->gpioDown, p_off);
-      digitalWrite(this->gpioMy, p_off);
+      gpio_set_level((gpio_num_t)this->gpioUp,p_off);
+      gpio_set_level((gpio_num_t)this->gpioDown,p_off);
+      gpio_set_level((gpio_num_t)this->gpioMy,p_off);
       this->gpioRelease = 0;
     }
   }
@@ -262,18 +263,18 @@ void SomfyShade::triggerGPIOs(somfy_frame_t &frame) {
     switch(frame.cmd) {
       case somfy_commands::My:
         if(this->shadeType != shade_types::drycontact && !this->isToggle()) {
-          digitalWrite(this->gpioUp, p_off);
-          digitalWrite(this->gpioDown, p_off);
-          digitalWrite(this->gpioMy, p_on);
+          gpio_set_level((gpio_num_t)this->gpioUp,p_off);
+          gpio_set_level((gpio_num_t)this->gpioDown,p_off);
+          gpio_set_level((gpio_num_t)this->gpioMy,p_on);
           dir = 0;
           if(dir != this->gpioDir) ESP_LOGI(TAG, "UP: false, DOWN: false, MY: true");
         }
         break;
       case somfy_commands::Up:
         if(this->shadeType != shade_types::drycontact && !this->isToggle() && this->shadeType != shade_types::drycontact2) {
-          digitalWrite(this->gpioMy, p_off);
-          digitalWrite(this->gpioDown, p_off);
-          digitalWrite(this->gpioUp, p_on);
+          gpio_set_level((gpio_num_t)this->gpioMy,p_off);
+          gpio_set_level((gpio_num_t)this->gpioDown,p_off);
+          gpio_set_level((gpio_num_t)this->gpioUp,p_on);
           dir = -1;
           ESP_LOGI(TAG, "UP: true, DOWN: false, MY: false");
         }
@@ -281,34 +282,34 @@ void SomfyShade::triggerGPIOs(somfy_frame_t &frame) {
       case somfy_commands::Toggle:
       case somfy_commands::Down:
         if(this->shadeType != shade_types::drycontact && !this->isToggle() && this->shadeType != shade_types::drycontact2) {
-          digitalWrite(this->gpioMy, p_off);
-          digitalWrite(this->gpioUp, p_off);
+          gpio_set_level((gpio_num_t)this->gpioMy,p_off);
+          gpio_set_level((gpio_num_t)this->gpioUp,p_off);
         }
-        digitalWrite(this->gpioDown, p_on);
+        gpio_set_level((gpio_num_t)this->gpioDown,p_on);
         dir = 1;
         ESP_LOGI(TAG, "UP: false, DOWN: true, MY: false");
         break;
       case somfy_commands::MyUp:
         if(this->shadeType != shade_types::drycontact && !this->isToggle() && this->shadeType != shade_types::drycontact2) {
-          digitalWrite(this->gpioDown, p_off);
-          digitalWrite(this->gpioMy, p_on);
-          digitalWrite(this->gpioUp, p_on);
+          gpio_set_level((gpio_num_t)this->gpioDown,p_off);
+          gpio_set_level((gpio_num_t)this->gpioMy,p_on);
+          gpio_set_level((gpio_num_t)this->gpioUp,p_on);
           ESP_LOGI(TAG, "UP: true, DOWN: false, MY: true");
         }
         break;
       case somfy_commands::MyDown:
         if(this->shadeType != shade_types::drycontact && !this->isToggle() && this->shadeType != shade_types::drycontact2) {
-          digitalWrite(this->gpioUp, p_off);
-          digitalWrite(this->gpioMy, p_on);
-          digitalWrite(this->gpioDown, p_on);
+          gpio_set_level((gpio_num_t)this->gpioUp,p_off);
+          gpio_set_level((gpio_num_t)this->gpioMy,p_on);
+          gpio_set_level((gpio_num_t)this->gpioDown,p_on);
           ESP_LOGI(TAG, "UP: false, DOWN: true, MY: true");
         }
         break;
       case somfy_commands::MyUpDown:
         if(this->shadeType != shade_types::drycontact && this->isToggle() && this->shadeType != shade_types::drycontact2) {
-          digitalWrite(this->gpioUp, p_on);
-          digitalWrite(this->gpioMy, p_on);
-          digitalWrite(this->gpioDown, p_on);
+          gpio_set_level((gpio_num_t)this->gpioUp,p_on);
+          gpio_set_level((gpio_num_t)this->gpioMy,p_on);
+          gpio_set_level((gpio_num_t)this->gpioDown,p_on);
           ESP_LOGI(TAG, "UP: true, DOWN: true, MY: true");
         }
         break;
@@ -2354,12 +2355,12 @@ int8_t SomfyShade::fromJSON(JsonObject &obj) {
     if(this->proto == radio_proto::GP_Remote || this->proto == radio_proto::GP_Relay) {
       if(obj.containsKey("gpioUp")) this->gpioUp = obj["gpioUp"];
       if(obj.containsKey("gpioDown")) this->gpioDown = obj["gpioDown"];
-      pinMode(this->gpioUp, OUTPUT);
-      pinMode(this->gpioDown, OUTPUT);
+      gpio_set_direction((gpio_num_t)this->gpioUp, GPIO_MODE_OUTPUT);
+      gpio_set_direction((gpio_num_t)this->gpioDown, GPIO_MODE_OUTPUT);
     }
     if(this->proto == radio_proto::GP_Remote) {
       if(obj.containsKey("gpioMy")) this->gpioMy = obj["gpioMy"];
-      pinMode(this->gpioMy, OUTPUT);
+      gpio_set_direction((gpio_num_t)this->gpioMy, GPIO_MODE_OUTPUT);
     }
   }
   return err;

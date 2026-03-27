@@ -5,6 +5,7 @@ idf_component_register(
     SRCS
         "main.cpp"
         "ConfigFile.cpp"
+        "ShadeConfigFile.cpp"
         "ConfigSettings.cpp"
         "GitOTA.cpp"
         "HomeKit.cpp"

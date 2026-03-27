@@ -89,6 +89,7 @@ struct transceiver_config_t {
 class Transceiver {
   private:
     static void handleReceive();
+    static void handleReceiveISR(void*);
     bool _received = false;
     somfy_frame_t frame;
   public:

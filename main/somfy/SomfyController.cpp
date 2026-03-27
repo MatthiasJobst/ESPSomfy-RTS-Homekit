@@ -12,7 +12,7 @@
 #include "Sockets.h"
 #include "MQTT.h"
 #include "HomeKit.h"
-#include "ConfigFile.h"
+#include "ShadeConfigFile.h"
 #include "GitOTA.h"
 
 extern SomfyShadeController somfy;
