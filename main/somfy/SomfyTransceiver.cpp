@@ -7,6 +7,7 @@
 #include <SPI.h>
 #include <esp_task_wdt.h>
 #include <esp_chip_info.h>
+#include "esp_rom_sys.h"
 #include "esp_log.h"
 #include "SomfyTransceiver.h"
 #include "SomfyController.h"
@@ -76,48 +77,43 @@ void Transceiver::sendFrame(byte *frame, uint8_t sync, uint8_t bitLength) {
     // Wake-up pulse
     ESP_LOGD(TAG, "Sending wakeup pulse: %d", sync);
     REG_WRITE(GPIO_OUT_W1TS_REG, pin);
-    delayMicroseconds(10920);
-    //delayMicroseconds(9415);
-    
+    esp_rom_delay_us(10920);
     // There is no silence after the wakeup pulse.  I tested this with Telis and no silence
     // was detected.  I suspect that for some battery powered shades the shade would go back
     // to sleep from the time of the initial pulse while the silence was occurring.
     REG_WRITE(GPIO_OUT_W1TC_REG, pin);
-    delayMicroseconds(7357);
-    //delayMicroseconds(9565);
-    //delay(80);
+    esp_rom_delay_us(7357);
   }
   // Depending on the bitness of the protocol we will be sending a different hwsync.
   // 56-bit 2 pulses for the first frame and 7 for the repeats
   // 80-bit 24 pulses for the first frame and 14 pulses for the repeats
   for (int i = 0; i < sync; i++) {
     REG_WRITE(GPIO_OUT_W1TS_REG, pin);
-    delayMicroseconds(4 * SYMBOL);
+    esp_rom_delay_us(4 * SYMBOL);
     REG_WRITE(GPIO_OUT_W1TC_REG, pin);
-    delayMicroseconds(4 * SYMBOL);
+    esp_rom_delay_us(4 * SYMBOL);
   }
   // Software sync
   REG_WRITE(GPIO_OUT_W1TS_REG, pin);
-  //delayMicroseconds(4450); -- Initial timing.
-  delayMicroseconds(4850);
+  esp_rom_delay_us(4850);
   // Start 0
   REG_WRITE(GPIO_OUT_W1TC_REG, pin);
-  delayMicroseconds(SYMBOL);
+  esp_rom_delay_us(SYMBOL);
   // Payload starting with the most significant bit.  The frame is always supplied in 80 bits
   // but if the protocol is calling for 56 bits it will only send 56 bits of the frame.
   uint8_t last_bit = 0;
   for (byte i = 0; i < bitLength; i++) {
     if (((frame[i / 8] >> (7 - (i % 8))) & 1) == 1) {
       REG_WRITE(GPIO_OUT_W1TC_REG, pin);
-      delayMicroseconds(SYMBOL);
+      esp_rom_delay_us(SYMBOL);
       REG_WRITE(GPIO_OUT_W1TS_REG, pin);
-      delayMicroseconds(SYMBOL);
+      esp_rom_delay_us(SYMBOL);
       last_bit = 1;
     } else {
       REG_WRITE(GPIO_OUT_W1TS_REG, pin);
-      delayMicroseconds(SYMBOL);
+      esp_rom_delay_us(SYMBOL);
       REG_WRITE(GPIO_OUT_W1TC_REG, pin);
-      delayMicroseconds(SYMBOL);
+      esp_rom_delay_us(SYMBOL);
       last_bit = 0;
     }
   }
@@ -125,18 +121,15 @@ void Transceiver::sendFrame(byte *frame, uint8_t sync, uint8_t bitLength) {
   // motor that there are no more follow on bits.
   if(last_bit == 0) {
     REG_WRITE(GPIO_OUT_W1TS_REG, pin);
-    //delayMicroseconds(SYMBOL);
   }
-    
+
   // Inter-frame silence for 56-bit protocols are around 34ms.  However, an 80 bit protocol should
-  // reduce this by the transmission of SYMBOL * 24 or 15,360us
+  // reduce this by the transmission of SYMBOL * 24 or 15,360us.
+  // Measured closer to 27500us in practice.
   REG_WRITE(GPIO_OUT_W1TC_REG, pin);
-  // Below are the original calculations for inter-frame silence.  However, when actually inspecting this from
-  // the remote it appears to be closer to 27500us.  The delayMicoseconds call cannot be called with
-  // values larger than 16383.
   if(bitLength != 80) {
-    delayMicroseconds(13717);
-    delayMicroseconds(13717);
+    esp_rom_delay_us(13717);
+    esp_rom_delay_us(13717);
   }
 }
 

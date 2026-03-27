@@ -1,5 +1,9 @@
-#include <Arduino.h>
+#include <stdio.h>
 #include <time.h>
+#include <math.h>
+#include <ctype.h>
+#include <stdlib.h>
+#include "compat/timing.h"
 #include "Utils.h"
 
 
@@ -7,15 +11,16 @@
  * Timestamp class members
  ********************************************************************/
 unsigned long Timestamp::epoch() {
-  struct tm tmNow;
   time_t now;
-  if(!getLocalTime(&tmNow,50)) return 0;
   time(&now);
+  if(now < 1483228800) return 0;  // invalid if before 2017 (NTP not synced)
   return now;
 }
 time_t Timestamp::now() {
   struct tm tmNow;
-  getLocalTime(&tmNow,50);
+  time_t t;
+  time(&t);
+  localtime_r(&t, &tmNow);
   return mktime(&tmNow);
 }
 time_t Timestamp::getUTC() { 

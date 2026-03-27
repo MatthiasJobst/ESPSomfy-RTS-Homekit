@@ -1,6 +1,9 @@
 #ifndef utils_h
 #define utils_h
-#include <Arduino.h>
+#include <stdint.h>
+#include <stddef.h>
+#include <string.h>
+#include <time.h>
 
 [[maybe_unused]] static void SETCHARPROP(char *prop, const char *value, size_t size) {strncpy(prop, value, size); prop[size - 1] = '\0';}
 /*
