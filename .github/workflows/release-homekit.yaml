@@ -23,6 +23,9 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Initialize submodules
+        run: git submodule update --init --recursive
+
       - name: Build with ESP-IDF
         uses: espressif/esp-idf-ci-action@v1
         with:
