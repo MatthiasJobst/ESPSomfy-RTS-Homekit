@@ -1,0 +1,963 @@
+Command: /Users/matthiasjobst/.espressif/tools/python/v5.5.3/venv/bin/python /Users/matthiasjobst/.espressif/v5.5.3/esp-idf/tools/idf_monitor.py -p /dev/cu.usbmodem2101 -b 115200 --toolchain-prefix xtensa-esp32s3-elf- --target esp32s3 --revision 0 /Users/matthiasjobst/Developer/SomfyController/build/SomfyController.elf /Users/matthiasjobst/Developer/SomfyController/build/bootloader/bootloader.elf -m '/Users/matthiasjobst/.espressif/tools/python/v5.5.3/venv/bin/python' '/Users/matthiasjobst/.espressif/v5.5.3/esp-idf/tools/idf.py'
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x15 (USB_UART_CHIP_RESET),boot:0x28 (SPI_FAST_FLASH_BOOT)
+Saved PC:0x400570e8
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x14f0
+load:0x403c8700,len:0xd24
+load:0x403cb700,len:0x2ef0
+entry 0x403c8924
+[0;32mI (24) boot: ESP-IDF v5.5.3 2nd stage bootloader[0m
+[0;32mI (24) boot: compile time Mar 27 2026 10:38:38[0m
+[0;32mI (25) boot: Multicore bootloader[0m
+[0;32mI (25) boot: chip revision: v0.2[0m
+[0;32mI (28) boot: efuse block revision: v1.3[0m
+[0;32mI (31) boot.esp32s3: Boot SPI Speed : 80MHz[0m
+[0;32mI (35) boot.esp32s3: SPI Mode       : DIO[0m
+[0;32mI (39) boot.esp32s3: SPI Flash Size : 8MB[0m
+[0;32mI (43) boot: Enabling RNG early entropy source...[0m
+[0;32mI (47) boot: Partition Table:[0m
+[0;32mI (50) boot: ## Label            Usage          Type ST Offset   Length[0m
+[0;32mI (56) boot:  0 nvs              WiFi data        01 02 00009000 00005000[0m
+[0;32mI (62) boot:  1 otadata          OTA data         01 00 0000e000 00002000[0m
+[0;32mI (69) boot:  2 app0             OTA app          00 10 00010000 00300000[0m
+[0;32mI (75) boot:  3 app1             OTA app          00 11 00310000 00300000[0m
+[0;32mI (82) boot:  4 spiffs           Unknown data     01 82 00610000 001e6000[0m
+[0;32mI (89) boot:  5 factory_nvs      WiFi data        01 02 007f6000 00006000[0m
+[0;32mI (95) boot:  6 nvs_keys         NVS keys         01 04 007fc000 00001000[0m
+[0;32mI (102) boot:  7 sec_cert         unknown          3f 06 007fd000 00003000[0m
+[0;32mI (108) boot: End of partition table[0m
+[0;32mI (112) esp_image: segment 0: paddr=00010020 vaddr=3c120020 size=3f9e0h (260576) map[0m
+[0;32mI (165) esp_image: segment 1: paddr=0004fa08 vaddr=3fc9c700 size=00610h (  1552) load[0m
+[0;32mI (166) esp_image: segment 2: paddr=00050020 vaddr=42000020 size=11e448h (1172552) map[0m
+[0;32mI (376) esp_image: segment 3: paddr=0016e470 vaddr=3fc9cd10 size=05750h ( 22352) load[0m
+[0;32mI (380) esp_image: segment 4: paddr=00173bc8 vaddr=40374000 size=186dch (100060) load[0m
+[0;32mI (403) esp_image: segment 5: paddr=0018c2ac vaddr=50000000 size=00020h (    32) load[0m
+[0;32mI (413) boot: Loaded app from partition at offset 0x10000[0m
+[0;32mI (413) boot: Disabling RNG early entropy source...[0m
+[0;32mI (423) cpu_start: Multicore app[0m
+[0;32mI (432) cpu_start: GPIO 44 and 43 are used as console UART I/O pins[0m
+[0;32mI (432) cpu_start: Pro cpu start user code[0m
+[0;32mI (433) cpu_start: cpu freq: 160000000 Hz[0m
+[0;32mI (434) app_init: Application information:[0m
+[0;32mI (438) app_init: Project name:     SomfyController[0m
+[0;32mI (442) app_init: App version:      v0.0.8-hk-9-g27a5fdc-dirty[0m
+[0;32mI (448) app_init: Compile time:     Mar 27 2026 10:37:59[0m
+[0;32mI (453) app_init: ELF file SHA256:  53770ae1a...[0m
+[0;32mI (457) app_init: ESP-IDF:          v5.5.3[0m
+[0;32mI (461) efuse_init: Min chip rev:     v0.0[0m
+[0;32mI (465) efuse_init: Max chip rev:     v0.99 [0m
+[0;32mI (469) efuse_init: Chip rev:         v0.2[0m
+[0;32mI (473) heap_init: Initializing. RAM available for dynamic allocation:[0m
+[0;32mI (479) heap_init: At 3FCB3EA0 len 00035870 (214 KiB): RAM[0m
+[0;32mI (484) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM[0m
+[0;32mI (489) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM[0m
+[0;32mI (495) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM[0m
+[0;32mI (501) spi_flash: detected chip: generic[0m
+[0;32mI (504) spi_flash: flash io: dio[0m
+[0;33mW (507) spi_flash: Detected size(16384k) larger than the size in the binary image header(8192k). Using the size in the binary image header.[0m
+[0;32mI (521) sleep_gpio: Configure to isolate all GPIO pins in sleep state[0m
+[0;32mI (525) sleep_gpio: Enable automatic switching of GPIO sleep configuration[0m
+[0;32mI (532) main_task: Started on CPU0[0m
+[0;32mI (535) main_task: Calling app_main()[0m
+[0;32mI (571) main_task: Returned from app_main()[0m
+[0;32mI (572) Main: Startup/Boot....[0m
+[0;32mI (572) Main: Mounting File System...[0m
+[0;32mI (575) Main: File system mounted successfully[0m
+[0;32mI (575) ConfigSettings: Chip Model ESP32-s3[0m
+[0;32mI (602) ConfigSettings: Preference IP Free Entries: 449[0m
+[   107][E][Preferences.cpp:483] getString(): nvs_get_str len fail: protocol NOT_FOUND
+[   115][E][Preferences.cpp:483] getString(): nvs_get_str len fail: hostname NOT_FOUND
+[   123][E][Preferences.cpp:483] getString(): nvs_get_str len fail: username NOT_FOUND
+[   131][E][Preferences.cpp:483] getString(): nvs_get_str len fail: password NOT_FOUND
+[   139][E][Preferences.cpp:483] getString(): nvs_get_str len fail: rootTopic NOT_FOUND
+[   147][E][Preferences.cpp:483] getString(): nvs_get_str len fail: discoTopic NOT_FOUND
+[0;32mI (655) ConfigSettings: SECURITY   Type:0 Username:[] Password:[] Pin:[5205] Permissions:0[0m
+[0;32mI (655) ConfigSettings: Connection Type: 1[0m
+[0;32mI (656) ConfigSettings: NTP Settings [0m
+[0;32mI (659) ConfigSettings: NTP Server: pool.ntp.org[0m
+[0;32mI (664) ConfigSettings: TZ: CEST-1CET,M3.2.0/2:00:00,M11.1.0/2:00:00[0m
+[0;32mI (670) ConfigSettings: WIFI Settings[0m
+[0;32mI (673) ConfigSettings:  SSID: [Kinderrechte] PassPhrase: [Heinz9Mohnen!][0m
+[0;32mI (690) Main: Initializing web server...[0m
+[0;32mI (690) Web: Launching web server...[0m
+[0;32mI (690) Web: Creating Web MicroServices...[0m
+[0;32mI (1697) Main: Setting up network...[0m
+[0;32mI (1698) ControllerNetwork: WiFi Mode: 0[0m
+[0;32mI (1698) pp: pp rom version: e7ae62f[0m
+[0;32mI (1699) net80211: net80211 rom version: e7ae62f[0m
+[0;32mI (1702) wifi:wifi driver task: 3fcc3aa4, prio:23, stack:6656, core=0[0m
+[0;32mI (1712) wifi:wifi firmware version: 4df78f2[0m
+[0;32mI (1713) wifi:wifi certification version: v7.0[0m
+[0;32mI (1715) wifi:config NVS flash: enabled[0m
+[0;32mI (1719) wifi:config nano formatting: disabled[0m
+[0;32mI (1723) wifi:Init data frame dynamic rx buffer num: 32[0m
+[0;32mI (1728) wifi:Init static rx mgmt buffer num: 5[0m
+[0;32mI (1732) wifi:Init management short buffer num: 32[0m
+[0;32mI (1737) wifi:Init dynamic tx buffer num: 32[0m
+[0;32mI (1741) wifi:Init static tx FG buffer num: 2[0m
+[0;32mI (1745) wifi:Init static rx buffer size: 1600[0m
+[0;32mI (1749) wifi:Init static rx buffer num: 4[0m
+[0;32mI (1753) wifi:Init dynamic rx buffer num: 32[0m
+[0;32mI (1757) wifi_init: rx ba win: 6[0m
+[0;32mI (1760) wifi_init: accept mbox: 6[0m
+[0;32mI (1763) wifi_init: tcpip mbox: 32[0m
+[0;32mI (1766) wifi_init: udp mbox: 6[0m
+[0;32mI (1769) wifi_init: tcp mbox: 6[0m
+[0;32mI (1772) wifi_init: tcp tx win: 5760[0m
+[0;32mI (1775) wifi_init: tcp rx win: 5760[0m
+[0;32mI (1778) wifi_init: tcp mss: 1440[0m
+[0;32mI (1781) wifi_init: WiFi IRAM OP enabled[0m
+[0;32mI (1785) wifi_init: WiFi RX IRAM OP enabled[0m
+[0;32mI (1790) ControllerNetwork: (evt) WiFi interface ready[0m
+[0;32mI (1795) phy_init: phy_version 711,97bcf0a2,Aug 25 2025,19:04:10[0m
+[0;32mI (1836) wifi:mode : sta (10:b4:1d:e9:39:78)[0m
+[0;32mI (1836) wifi:enable tsf[0m
+[0;32mI (1838) wifi:Set ps type: 1, coexist: 0[0m
+
+[0;32mI (1839) Sockets: Socket Server Started on port 8080[0m
+[0;32mI (1839) ControllerNetwork: (evt) WiFi station mode started[0m
+[0;32mI (1845) Main: Initializing Somfy controller...[0m
+[0;32mI (1849) SomfyController: App Version:2.4.7[0m
+[0;32mI (1855) SomfyController: Starting clean[0m
+[0;32mI (1857) SomfyTransceiver: Setting S3 Transceiver Defaults...[0m
+[0;32mI (1876) SomfyTransceiver: Applying radio settings [0m
+[0;32mI (1876) SomfyTransceiver: Setting Data Pins RX:4 TX:3[0m
+[0;32mI (1877) SomfyTransceiver: Setting SPI Pins SCK:7 MISO:8 MOSI:9 CSN:6[0m
+[0;32mI (1881) SomfyTransceiver: Radio Pins Configured![0m
+[0;32mI (1907) SomfyTransceiver: Successfully set up the radio[0m
+[0;32mI (1909) SomfyTransceiver: Enabled receive on Pin #4 Timing: 1[0m
+[0;32mI (1912) SomfyFrame: Initializing RX Queue[0m
+[0;32mI (3601) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;33mW (3602) wifi:Haven't to connect to a suitable AP now![0m
+[0;32mI (3602) ControllerNetwork: Connecting to AP E0:63:DA:74:46:54 CH: 11[0m
+[0;32mI (3608) wifi:Set ps type: 0, coexist: 0[0m
+
+[0;32mI (3712) ControllerNetwork: WiFi begin...[0m
+[0;32mI (3714) Main: Timing Net: 113ms[0m
+[0;32mI (6223) wifi:new:<11,0>, old:<1,0>, ap:<255,255>, sta:<11,0>, prof:1, snd_ch_cfg:0x0[0m
+[0;32mI (6225) wifi:state: init -> auth (0xb0)[0m
+[0;32mI (6229) wifi:state: auth -> assoc (0x0)[0m
+[0;32mI (6237) wifi:state: assoc -> run (0x10)[0m
+[0;32mI (6251) wifi:connected with Kinderrechte, aid = 2, channel 11, BW20, bssid = e0:63:da:74:46:54[0m
+[0;32mI (6252) wifi:security: WPA2-PSK, phy: bgn, rssi: -60[0m
+[0;32mI (6254) wifi:pm start, type: 0[0m
+
+[0;32mI (6257) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us[0m
+[0;32mI (6265) wifi:set rx beacon pti, rx_bcn_pti: 0, bcn_timeout: 25000, mt_pti: 0, mt_time: 10000[0m
+[0;32mI (6276) ControllerNetwork: (evt) Connected to WiFi STA access point[0m
+[0;32mI (6280) wifi:<ba-add>idx:0 (ifx:0, e0:63:da:74:46:54), tid:0, ssn:0, winSize:64[0m
+[0;32mI (6344) wifi:AP's beacon interval = 102400 us, DTIM period = 1[0m
+[0;32mI (7291) esp_netif_handlers: sta ip: 192.168.178.109, mask: 255.255.255.0, gw: 192.168.178.1[0m
+[0;32mI (7292) ControllerNetwork: (evt) Got WiFi STA IP: 192.168.178.109[0m
+[0;32mI (7295) ControllerNetwork: Setting connected...[0m
+[0;32mI (7300) wifi:Set ps type: 0, coexist: 0[0m
+
+[0;32mI (7303) ControllerNetwork: Successfully Connected to WiFi!!!![0m
+[0;32mI (7308) ControllerNetwork: IP: 192.168.178.109[0m
+[0;32mI (7313) ControllerNetwork: Signal Strength: -60 dBm[0m
+[0;32mI (7320) mdns_mem: mDNS task will be created from internal RAM[0m
+[0;32mI (7323) ControllerNetwork: MDNS Responder Started: serverId=E93978[0m
+[0;32mI (7329) HomeKit: Initialising HomeKit bridge[0m
+[1;37mKeystore initialised[0m
+[1;37mAccessory is Paired with at least one controller[0m
+[1;37mUpdated state number to 309[0m
+[1;37mDatabase initialised. Accessory Device ID: E5:5A:9C:5B:7B:2C[0m
+[1;37mHAP Initialization succeeded. Version : 4.0-676faba[0m
+[1;32mWi-Fi reconfiguration service not supported. Please use MFi variant of the SDK.[0m
+[0;32mI (7365) HomeKit: Pair with HomeKit using setup code: 459-23-871[0m
+[0;32mI (7370) HomeKit: Or scan QR payload: X-HM://002489V6NSMFY[0m
+[1;37mSetup ID: SMFY[0m
+[1;37mHAP Main Loop Started[0m
+[1;37mmDNS initialised[0m
+[1;37mRegistering HomeKit web handlers[0m
+[1;37mAnnouncing _hap._tcp mDNS service[0m
+[1;37mHAP Started[0m
+[0;32mI (7393) HomeKit: HomeKit bridge started[0m
+[0;32mI (7398) SSDP: SSDP: urn:schemas-jobst-org:device:ESPSomfyRTS:1 - true[0m
+[0;32mI (7405) SSDP: SSDP: urn:schemas-jobst-org:device:ESPSomfyRTS:1 - true[0m
+[0;32mI (7409) SSDP: Connected to SSDP...[0m
+[0;32mI (7413) ConfigSettings: Max Heap: 94208[0m
+[0;32mI (7416) ConfigSettings: Free Heap: 137044[0m
+[0;32mI (7420) ConfigSettings: Min Heap: 135164[0m
+[0;32mI (7426) SSDP: Connected to SSDP...[0m
+[0;32mI (7427) Main: Timing Net: 125ms[0m
+[1;37m######## Starting Pair Verify ########[0m
+[1;37mPair Verify M1 Received[0m
+[1;37mPair Verify M2 Successful[0m
+[1;37mPair Verify M3 Received[0m
+[1;37mHomeKit Session active[0m
+[1;37mPair Verify Successful for D98A4B76-1977-4607-B886-66BE7532228A[0m
+[0;32mI (30462) Web: Loading file /index.html[0m
+[0;32mI (30793) Main: Timing WebServer: 335ms[0m
+[0;32mI (63603) ControllerNetwork: Started scan for access points[0m
+[0;32mI (65742) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (67295) GitOTA: Check github for updates...[0m
+[0;32mI (67296) ConfigSettings: Max Heap: 73728[0m
+[0;32mI (67296) ConfigSettings: Free Heap: 119804[0m
+[0;32mI (67297) ConfigSettings: Min Heap: 119316[0m
+[0;32mI (68524) GitOTA: Internet is Available: 1224ms[0m
+[0;32mI (69787) GitOTA: [HTTPS] GET... code: 200[0m
+[0;32mI (69787) GitOTA: [HTTPS] GET... code: 200 - 3779[0m
+[0;32mI (69806) GitOTA: Key:[published_at] Value:[2026-03-18T21:17:10Z][0m
+[0;32mI (69807) GitOTA: assets: 2[0m
+[0;32mI (69809) GitOTA: Asset Key:[name] Value:[SomfyController.littlefs.bin][0m
+[0;32mI (69831) ConfigSettings: Max Heap: 73728[0m
+[0;32mI (69832) ConfigSettings: Free Heap: 117248[0m
+[0;32mI (69832) ConfigSettings: Min Heap: 75912[0m
+[0;32mI (77416) Web: Loading file /index.html[0m
+[0;32mI (77708) Main: Timing WebServer: 296ms[0m
+[0;32mI (77716) Web: Loading file /main.css[0m
+[0;32mI (77801) Web: Loading file /widgets.css[0m
+[0;32mI (77851) Web: Loading file /icons.css[0m
+[0;32mI (77979) Main: Timing WebServer: 134ms[0m
+[0;32mI (77987) Web: Loading file /qrcode.min.js[0m
+[0;32mI (78188) Main: Timing WebServer: 206ms[0m
+[0;32mI (78202) Web: Loading file /index.js[0m
+[0;32mI (78307) Main: Timing WebServer: 114ms[0m
+[0;32mI (78314) Web: Loading file /icon.png[0m
+[0;32mI (78375) Web: Loading file /index.js[0m
+[0;32mI (78478) Main: Timing WebServer: 108ms[0m
+[0;32mI (78484) Web: Loading file /icon.png[0m
+[0;32mI (78551) Web: Loading file /ui.js[0m
+[0;32mI (78642) Web: Loading file /icon.png[0m
+[0;32mI (78711) Web: Loading file /icon.png[0m
+[0;32mI (78774) Web: Loading file /settings.js[0m
+[0;32mI (78907) Main: Timing WebServer: 140ms[0m
+[0;32mI (78923) Web: Loading file /somfy.js[0m
+[0;32mI (79328) Main: Timing WebServer: 409ms[0m
+[0;32mI (79344) Web: Loading file /extras.js[0m
+[0;32mI (79466) Main: Timing WebServer: 127ms[0m
+[0;32mI (79528) Sockets: WS [0] Connected from 192.168.178.83 url: /[0m
+[0;32mI (79533) Sockets: Initializing Socket Client 0[0m
+[0;32mI (79544) Sockets: WS [0] Disconnected![0m
+[0;32mI (125744) ControllerNetwork: Started scan for access points[0m
+[0;32mI (127878) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (187880) ControllerNetwork: Started scan for access points[0m
+[0;32mI (190014) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (239741) Web: Loading file /index.html[0m
+[0;32mI (240027) Main: Timing WebServer: 289ms[0m
+[0;32mI (250015) ControllerNetwork: Started scan for access points[0m
+[0;32mI (252152) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (312153) ControllerNetwork: Started scan for access points[0m
+[0;32mI (314298) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (374299) ControllerNetwork: Started scan for access points[0m
+[0;32mI (376436) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (436438) ControllerNetwork: Started scan for access points[0m
+[0;32mI (438585) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (498586) ControllerNetwork: Started scan for access points[0m
+[0;32mI (500722) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (560723) ControllerNetwork: Started scan for access points[0m
+[0;32mI (562864) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (622866) ControllerNetwork: Started scan for access points[0m
+[0;32mI (625000) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (685003) ControllerNetwork: Started scan for access points[0m
+[0;32mI (687152) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (747153) ControllerNetwork: Started scan for access points[0m
+[0;32mI (749290) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (809292) ControllerNetwork: Started scan for access points[0m
+[0;32mI (811437) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (871439) ControllerNetwork: Started scan for access points[0m
+[0;32mI (873584) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (933586) ControllerNetwork: Started scan for access points[0m
+[0;32mI (935722) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (995725) ControllerNetwork: Started scan for access points[0m
+[0;32mI (997878) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (1057879) ControllerNetwork: Started scan for access points[0m
+[0;32mI (1060013) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (1120014) ControllerNetwork: Started scan for access points[0m
+[0;32mI (1122173) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (1182175) ControllerNetwork: Started scan for access points[0m
+[0;32mI (1184320) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (1244323) ControllerNetwork: Started scan for access points[0m
+[0;32mI (1246459) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (1306460) ControllerNetwork: Started scan for access points[0m
+[0;32mI (1308616) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (1368618) ControllerNetwork: Started scan for access points[0m
+[0;32mI (1370767) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (1430769) ControllerNetwork: Started scan for access points[0m
+[0;32mI (1432908) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (1492911) ControllerNetwork: Started scan for access points[0m
+[0;32mI (1495045) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (1555048) ControllerNetwork: Started scan for access points[0m
+[0;32mI (1557194) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (1617195) ControllerNetwork: Started scan for access points[0m
+[0;32mI (1619336) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (1679338) ControllerNetwork: Started scan for access points[0m
+[0;32mI (1681477) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (1741479) ControllerNetwork: Started scan for access points[0m
+[0;32mI (1743616) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (1803619) ControllerNetwork: Started scan for access points[0m
+[0;32mI (1805789) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (1865792) ControllerNetwork: Started scan for access points[0m
+[0;32mI (1867938) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (1927939) ControllerNetwork: Started scan for access points[0m
+[0;32mI (1930089) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (1990090) ControllerNetwork: Started scan for access points[0m
+[0;32mI (1992230) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (2052233) ControllerNetwork: Started scan for access points[0m
+[0;32mI (2054368) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (2114369) ControllerNetwork: Started scan for access points[0m
+[0;32mI (2116510) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (2176512) ControllerNetwork: Started scan for access points[0m
+[0;32mI (2178646) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (2238648) ControllerNetwork: Started scan for access points[0m
+[0;32mI (2240784) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (2300787) ControllerNetwork: Started scan for access points[0m
+[0;32mI (2302933) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (2362935) ControllerNetwork: Started scan for access points[0m
+[0;32mI (2365090) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (2425092) ControllerNetwork: Started scan for access points[0m
+[0;32mI (2427236) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (2487238) ControllerNetwork: Started scan for access points[0m
+[0;32mI (2489371) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (2549374) ControllerNetwork: Started scan for access points[0m
+[0;32mI (2551521) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (2611523) ControllerNetwork: Started scan for access points[0m
+[0;32mI (2613662) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (2673664) ControllerNetwork: Started scan for access points[0m
+[0;32mI (2675803) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (2735805) ControllerNetwork: Started scan for access points[0m
+[0;32mI (2737962) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (2797963) ControllerNetwork: Started scan for access points[0m
+[0;32mI (2800097) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (2860098) ControllerNetwork: Started scan for access points[0m
+[0;32mI (2862247) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (2922250) ControllerNetwork: Started scan for access points[0m
+[0;32mI (2924405) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (2984407) ControllerNetwork: Started scan for access points[0m
+[0;32mI (2986543) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (3046544) ControllerNetwork: Started scan for access points[0m
+[0;32mI (3048689) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (3108692) ControllerNetwork: Started scan for access points[0m
+[0;32mI (3110827) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (3170829) ControllerNetwork: Started scan for access points[0m
+[0;32mI (3172982) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (3232984) ControllerNetwork: Started scan for access points[0m
+[0;32mI (3235116) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (3295118) ControllerNetwork: Started scan for access points[0m
+[0;32mI (3297252) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (3357253) ControllerNetwork: Started scan for access points[0m
+[0;32mI (3359402) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (3419404) ControllerNetwork: Started scan for access points[0m
+[0;32mI (3421539) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (3481541) ControllerNetwork: Started scan for access points[0m
+[0;32mI (3483679) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (3543681) ControllerNetwork: Started scan for access points[0m
+[0;32mI (3545825) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (3605826) ControllerNetwork: Started scan for access points[0m
+[0;32mI (3607959) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (3667960) ControllerNetwork: Started scan for access points[0m
+[0;32mI (3670100) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (3730102) ControllerNetwork: Started scan for access points[0m
+[0;32mI (3732235) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (3792238) ControllerNetwork: Started scan for access points[0m
+[0;32mI (3794369) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (3854372) ControllerNetwork: Started scan for access points[0m
+[0;32mI (3856509) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (3916511) ControllerNetwork: Started scan for access points[0m
+[0;32mI (3918661) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (3978664) ControllerNetwork: Started scan for access points[0m
+[0;32mI (3980802) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (4040804) ControllerNetwork: Started scan for access points[0m
+[0;32mI (4042937) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (4102938) ControllerNetwork: Started scan for access points[0m
+[0;32mI (4105090) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (4165093) ControllerNetwork: Started scan for access points[0m
+[0;32mI (4167249) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (4227251) ControllerNetwork: Started scan for access points[0m
+[0;32mI (4229385) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (4289387) ControllerNetwork: Started scan for access points[0m
+[0;32mI (4291521) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (4351522) ControllerNetwork: Started scan for access points[0m
+[0;32mI (4353671) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (4413672) ControllerNetwork: Started scan for access points[0m
+[0;32mI (4415810) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (4475811) ControllerNetwork: Started scan for access points[0m
+[0;32mI (4477952) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (4537954) ControllerNetwork: Started scan for access points[0m
+[0;32mI (4540098) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (4600100) ControllerNetwork: Started scan for access points[0m
+[0;32mI (4602248) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (4662249) ControllerNetwork: Started scan for access points[0m
+[0;32mI (4664403) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (4724405) ControllerNetwork: Started scan for access points[0m
+[0;32mI (4726544) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (4786547) ControllerNetwork: Started scan for access points[0m
+[0;32mI (4788691) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (4848693) ControllerNetwork: Started scan for access points[0m
+[0;32mI (4850827) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (4910829) ControllerNetwork: Started scan for access points[0m
+[0;32mI (4912976) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (4972978) ControllerNetwork: Started scan for access points[0m
+[0;32mI (4975112) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (5035114) ControllerNetwork: Started scan for access points[0m
+[0;32mI (5037251) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (5097253) ControllerNetwork: Started scan for access points[0m
+[0;32mI (5099393) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (5159394) ControllerNetwork: Started scan for access points[0m
+[0;32mI (5161531) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (5221533) ControllerNetwork: Started scan for access points[0m
+[0;32mI (5223668) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (5283670) ControllerNetwork: Started scan for access points[0m
+[0;32mI (5285815) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (5345817) ControllerNetwork: Started scan for access points[0m
+[0;32mI (5347952) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (5407954) ControllerNetwork: Started scan for access points[0m
+[0;32mI (5410091) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (5470092) ControllerNetwork: Started scan for access points[0m
+[0;32mI (5472227) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (5532229) ControllerNetwork: Started scan for access points[0m
+[0;32mI (5534361) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (5594362) ControllerNetwork: Started scan for access points[0m
+[0;32mI (5596498) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (5656500) ControllerNetwork: Started scan for access points[0m
+[0;32mI (5658633) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (5718634) ControllerNetwork: Started scan for access points[0m
+[0;32mI (5720777) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (5780779) ControllerNetwork: Started scan for access points[0m
+[0;32mI (5782944) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (5842946) ControllerNetwork: Started scan for access points[0m
+[0;32mI (5845096) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (5905098) ControllerNetwork: Started scan for access points[0m
+[0;32mI (5907251) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (5967252) ControllerNetwork: Started scan for access points[0m
+[0;32mI (5969411) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (6029412) ControllerNetwork: Started scan for access points[0m
+[0;32mI (6031557) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (6091560) ControllerNetwork: Started scan for access points[0m
+[0;32mI (6093695) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (6153697) ControllerNetwork: Started scan for access points[0m
+[0;32mI (6155827) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (6215829) ControllerNetwork: Started scan for access points[0m
+[0;32mI (6217968) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (6277970) ControllerNetwork: Started scan for access points[0m
+[0;32mI (6280105) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (6340107) ControllerNetwork: Started scan for access points[0m
+[0;32mI (6342273) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (6402276) ControllerNetwork: Started scan for access points[0m
+[0;32mI (6404411) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (6464412) ControllerNetwork: Started scan for access points[0m
+[0;32mI (6466552) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (6526554) ControllerNetwork: Started scan for access points[0m
+[0;32mI (6528687) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (6588689) ControllerNetwork: Started scan for access points[0m
+[0;32mI (6590827) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (6650829) ControllerNetwork: Started scan for access points[0m
+[0;32mI (6652967) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (6712969) ControllerNetwork: Started scan for access points[0m
+[0;32mI (6715107) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (6775108) ControllerNetwork: Started scan for access points[0m
+[0;32mI (6777250) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (6837252) ControllerNetwork: Started scan for access points[0m
+[0;32mI (6839389) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (6899391) ControllerNetwork: Started scan for access points[0m
+[0;32mI (6901537) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (6961540) ControllerNetwork: Started scan for access points[0m
+[0;32mI (6963673) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (7023676) ControllerNetwork: Started scan for access points[0m
+[0;32mI (7025813) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (7085815) ControllerNetwork: Started scan for access points[0m
+[0;32mI (7087948) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (7147949) ControllerNetwork: Started scan for access points[0m
+[0;32mI (7150090) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (7210093) ControllerNetwork: Started scan for access points[0m
+[0;32mI (7212236) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (7272238) ControllerNetwork: Started scan for access points[0m
+[0;32mI (7274378) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (7334380) ControllerNetwork: Started scan for access points[0m
+[0;32mI (7336549) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (7396550) ControllerNetwork: Started scan for access points[0m
+[0;32mI (7398688) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (7400900) ConfigSettings: Max Heap: 86016[0m
+[0;32mI (7400901) ConfigSettings: Free Heap: 130088[0m
+[0;32mI (7400901) ConfigSettings: Min Heap: 75912[0m
+[0;32mI (7400928) Web: Request /login.html 404-1 [0m
+[0;32mI (7400929) Web: GET [0m
+[0;32mI (7401004) Web: Loading file /main.css[0m
+[0;32mI (7401082) Web: Request /nonexistent-route-xyz 404-1 [0m
+[0;32mI (7401083) Web: GET [0m
+[0;32mI (7401113) Web: Loading file /index.js[0m
+[0;32mI (7401224) Main: Timing WebServer: 115ms[0m
+[0;32mI (7402959) Web: Loading file /index.html[0m
+[0;32mI (7403288) Main: Timing WebServer: 332ms[0m
+[0;32mI (7403294) Web: Loading file /index.html[0m
+[0;32mI (7403616) Main: Timing WebServer: 327ms[0m
+[0;32mI (7403625) Web: Loading file /main.css[0m
+[0;32mI (7403704) Web: Loading file /widgets.css[0m
+[0;32mI (7403762) Web: Loading file /icons.css[0m
+[0;32mI (7403907) Main: Timing WebServer: 151ms[0m
+[0;32mI (7403912) Web: Loading file /qrcode.min.js[0m
+[0;32mI (7404136) Main: Timing WebServer: 228ms[0m
+[0;32mI (7404141) Web: Loading file /main.css[0m
+[0;32mI (7404222) Web: Loading file /index.js[0m
+[0;32mI (7404351) Main: Timing WebServer: 134ms[0m
+[0;32mI (7404356) Web: Loading file /icon.png[0m
+[0;32mI (7404423) Web: Loading file /index.html[0m
+[0;32mI (7404786) Main: Timing WebServer: 367ms[0m
+[0;32mI (7404791) Web: Loading file /main.css[0m
+[0;32mI (7404907) Main: Timing WebServer: 120ms[0m
+[0;32mI (7404914) Web: Loading file /widgets.css[0m
+[0;32mI (7404969) Web: Loading file /ui.js[0m
+[0;32mI (7405065) Web: Loading file /widgets.css[0m
+[0;32mI (7405131) Web: Loading file /icons.css[0m
+[0;32mI (7405275) Main: Timing WebServer: 149ms[0m
+[0;32mI (7405280) Web: Loading file /settings.js[0m
+[0;32mI (7405544) Main: Timing WebServer: 268ms[0m
+[0;32mI (7405550) Web: Loading file /index.html[0m
+[0;32mI (7405941) Main: Timing WebServer: 397ms[0m
+[0;32mI (7405946) Web: Loading file /index.html[0m
+[0;32mI (7406308) Main: Timing WebServer: 366ms[0m
+[0;32mI (7406314) Web: Loading file /somfy.js[0m
+[0;32mI (7406791) Main: Timing WebServer: 482ms[0m
+[0;32mI (7406801) Web: Loading file /main.css[0m
+[0;32mI (7406880) Web: Loading file /index.js[0m
+[0;32mI (7406999) Main: Timing WebServer: 124ms[0m
+[0;32mI (7407005) Web: Loading file /qrcode.min.js[0m
+[0;32mI (7407217) Main: Timing WebServer: 217ms[0m
+[0;32mI (7407223) Web: Loading file /icons.css[0m
+[0;32mI (7407382) Main: Timing WebServer: 165ms[0m
+[0;32mI (7407387) Web: Loading file /extras.js[0m
+[0;32mI (7407524) Main: Timing WebServer: 141ms[0m
+[0;32mI (7407530) Web: Loading file /icons.css[0m
+[0;32mI (7407678) Main: Timing WebServer: 153ms[0m
+[0;32mI (7407685) Web: Loading file /widgets.css[0m
+[0;32mI (7407738) Web: Loading file /icons.css[0m
+[0;32mI (7407890) Main: Timing WebServer: 156ms[0m
+[0;32mI (7407897) Web: Loading file /icon.png[0m
+[0;32mI (7407984) Web: Loading file /widgets.css[0m
+[0;32mI (7408051) Sockets: WS [0] Connected from 192.168.178.83 url: /[0m
+[0;32mI (7408067) Sockets: Initializing Socket Client 0[0m
+[0;32mI (7408075) Sockets: WS [0] Pong received[0m
+[0;32mI (7408088) Web: Loading file /index.js[0m
+[0;32mI (7408201) Main: Timing WebServer: 118ms[0m
+[0;32mI (7408207) Web: Loading file /qrcode.min.js[0m
+[0;32mI (7408430) Main: Timing WebServer: 227ms[0m
+[0;32mI (7408452) Sockets: WS [0] Disconnected![0m
+[0;32mI (7413442) Web: Loading file /index.js[0m
+[0;32mI (7413752) Main: Timing WebServer: 314ms[0m
+[0;32mI (7413773) Web: Loading file /qrcode.min.js[0m
+[0;32mI (7414007) Main: Timing WebServer: 241ms[0m
+[0;32mI (7414012) Web: Loading file /apple-icon.png[0m
+[0;32mI (7414081) Web: Loading file /icon.png[0m
+[0;32mI (7414145) Web: Loading file /favicon.png[0m
+[0;32mI (7414171) Web: Loading file /main.css[0m
+[0;32mI (7414253) Web: Loading file /ui.js[0m
+[0;32mI (7414358) Web: Loading file /settings.js[0m
+[0;32mI (7414535) Main: Timing WebServer: 182ms[0m
+[0;32mI (7414543) Web: Loading file /ui.js[0m
+[0;32mI (7414663) Web: Loading file /settings.js[0m
+[0;32mI (7414816) Main: Timing WebServer: 156ms[0m
+[0;32mI (7414820) Web: Loading file /somfy.js[0m
+[0;32mI (7415300) Main: Timing WebServer: 484ms[0m
+[0;32mI (7415306) Web: Loading file /somfy.js[0m
+[0;32mI (7415856) Main: Timing WebServer: 555ms[0m
+[0;32mI (7415860) Web: Loading file /qrcode.min.js[0m
+[0;32mI (7416075) Main: Timing WebServer: 217ms[0m
+[0;32mI (7416080) Web: Loading file /extras.js[0m
+[0;32mI (7416219) Main: Timing WebServer: 143ms[0m
+[0;32mI (7416226) Web: Loading file /index.js[0m
+[0;32mI (7416355) Main: Timing WebServer: 135ms[0m
+[0;32mI (7416360) Web: Loading file /icon.png[0m
+[0;32mI (7416430) Web: Loading file /extras.js[0m
+[0;32mI (7416573) Main: Timing WebServer: 147ms[0m
+[0;32mI (7416578) Web: Loading file /ui.js[0m
+[0;32mI (7416683) Main: Timing WebServer: 109ms[0m
+[0;32mI (7416716) Web: Loading file /ui.js[0m
+[0;32mI (7416759) Sockets: WS [0] Connected from 192.168.178.83 url: /[0m
+[0;32mI (7416775) Sockets: Initializing Socket Client 0[0m
+[0;32mI (7416782) Sockets: WS [0] Pong received[0m
+[0;32mI (7416848) Main: Timing WebServer: 136ms[0m
+[0;32mI (7416881) Web: Loading file /apple-icon.png[0m
+[0;32mI (7416926) Web: Loading file /settings.js[0m
+[0;32mI (7416959) Sockets: WS [1] Connected from 192.168.178.83 url: /[0m
+[0;32mI (7417009) Sockets: Initializing Socket Client 1[0m
+[0;32mI (7417014) Sockets: WS [1] Pong received[0m
+[0;32mI (7417136) Main: Timing WebServer: 214ms[0m
+[0;32mI (7417168) Web: Loading file /settings.js[0m
+[0;32mI (7417213) Sockets: WS [0] Disconnected![0m
+[0;32mI (7417336) Main: Timing WebServer: 171ms[0m
+[0;32mI (7417367) Web: Loading file /somfy.js[0m
+[0;32mI (7417850) Main: Timing WebServer: 487ms[0m
+[0;32mI (7417888) ConfigSettings: Max Heap: 63488[0m
+[0;32mI (7417889) ConfigSettings: Free Heap: 120240[0m
+[0;32mI (7417889) ConfigSettings: Min Heap: 75912[0m
+[0;32mI (7417914) Web: Loading file /somfy.js[0m
+[0;32mI (7418484) Main: Timing WebServer: 574ms[0m
+[0;32mI (7418519) Web: Loading file /extras.js[0m
+[0;32mI (7418666) Main: Timing WebServer: 151ms[0m
+[0;32mI (7418695) Web: Loading file /extras.js[0m
+[0;32mI (7418842) Main: Timing WebServer: 151ms[0m
+[0;32mI (7418848) ConfigSettings: Max Heap: 63488[0m
+[0;32mI (7418849) ConfigSettings: Free Heap: 120068[0m
+[0;32mI (7418851) ConfigSettings: Min Heap: 75912[0m
+[0;32mI (7418965) Sockets: WS [0] Connected from 192.168.178.83 url: /[0m
+[0;32mI (7418996) Sockets: Initializing Socket Client 0[0m
+[0;32mI (7419004) Sockets: WS [0] Pong received[0m
+[0;32mI (7419017) Sockets: WS [2] Connected from 192.168.178.83 url: /[0m
+[0;32mI (7419028) Sockets: Initializing Socket Client 2[0m
+[0;32mI (7419034) Sockets: WS [2] Pong received[0m
+[0;32mI (7419047) Web: Loading file /main.css[0m
+[0;32mI (7419187) Web: Loading file /index.js[0m
+[0;32mI (7419309) Main: Timing WebServer: 126ms[0m
+[0;32mI (7419371) Sockets: Client 1 joining room 0[0m
+[0;32mI (7419375) Web: Request /nonexistent-route-xyz 404-1 [0m
+[0;32mI (7419375) Web: GET [0m
+[0;32mI (7419602) ConfigSettings: Max Heap: 69632[0m
+[0;32mI (7419603) ConfigSettings: Free Heap: 116268[0m
+[0;32mI (7419603) ConfigSettings: Min Heap: 75912[0m
+[0;32mI (7419633) ConfigSettings: Max Heap: 65536[0m
+[0;32mI (7419634) ConfigSettings: Free Heap: 113308[0m
+[0;32mI (7419634) ConfigSettings: Min Heap: 75912[0m
+[0;32mI (7419670) SomfyController: Got next Shade Id:1[0m
+[0;32mI (7419709) Web: Loading file /index.html[0m
+[0;32mI (7420034) Main: Timing WebServer: 329ms[0m
+[0;32mI (7420091) Web: Loading file /widgets.css[0m
+[0;32mI (7420150) Web: Loading file /main.css[0m
+[0;32mI (7420219) Sockets: Client 2 joining room 0[0m
+[0;32mI (7420235) WebShades: Adding a shade[0m
+[0;32mI (7420238) WebShades: Counting shades[0m
+[0;32mI (7420239) WebShades: Adding shade[0m
+[0;32mI (7420239) SomfyController: Got next Shade Id:1[0m
+[0;32mI (7420239) SomfyController: Sort order set to 1[0m
+[1;37mAssigning aid = 59 for Bridged accessory PlaywrightTestShade[0m
+[1;31mE (7420490) hap_platform_keystore: Failed to write PlaywrightTestShade[0m
+[0;32mI (7420491) HomeKit: Dynamically added shade 'PlaywrightTestShade'[0m
+[1;37mUpdated state number to 310[0m
+[1;37mRe-announcing _hap._tcp mDNS service[0m
+[1;37mUpdated state number to 311[0m
+[1;37mRe-announcing _hap._tcp mDNS service[0m
+[0;32mI (7420528) Main: Timing WebServer: 299ms[0m
+[0;32mI (7420644) Sockets: Client 1 leaving room 0[0m
+[0;32mI (7420668) Sockets: Client 1 joining room 0[0m
+[0;32mI (7420799) Web: Loading file /icons.css[0m
+[0;32mI (7421034) Main: Timing WebServer: 241ms[0m
+[0;32mI (7421048) Web: Loading file /qrcode.min.js[0m
+[0;32mI (7421258) Main: Timing WebServer: 216ms[0m
+[0;32mI (7421264) Web: Loading file /index.js[0m
+[0;32mI (7421371) Main: Timing WebServer: 112ms[0m
+[0;32mI (7421378) WebShades: Deleting a shade[0m
+[0;32mI (7421387) HomeKit: Removed shade id=1 from HomeKit[0m
+[1;37mUpdated state number to 312[0m
+[1;37mRe-announcing _hap._tcp mDNS service[0m
+[1;37mUpdated state number to 313[0m
+[1;37mRe-announcing _hap._tcp mDNS service[0m
+[0;32mI (7421422) Web: Loading file /icon.png[0m
+[0;32mI (7421654) Web: Loading file /favicon.png[0m
+[0;32mI (7421682) Sockets: WS [1] Disconnected![0m
+[0;32mI (7421959) Sockets: WS [2] Disconnected![0m
+[0;32mI (7422058) Web: Loading file /ui.js[0m
+[0;32mI (7422190) Main: Timing WebServer: 136ms[0m
+[0;32mI (7422196) Web: Loading file /apple-icon.png[0m
+[0;32mI (7422242) Web: Loading file /settings.js[0m
+[0;32mI (7422412) Main: Timing WebServer: 174ms[0m
+[0;32mI (7422440) Web: Loading file /somfy.js[0m
+[0;32mI (7423004) Main: Timing WebServer: 569ms[0m
+[0;32mI (7423033) Web: Loading file /extras.js[0m
+[0;32mI (7423174) Main: Timing WebServer: 145ms[0m
+[0;32mI (7423299) Sockets: WS [1] Connected from 192.168.178.83 url: /[0m
+[0;32mI (7423305) Sockets: Initializing Socket Client 1[0m
+[0;32mI (7423322) Sockets: WS [1] Pong received[0m
+[0;32mI (7423488) ConfigSettings: Max Heap: 69632[0m
+[0;32mI (7423489) ConfigSettings: Free Heap: 122204[0m
+[0;32mI (7423489) ConfigSettings: Min Heap: 75912[0m
+[0;32mI (7424109) Sockets: Client 1 joining room 0[0m
+[0;32mI (7424525) Sockets: WS [1] Disconnected![0m
+[0;32mI (7424642) Web: Loading file /favicon.png[0m
+[0;32mI (7429643) Web: Loading file /icon.png[0m
+[0;32mI (7429760) Main: Timing WebServer: 121ms[0m
+[0;32mI (7429766) Web: Request /login.html 404-1 [0m
+[0;32mI (7429766) Web: GET [0m
+[0;32mI (7429828) Sockets: Client 0 joining room 0[0m
+[0;32mI (7434201) Sockets: WS [0] Disconnected![0m
+[0;32mI (7434783) Web: Loading file /index.html[0m
+[0;32mI (7435137) Main: Timing WebServer: 358ms[0m
+[0;32mI (7435148) ConfigSettings: Max Heap: 61440[0m
+[0;32mI (7435148) ConfigSettings: Free Heap: 119508[0m
+[0;32mI (7435149) ConfigSettings: Min Heap: 75912[0m
+[0;32mI (7435189) SomfyController: Got next Shade Id:1[0m
+[7434707][E][NetworkClient.cpp:435] write(): fail on fd 43, errno: 104, "Connection reset by peer"
+[0;32mI (7435224) Web: Loading file /main.css[0m
+[0;32mI (7435306) Web: Loading file /qrcode.min.js[0m
+[0;32mI (7435529) Main: Timing WebServer: 229ms[0m
+[0;32mI (7435558) Web: Loading file /index.js[0m
+[0;32mI (7435694) Main: Timing WebServer: 140ms[0m
+[0;32mI (7435701) Web: Loading file /icons.css[0m
+[0;32mI (7435915) Main: Timing WebServer: 220ms[0m
+[0;32mI (7435920) Web: Loading file /widgets.css[0m
+[0;32mI (7435987) Web: Loading file /main.css[0m
+[0;32mI (7436069) Web: Loading file /icon.png[0m
+[0;32mI (7436144) Web: Loading file /ui.js[0m
+[0;32mI (7436239) Web: Loading file /index.js[0m
+[0;32mI (7436373) Main: Timing WebServer: 139ms[0m
+[0;32mI (7436402) Web: Loading file /settings.js[0m
+[0;32mI (7436705) Main: Timing WebServer: 307ms[0m
+[0;32mI (7436713) Web: Request /nonexistent-route-xyz 404-1 [0m
+[0;32mI (7436714) Web: GET [0m
+[0;32mI (7436735) Web: Loading file /somfy.js[0m
+[0;32mI (7438523) Main: Timing WebServer: 1792ms[0m
+[0;32mI (7438530) Web: Loading file /index.html[0m
+[0;32mI (7441038) Main: Timing WebServer: 2512ms[0m
+[0;32mI (7441045) Web: Loading file /main.css[0m
+[0;32mI (7446141) Web: Loading file /index.html[0m
+[0;32mI (7448141) Main: Timing WebServer: 2004ms[0m
+[0;32mI (7448148) Web: Loading file /extras.js[0m
+[0;32mI (7448295) Main: Timing WebServer: 152ms[0m
+[0;32mI (7448301) Web: Loading file /icons.css[0m
+[0;32mI (7448457) Main: Timing WebServer: 161ms[0m
+[0;32mI (7448462) Web: Loading file /widgets.css[0m
+[0;32mI (7448517) Web: Loading file /main.css[0m
+[0;32mI (7448607) Web: Loading file /icons.css[0m
+[0;32mI (7448772) Main: Timing WebServer: 169ms[0m
+[0;32mI (7448847) Sockets: WS [0] Connected from 192.168.178.83 url: /[0m
+[0;32mI (7448852) Sockets: Initializing Socket Client 0[0m
+[0;32mI (7448873) Sockets: WS [0] Pong received[0m
+[0;32mI (7449033) ConfigSettings: Max Heap: 69632[0m
+[0;32mI (7449034) ConfigSettings: Free Heap: 124276[0m
+[0;32mI (7449034) ConfigSettings: Min Heap: 75912[0m
+[0;32mI (7449255) Sockets: WS [0] Disconnected![0m
+[0;32mI (7449524) Web: Loading file /widgets.css[0m
+[0;32mI (7449872) Web: Loading file /index.js[0m
+[0;32mI (7449978) Main: Timing WebServer: 109ms[0m
+[0;32mI (7449985) Web: Loading file /qrcode.min.js[0m
+[0;32mI (7450257) Main: Timing WebServer: 278ms[0m
+[0;32mI (7450263) Web: Loading file /icon.png[0m
+[0;32mI (7450362) Main: Timing WebServer: 104ms[0m
+[0;32mI (7450367) Web: Loading file /ui.js[0m
+[0;32mI (7450473) Main: Timing WebServer: 110ms[0m
+[0;32mI (7450521) Web: Loading file /settings.js[0m
+[0;32mI (7450685) Main: Timing WebServer: 168ms[0m
+[0;32mI (7450737) Web: Loading file /somfy.js[0m
+[0;32mI (7451228) Main: Timing WebServer: 495ms[0m
+[0;32mI (7451278) Web: Loading file /extras.js[0m
+[0;32mI (7451434) Main: Timing WebServer: 160ms[0m
+[0;32mI (7451563) Sockets: WS [0] Connected from 192.168.178.83 url: /[0m
+[0;32mI (7451569) Sockets: Initializing Socket Client 0[0m
+[0;32mI (7451583) Sockets: WS [0] Pong received[0m
+[0;32mI (7451624) Web: Loading file /index.js[0m
+[0;32mI (7451743) Main: Timing WebServer: 123ms[0m
+[0;32mI (7451750) Web: Loading file /qrcode.min.js[0m
+[0;32mI (7451961) Main: Timing WebServer: 217ms[0m
+[0;32mI (7451994) Web: Loading file /icon.png[0m
+[0;32mI (7452068) Web: Loading file /ui.js[0m
+[0;32mI (7452166) Main: Timing WebServer: 104ms[0m
+[0;32mI (7452173) ConfigSettings: Max Heap: 69632[0m
+[0;32mI (7452174) ConfigSettings: Free Heap: 124148[0m
+[0;32mI (7452174) ConfigSettings: Min Heap: 75912[0m
+[0;32mI (7452205) Web: Loading file /settings.js[0m
+[0;32mI (7452451) Main: Timing WebServer: 250ms[0m
+[0;32mI (7452502) Web: Loading file /somfy.js[0m
+[0;32mI (7453024) Sockets: Client 0 joining room 0[0m
+[0;32mI (7453102) Main: Timing WebServer: 603ms[0m
+[0;32mI (7453135) Web: Loading file /extras.js[0m
+[0;32mI (7453291) Main: Timing WebServer: 160ms[0m
+[0;32mI (7453298) SomfyController: Got next Shade Id:1[0m
+[0;32mI (7453409) Sockets: WS [1] Connected from 192.168.178.83 url: /[0m
+[0;32mI (7453415) Sockets: Initializing Socket Client 1[0m
+[0;32mI (7453423) Sockets: WS [1] Pong received[0m
+[0;32mI (7453546) WebShades: Adding a shade[0m
+[0;32mI (7453548) WebShades: Counting shades[0m
+[0;32mI (7453548) WebShades: Adding shade[0m
+[0;32mI (7453548) SomfyController: Got next Shade Id:1[0m
+[0;32mI (7453550) SomfyController: Sort order set to 0[0m
+[1;37mAssigning aid = 60 for Bridged accessory PlaywrightTestShade[0m
+[1;31mE (7453578) hap_platform_keystore: Failed to write PlaywrightTestShade[0m
+[0;32mI (7453579) HomeKit: Dynamically added shade 'PlaywrightTestShade'[0m
+[1;37mUpdated state number to 314[0m
+[1;37mRe-announcing _hap._tcp mDNS service[0m
+[1;37mUpdated state number to 315[0m
+[1;37mRe-announcing _hap._tcp mDNS service[0m
+[0;32mI (7453687) Main: Timing WebServer: 146ms[0m
+[0;32mI (7453692) ConfigSettings: Max Heap: 69632[0m
+[0;32mI (7453692) ConfigSettings: Free Heap: 119168[0m
+[0;32mI (7453693) ConfigSettings: Min Heap: 75912[0m
+[0;32mI (7453924) Sockets: Client 0 leaving room 0[0m
+[0;32mI (7453982) Sockets: Client 0 joining room 0[0m
+[0;32mI (7454325) Sockets: Client 1 joining room 0[0m
+[0;32mI (7454663) Sockets: WS [1] Disconnected![0m
+[0;32mI (7454918) WebShades: Deleting a shade[0m
+[0;32mI (7454922) HomeKit: Removed shade id=1 from HomeKit[0m
+[1;37mUpdated state number to 316[0m
+[1;37mRe-announcing _hap._tcp mDNS service[0m
+[1;37mUpdated state number to 317[0m
+[1;37mRe-announcing _hap._tcp mDNS service[0m
+[0;32mI (7455114) Sockets: WS [0] Disconnected![0m
+[0;32mI (7455409) Sockets: WS [0] Connected from 192.168.178.83 url: /[0m
+[0;32mI (7455414) Sockets: Initializing Socket Client 0[0m
+[0;32mI (7455431) Sockets: WS [0] Pong received[0m
+[0;32mI (7458690) ControllerNetwork: Started scan for access points[0m
+[0;32mI (7460834) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (7475428) Sockets: WS [0] Pong received[0m
+[0;32mI (7495573) Sockets: WS [0] Pong received[0m
+[0;32mI (7515535) Sockets: WS [0] Pong received[0m
+[0;32mI (7520835) ControllerNetwork: Started scan for access points[0m
+[0;32mI (7522992) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (7535512) Sockets: WS [0] Pong received[0m
+[0;32mI (7555484) Sockets: WS [0] Pong received[0m
+[0;32mI (7575551) Sockets: WS [0] Pong received[0m
+[0;32mI (7582995) ControllerNetwork: Started scan for access points[0m
+[0;32mI (7585144) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (7595464) Sockets: WS [0] Pong received[0m
+[0;32mI (7612281) Sockets: WS [0] Disconnected![0m
+[0;32mI (7614129) Web: Loading file /index.html[0m
+[0;32mI (7614590) Main: Timing WebServer: 465ms[0m
+[0;32mI (7615866) Web: Loading file /index.html[0m
+[0;32mI (7616208) Main: Timing WebServer: 346ms[0m
+[0;32mI (7617977) Web: Loading file /index.html[0m
+[0;32mI (7618322) Main: Timing WebServer: 349ms[0m
+[0;32mI (7619726) Web: Loading file /index.html[0m
+[0;32mI (7620213) Main: Timing WebServer: 491ms[0m
+[0;32mI (7620318) Sockets: WS [0] Connected from 192.168.178.83 url: /[0m
+[0;32mI (7620323) Sockets: Initializing Socket Client 0[0m
+[0;32mI (7620335) Sockets: WS [0] Disconnected![0m
+[0;32mI (7620372) Sockets: WS [0] Connected from 192.168.178.83 url: /[0m
+[0;32mI (7620377) Sockets: Initializing Socket Client 0[0m
+[0;32mI (7620388) Sockets: WS [0] Pong received[0m
+[0;32mI (7620575) ConfigSettings: Max Heap: 69632[0m
+[0;32mI (7620576) ConfigSettings: Free Heap: 126920[0m
+[0;32mI (7620576) ConfigSettings: Min Heap: 75912[0m
+[0;32mI (7621827) Sockets: Client 0 joining room 0[0m
+[0;32mI (7622659) Sockets: Client 0 leaving room 0[0m
+[0;32mI (7640396) Sockets: WS [0] Pong received[0m
+[0;32mI (7645147) ControllerNetwork: Started scan for access points[0m
+[0;32mI (7647297) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (7660441) Sockets: WS [0] Pong received[0m
+[0;32mI (7680403) Sockets: WS [0] Pong received[0m
+[0;32mI (7700454) Sockets: WS [0] Pong received[0m
+[0;32mI (7707299) ControllerNetwork: Started scan for access points[0m
+[0;32mI (7709434) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (7720440) Sockets: WS [0] Pong received[0m
+[0;32mI (7723418) Web: Loading file /index.html[0m
+[0;32mI (7734682) Main: Timing WebServer: 11268ms[0m
+[0;32mI (7734695) Web: Loading file /widgets.css[0m
+[0;32mI (7736959) Main: Timing WebServer: 2268ms[0m
+[0;32mI (7736972) Web: Loading file /qrcode.min.js[0m
+[0;32mI (7737211) Main: Timing WebServer: 244ms[0m
+[0;32mI (7737216) Web: Loading file /main.css[0m
+[0;32mI (7737306) Web: Loading file /icons.css[0m
+[0;32mI (7737486) Main: Timing WebServer: 186ms[0m
+[0;32mI (7737491) Web: Loading file /index.js[0m
+[0;32mI (7737607) Main: Timing WebServer: 120ms[0m
+[0;32mI (7737977) Web: Loading file /ui.js[0m
+[0;32mI (7738080) Main: Timing WebServer: 106ms[0m
+[0;32mI (7738087) Web: Loading file /icon.png[0m
+[0;32mI (7738168) Web: Loading file /favicon.png[0m
+[0;32mI (7738200) Web: Loading file /settings.js[0m
+[0;32mI (7738358) Main: Timing WebServer: 162ms[0m
+[0;32mI (7738387) Web: Loading file /somfy.js[0m
+[0;32mI (7738964) Main: Timing WebServer: 581ms[0m
+[0;32mI (7738994) Web: Loading file /extras.js[0m
+[0;32mI (7739138) Main: Timing WebServer: 147ms[0m
+[0;32mI (7739241) Sockets: WS [1] Connected from 192.168.178.83 url: /[0m
+[0;32mI (7739247) Sockets: Initializing Socket Client 1[0m
+[0;32mI (7739257) Sockets: WS [1] Pong received[0m
+[0;32mI (7739713) ConfigSettings: Max Heap: 69632[0m
+[0;32mI (7739714) ConfigSettings: Free Heap: 123820[0m
+[0;32mI (7739714) ConfigSettings: Min Heap: 75912[0m
+[0;32mI (7740518) Sockets: WS [0] Pong received[0m
+[0;32mI (7742531) Web: Loading file /apple-icon.png[0m
+[0;32mI (7744710) Sockets: Client 1 joining room 0[0m
+[0;32mI (7745459) Sockets: Client 1 leaving room 0[0m
+[0;32mI (7759255) Sockets: WS [1] Pong received[0m
+[0;32mI (7760488) Sockets: WS [0] Pong received[0m
+[0;32mI (7769436) ControllerNetwork: Started scan for access points[0m
+[0;32mI (7771569) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (7779253) Sockets: WS [1] Pong received[0m
+[0;32mI (7780456) Sockets: WS [0] Pong received[0m
+[0;32mI (7799257) Sockets: WS [1] Pong received[0m
+[0;32mI (7800424) Sockets: WS [0] Pong received[0m
+[0;32mI (7819368) Sockets: WS [1] Pong received[0m
+[0;32mI (7820426) Sockets: WS [0] Pong received[0m
+[0;32mI (7831572) ControllerNetwork: Started scan for access points[0m
+[0;32mI (7833728) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (7839264) Sockets: WS [1] Pong received[0m
+[0;32mI (7840425) Sockets: WS [0] Pong received[0m
+[0;32mI (7859262) Sockets: WS [1] Pong received[0m
+[0;32mI (7860465) Sockets: WS [0] Pong received[0m
+[0;32mI (7879356) Sockets: WS [1] Pong received[0m
+[0;32mI (7880484) Sockets: WS [0] Pong received[0m
+[0;32mI (7893730) ControllerNetwork: Started scan for access points[0m
+[0;32mI (7895864) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (7899261) Sockets: WS [1] Pong received[0m
+[0;32mI (7900451) Sockets: WS [0] Pong received[0m
+[0;32mI (7913641) Sockets: WS [1] Disconnected![0m
+[0;32mI (7913653) Web: Loading file /index.html[0m
+[0;32mI (7913954) Main: Timing WebServer: 305ms[0m
+[0;32mI (7914038) Sockets: WS [1] Connected from 192.168.178.83 url: /[0m
+[0;32mI (7914045) Sockets: Initializing Socket Client 1[0m
+[0;32mI (7914052) Sockets: WS [1] Pong received[0m
+[0;32mI (7914136) ConfigSettings: Max Heap: 69632[0m
+[0;32mI (7914137) ConfigSettings: Free Heap: 125952[0m
+[0;32mI (7914137) ConfigSettings: Min Heap: 75912[0m
+[0;32mI (7920424) Sockets: WS [0] Pong received[0m
+[0;32mI (7934039) Sockets: WS [1] Pong received[0m
+[0;32mI (7940492) Sockets: WS [0] Pong received[0m
+[0;32mI (7954044) Sockets: WS [1] Pong received[0m
+[0;32mI (7955866) ControllerNetwork: Started scan for access points[0m
+[0;32mI (7958002) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (7960430) Sockets: WS [0] Pong received[0m
+[0;32mI (7974078) Sockets: WS [1] Pong received[0m
+[0;32mI (7980439) Sockets: WS [0] Pong received[0m
+[0;32mI (7990877) Sockets: WS [1] Disconnected![0m
+[0;32mI (8000499) Sockets: WS [0] Pong received[0m
+[0;32mI (8018004) ControllerNetwork: Started scan for access points[0m
+[0;32mI (8020144) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (8020468) Sockets: WS [0] Pong received[0m
+[0;32mI (8040473) Sockets: WS [0] Pong received[0m
+[0;32mI (8060506) Sockets: WS [0] Pong received[0m
+[0;32mI (8080146) ControllerNetwork: Started scan for access points[0m
+[0;32mI (8080450) Sockets: WS [0] Pong received[0m
+[0;32mI (8082296) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (8100469) Sockets: WS [0] Pong received[0m
+[0;32mI (8120457) Sockets: WS [0] Pong received[0m
+[0;32mI (8140461) Sockets: WS [0] Pong received[0m
+[0;32mI (8142298) ControllerNetwork: Started scan for access points[0m
+[0;32mI (8144449) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (8160463) Sockets: WS [0] Pong received[0m
+[0;32mI (8180470) Sockets: WS [0] Pong received[0m
+[0;32mI (8200472) Sockets: WS [0] Pong received[0m
+[0;32mI (8204450) ControllerNetwork: Started scan for access points[0m
+[0;32mI (8206590) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (8220474) Sockets: WS [0] Pong received[0m
+[0;32mI (8240477) Sockets: WS [0] Pong received[0m
+[0;32mI (8260916) Sockets: WS [0] Pong received[0m
+[0;32mI (8266591) ControllerNetwork: Started scan for access points[0m
+[0;32mI (8268725) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (8280504) Sockets: WS [0] Pong received[0m
+[0;32mI (8300538) Sockets: WS [0] Pong received[0m
+[0;32mI (8320493) Sockets: WS [0] Pong received[0m
+[0;32mI (8328727) ControllerNetwork: Started scan for access points[0m
+[0;32mI (8330877) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (8340496) Sockets: WS [0] Pong received[0m
+[0;32mI (8360546) Sockets: WS [0] Pong received[0m
+[0;32mI (8380615) Sockets: WS [0] Pong received[0m
+[0;32mI (8390879) ControllerNetwork: Started scan for access points[0m
+[0;32mI (8393043) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (8400506) Sockets: WS [0] Pong received[0m
+[0;32mI (8420510) Sockets: WS [0] Pong received[0m
+[0;32mI (8440514) Sockets: WS [0] Pong received[0m
+[0;32mI (8453044) ControllerNetwork: Started scan for access points[0m
+[0;32mI (8455197) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (8460517) Sockets: WS [0] Pong received[0m
+[0;32mI (8480560) Sockets: WS [0] Pong received[0m
+[0;32mI (8500524) Sockets: WS [0] Pong received[0m
+[0;32mI (8515200) ControllerNetwork: Started scan for access points[0m
+[0;32mI (8517337) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (8520531) Sockets: WS [0] Pong received[0m
+[0;32mI (8540531) Sockets: WS [0] Pong received[0m
+[0;32mI (8560536) Sockets: WS [0] Pong received[0m
+[0;32mI (8577338) ControllerNetwork: Started scan for access points[0m
+[0;32mI (8579473) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (8580540) Sockets: WS [0] Pong received[0m
+[0;32mI (8600578) Sockets: WS [0] Pong received[0m
+[0;32mI (8620647) Sockets: WS [0] Pong received[0m
+[0;32mI (8639474) ControllerNetwork: Started scan for access points[0m
+[0;32mI (8640669) Sockets: WS [0] Pong received[0m
+[0;32mI (8641618) ControllerNetwork: (evt) Completed scan for access points (1)[0m
+[0;32mI (8660553) Sockets: WS [0] Pong received[0m
+[0;32mI (8680559) Sockets: WS [0] Pong received[0m
+[0;32mI (8700624) Sockets: WS [0] Pong received[0m
+[0;32mI (8701619) ControllerNetwork: Started scan for access points[0m
+[0;32mI (8703780) ControllerNetwork: (evt) Completed scan for access points (1)[0m

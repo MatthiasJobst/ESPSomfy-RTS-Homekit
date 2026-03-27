@@ -1,0 +1,3 @@
+Command: cmake -G Ninja -DPYTHON_DEPS_CHECKED=1 -DPYTHON=/Users/matthiasjobst/.espressif/tools/python/v5.5.3/venv/bin/python -DESP_PLATFORM=1 -DCCACHE_ENABLE=0 /Users/matthiasjobst/Developer/SomfyController
+ESP Insights Project commit: v0.0.8-hk-9-g27a5fdc-dirty
+ESP RainMaker Project commit: v0.0.8-hk-9-g27a5fdc-dirty

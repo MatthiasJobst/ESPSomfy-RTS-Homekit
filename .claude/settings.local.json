@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r AppConfig /Users/matthiasjobst/Developer/SomfyController/ --include=*.cmake --include=CMakeLists.txt --include=*.idf --include=*.json -n)",
+      "Bash(grep -l \"error\\\\|warning\" /Users/matthiasjobst/Developer/SomfyController/build/*.log)"
+    ]
+  }
+}
