@@ -681,6 +681,9 @@ async function init() {
         mqtt.init();
         console.log('init: firmware');
         firmware.init();
+        console.log('init: homekit icon');
+        hkit.updateIcon();
+        setInterval(() => hkit.updateIcon(), 30000);
     } catch (err) {
         console.error('init() failed:', err);
     }

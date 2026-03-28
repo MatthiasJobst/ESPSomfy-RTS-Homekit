@@ -580,6 +580,14 @@ class Firmware {
 var firmware = new Firmware();
 
 class HomeKit {
+    updateIcon() {
+        getJSONSync('/homekit', (err, data) => {
+            if (err) return;
+            let ico = document.getElementById('icoHomeKit');
+            if (!ico) return;
+            ico.classList.toggle('homekit-paired', data.started && (data.pairedCount || 0) > 0);
+        });
+    }
     load() {
         getJSONSync('/homekit', (err, data) => {
             if (err) { ui.serviceError(err); return; }

@@ -854,6 +854,14 @@ div.frame-pulses {
     text-overflow:ellipsis;
     display:none;
 }
+#icoHomeKit {
+    opacity: 0.25;
+    transition: filter 0.3s, opacity 0.3s;
+}
+#icoHomeKit.homekit-paired {
+    opacity: 1;
+    filter: invert(62%) sepia(98%) saturate(395%) hue-rotate(152deg) brightness(93%) contrast(102%);
+}
 @media only screen and (max-device-width: 480px) {
     body {
         margin-top: 0px;
