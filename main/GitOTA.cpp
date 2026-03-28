@@ -43,31 +43,31 @@ void GitRelease::setAssetProperty(const char *key, const char *val) {
   if(strcmp(key, "name") == 0) {
     ESP_LOGI(TAG, "Asset Key:[%s] Value:[%s]", key, val);
     if(strstr(val, "littlefs.bin")) this->hasFS = true;
-    else if(strstr(val, "ino.esp32.bin")) {
+    else if(strstr(val, "esp32.bin")) {
       if(strlen(this->hwVersions)) strcat(this->hwVersions, ",");
       strcat(this->hwVersions, "32");
     }
-    else if(strstr(val, "ino.esp32s3.bin")) {
+    else if(strstr(val, "esp32s3.bin")) {
       if(strlen(this->hwVersions)) strcat(this->hwVersions, ",");
       strcat(this->hwVersions, "s3");
     }
-    else if(strstr(val, "ino.esp32s2.bin")) {
+    else if(strstr(val, "esp32s2.bin")) {
       if(strlen(this->hwVersions)) strcat(this->hwVersions, ",");
       strcat(this->hwVersions, "s2");
     }
-    else if(strstr(val, "ino.esp32c3.bin")) {
+    else if(strstr(val, "esp32c3.bin")) {
       if(strlen(this->hwVersions)) strcat(this->hwVersions, ",");
       strcat(this->hwVersions, "c3");
     }
-    else if(strstr(val, "ino.esp32c2.bin")) {
+    else if(strstr(val, "esp32c2.bin")) {
       if(strlen(this->hwVersions)) strcat(this->hwVersions, ",");
       strcat(this->hwVersions, "c2");
     }
-    else if(strstr(val, "ino.esp32c6.bin")) {
+    else if(strstr(val, "esp32c6.bin")) {
       if(strlen(this->hwVersions)) strcat(this->hwVersions, ",");
       strcat(this->hwVersions, "c6");
     }
-    else if(strstr(val, "ino.esp32h2.bin")) {
+    else if(strstr(val, "esp32h2.bin")) {
       if(strlen(this->hwVersions)) strcat(this->hwVersions, ",");
       strcat(this->hwVersions, "h2");
     }
@@ -425,23 +425,23 @@ void GitUpdater::setFirmwareFile() {
     esp_chip_info(&ci);
     switch(ci.model) {
       case esp_chip_model_t::CHIP_ESP32S3:
-        strcpy(this->currentFile, "SomfyController.ino.esp32s3.bin");
+        strcpy(this->currentFile, "SomfyController.esp32s3.bin");
         break;
       case esp_chip_model_t::CHIP_ESP32S2:
-        strcpy(this->currentFile, "SomfyController.ino.esp32s2.bin");
+        strcpy(this->currentFile, "SomfyController.esp32s2.bin");
         break;
       case esp_chip_model_t::CHIP_ESP32C3:
-        strcpy(this->currentFile, "SomfyController.ino.esp32c3.bin");
+        strcpy(this->currentFile, "SomfyController.esp32c3.bin");
         break;
       default:
-        strcpy(this->currentFile, "SomfyController.ino.esp32.bin");
+        strcpy(this->currentFile, "SomfyController.esp32.bin");
         break;
     }
 }
 
 bool GitUpdater::beginUpdate(const char *version) {
   ESP_LOGI(TAG, "Begin update called...");
-  if(strcmp(version, "Main") == 0)  strcpy(this->baseUrl, "https://raw.githubusercontent.com/" GIT_REPO "/master/");
+  if(strcmp(version, "Main") == 0) strcpy(this->baseUrl, "https://github.com/" GIT_REPO "/releases/latest/download/");
   else sprintf(this->baseUrl, "https://github.com/" GIT_REPO "/releases/download/%s/", version);
   
   strcpy(this->targetRelease, version);
