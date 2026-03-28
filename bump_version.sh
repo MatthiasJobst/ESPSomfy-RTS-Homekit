@@ -23,7 +23,7 @@ if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9]+)?$ ]]; then
 fi
 
 # Derive suffix from current FW_VERSION (e.g. "-Homekit"), keep it unless overridden
-CURRENT=$(grep -oP '(?<="v)[^"]+' main/ConfigSettings.h | head -1)
+CURRENT=$(sed -n 's/.*FW_VERSION "v\([^"]*\)".*/\1/p' main/ConfigSettings.h | head -1)
 CURRENT_SUFFIX="${CURRENT#${CURRENT%%[-]*}}"  # everything from first '-' onward (empty if none)
 SUFFIX="${CURRENT_SUFFIX}"
 
@@ -33,10 +33,10 @@ FULL_TAG="v${FULL_VERSION}"
 echo "Bumping to: ${FULL_TAG}"
 
 # 1. main/ConfigSettings.h
-sed -i "s|#define FW_VERSION \"v[^\"]*\"|#define FW_VERSION \"${FULL_TAG}\"|" main/ConfigSettings.h
+sed -i '' "s|#define FW_VERSION \"v[^\"]*\"|#define FW_VERSION \"${FULL_TAG}\"|" main/ConfigSettings.h
 
 # 2. data/settings.js
-sed -i "s|appVersion = 'v[^']*'|appVersion = '${FULL_TAG}'|" data/settings.js
+sed -i '' "s|appVersion = 'v[^']*'|appVersion = '${FULL_TAG}'|" data/settings.js
 
 # 3. data/appversion
 echo "${FULL_TAG}" > data/appversion
