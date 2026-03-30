@@ -1641,9 +1641,9 @@ void SomfyShade::processFrame(somfy_frame_t &frame, bool internal) {
         this->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
       }
       break;
-    default:
-      dir = 0;
-      break;
+    default:                      // LCOV_EXCL_LINE — scoped enum; all values covered above
+      dir = 0;                    // LCOV_EXCL_LINE
+      break;                      // LCOV_EXCL_LINE
   }
   //if(dir == 0 && this->tiltType == tilt_types::tiltmotor && this->tiltDirection != 0) this->setTiltMovement(0);
   this->setMovement(dir);
@@ -2117,7 +2117,7 @@ void SomfyShade::moveToTarget(float pos, float tilt) {
     if(tilt >= 0) {
       ESP_LOGI(TAG, " tilt %f%% from %f%%", tilt, this->currentTiltPos);
     }
-    ESP_LOGI(TAG, " using %s", translateSomfyCommand(cmd));
+    ESP_LOGI(TAG, " using %s", translateSomfyCommand(cmd).c_str());
     SomfyRemote::sendCommand(cmd, this->tiltType == tilt_types::euromode ? TILT_REPEATS : this->repeats);
     this->settingPos = true;
     this->p_target(pos);

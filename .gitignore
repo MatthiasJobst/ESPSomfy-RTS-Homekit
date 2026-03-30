@@ -17,3 +17,5 @@ sdkconfig
 managed_components/
 dependencies.locksdkconfig.old
 .claude/settings.local.json
+test/unit/build/
+test/unit/build-cov/
