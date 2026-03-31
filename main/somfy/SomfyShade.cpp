@@ -1273,6 +1273,51 @@ void SomfyShade::processWaitingFrame() {
   }
 }
 
+// stepDir: -1 = StepUp (decrease position), +1 = StepDown (increase position)
+void SomfyShade::processStepCommand(somfy_commands cmd, int8_t stepDir, bool internal, somfy_frame_t &frame) {
+  if(this->lastFrame.processed) return;
+  this->lastFrame.processed = true;
+  if(this->shadeType == shade_types::drycontact || this->shadeType == shade_types::drycontact2) return;
+  if(this->stepSize == 0) return;
+  if(this->lastFrame.stepSize == 0) this->lastFrame.stepSize = 1;
+
+  const float steps = static_cast<float>(this->stepSize * this->lastFrame.stepSize);
+
+  if(this->tiltType == tilt_types::integrated) {
+    const bool goingUp    = stepDir < 0;
+    const bool tiltAtEnd  = goingUp ? (this->currentTiltPos <= 0.0f) : (this->currentTiltPos >= 100.0f);
+    const bool liftAtEnd  = goingUp ? (this->currentPos    <= 0.0f) : (this->currentPos    >= 100.0f);
+    if(tiltAtEnd && liftAtEnd) return;
+    if(!tiltAtEnd) {
+      this->p_target(this->currentPos);
+      if(this->tiltTime == 0) return;
+      float newTilt = this->currentTiltPos + stepDir * (100.0f / (this->tiltTime / steps));
+      this->p_tiltTarget(goingUp ? max(0.0f, newTilt) : min(100.0f, newTilt));
+    }
+    else {
+      this->p_tiltTarget(this->currentTiltPos);
+      const float time = goingUp ? static_cast<float>(this->upTime) : static_cast<float>(this->downTime);
+      if(time == 0) return;
+      float newPos = this->currentPos + stepDir * (100.0f / (time / steps));
+      this->p_target(goingUp ? max(0.0f, newPos) : min(100.0f, newPos));
+    }
+  }
+  else if(this->tiltType == tilt_types::tiltonly) {
+    if(this->tiltTime == 0) return;
+    float newTilt = this->currentTiltPos + stepDir * (100.0f / (this->tiltTime / steps));
+    this->p_tiltTarget(stepDir < 0 ? max(0.0f, newTilt) : min(100.0f, newTilt));
+  }
+  else {
+    const bool canMove = stepDir < 0 ? (this->currentPos > 0.0f) : (this->currentPos < 100.0f);
+    if(!canMove) return;
+    const float time = stepDir < 0 ? static_cast<float>(this->upTime) : static_cast<float>(this->downTime);
+    if(time == 0) return;
+    float newPos = this->currentPos + stepDir * (100.0f / (time / steps));
+    this->p_target(stepDir < 0 ? max(0.0f, newPos) : min(100.0f, newPos));
+  }
+  this->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
+}
+
 void SomfyShade::processFrame(somfy_frame_t &frame, bool internal) {
   // The reason why we are processing all frames here is so
   // any linked remotes that may happen to be on the same ESPSomfy RTS
@@ -1531,87 +1576,10 @@ void SomfyShade::processFrame(somfy_frame_t &frame, bool internal) {
       }
       break;
     case somfy_commands::StepUp:
-      if(this->lastFrame.processed) return;
-      this->lastFrame.processed = true;
-      if(this->shadeType == shade_types::drycontact || this->shadeType == shade_types::drycontact2) return;
-      dir = 0;
-      // With the step commands and integrated shades
-      // the motor must tilt in the direction first then move
-      // so we have to calculate the target with this in mind.
-      if(this->stepSize == 0) return; // Avoid divide by 0.
-      if(this->lastFrame.stepSize == 0) this->lastFrame.stepSize = 1;
-      if(this->tiltType == tilt_types::integrated) {
-        // With integrated tilt this is more involved than ne would think because the step command can be moving not just the tilt
-        // but the lift.  So a determination needs to be made as to whether we are currently moving and it should stop.
-        // Conditions:
-        // 1. If both the tilt and lift are at 0% do nothing
-        // 2. If the tilt position is not currently at the top then shift the tilt.
-        // 3. If the tilt position is not currently at the top then shift the lift.
-        if(this->currentTiltPos <= 0.0f && this->currentPos <= 0.0f) return; // Do nothing
-        else if(this->currentTiltPos > 0.0f) {
-          // Set the tilt position.  This should stop the lift movement.
-          this->p_target(this->currentPos);
-          if(this->tiltTime == 0) return; // Avoid divide by 0.
-          this->p_tiltTarget(max(0.0f, this->currentTiltPos - (100.0f/(static_cast<float>(this->tiltTime/static_cast<float>(this->stepSize * this->lastFrame.stepSize))))));
-        }
-        else {
-          // We only have the lift to move.
-          if(this->upTime == 0) return; // Avoid divide by 0.
-          this->p_tiltTarget(this->currentTiltPos);
-          this->p_target(max(0.0f, this->currentPos - (100.0f/(static_cast<float>(this->upTime/static_cast<float>(this->stepSize * this->lastFrame.stepSize))))));
-        }
-      }
-      else if(this->tiltType == tilt_types::tiltonly) {
-        if(this->tiltTime == 0 || this->stepSize == 0) return;
-        this->p_tiltTarget(max(0.0f, this->currentTiltPos - (100.0f/(static_cast<float>(this->tiltTime/static_cast<float>(this->stepSize * this->lastFrame.stepSize))))));
-      }
-      else if(this->currentPos > 0.0f) {
-        if(this->downTime == 0 || this->stepSize == 0) return;
-        this->p_target(max(0.0f, this->currentPos - (100.0f/(static_cast<float>(this->upTime/static_cast<float>(this->stepSize * this->lastFrame.stepSize))))));
-      }
-      this->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
+      this->processStepCommand(cmd, -1, internal, frame);
       break;
     case somfy_commands::StepDown:
-      if(this->lastFrame.processed) return;
-      this->lastFrame.processed = true;
-      if(this->shadeType == shade_types::drycontact || this->shadeType == shade_types::drycontact2) return;
-      dir = 1;
-      // With the step commands and integrated shades
-      // the motor must tilt in the direction first then move
-      // so we have to calculate the target with this in mind.
-      if(this->stepSize == 0) return; // Avoid divide by 0.
-      if(this->lastFrame.stepSize == 0) this->lastFrame.stepSize = 1;
-      
-      if(this->tiltType == tilt_types::integrated) {
-        // With integrated tilt this is more involved than ne would think because the step command can be moving not just the tilt
-        // but the lift.  So a determination needs to be made as to whether we are currently moving and it should stop.
-        // Conditions:
-        // 1. If both the tilt and lift are at 100% do nothing
-        // 2. If the tilt position is not currently at the bottom then shift the tilt.
-        // 3. If the tilt position is add the bottom then shift the lift.
-        if(this->currentTiltPos >= 100.0f && this->currentPos >= 100.0f) return; // Do nothing
-        else if(this->currentTiltPos < 100.0f) {
-          // Set the tilt position.  This should stop the lift movement.
-          this->p_target(this->currentPos);
-          if(this->tiltTime == 0) return; // Avoid divide by 0.
-          this->p_tiltTarget(min(100.0f, this->currentTiltPos + (100.0f/(static_cast<float>(this->tiltTime/static_cast<float>(this->stepSize * this->lastFrame.stepSize))))));
-        }
-        else {
-          // We only have the lift to move.
-          this->p_tiltTarget(this->currentTiltPos);
-          if(this->downTime == 0) return; // Avoid divide by 0.
-          this->p_target(min(100.0f, this->currentPos + (100.0f/(static_cast<float>(this->downTime/static_cast<float>(this->stepSize* this->lastFrame.stepSize))))));
-        }
-      }
-      else if(this->tiltType == tilt_types::tiltonly) {
-        if(this->tiltTime == 0 || this->stepSize == 0) return;
-        this->p_target(min(100.0f, this->currentTiltPos + (100.0f/(static_cast<float>(this->tiltTime/static_cast<float>(this->stepSize * this->lastFrame.stepSize))))));
-      }
-      else if(this->currentPos < 100.0f) {
-        if(this->downTime == 0 || this->stepSize == 0) return;
-        this->p_target(min(100.0f, this->currentPos + (100.0f/(static_cast<float>(this->downTime/static_cast<float>(this->stepSize * this->lastFrame.stepSize))))));
-      }
-      this->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
+      this->processStepCommand(cmd, +1, internal, frame);
       break;
     case somfy_commands::Toggle:
       if(this->lastFrame.processed) return;

@@ -496,24 +496,22 @@ TEST_F(ProcessFrameTest, StepDown_Roller_IncreasesTarget) {
     EXPECT_GT(shade.getTarget(), 50.0f);
 }
 
-TEST_F(ProcessFrameTest, StepUp_Roller_AtTop_DoesNotGoNegative) {
+TEST_F(ProcessFrameTest, StepUp_Roller_AtTop_DoesNothing) {
     shade.currentPos = 0.0f;
     shade.target     = 0.0f;
     auto f = make_frame(somfy_commands::StepUp);
     f.stepSize = 1;
-    // emitCommand is outside the `currentPos > 0` guard, so it still fires.
-    // Target must be clamped to 0 and not go negative.
-    EXPECT_CALL(shade, emitCommand(somfy_commands::StepUp, _, _, _));
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(0);
     shade.processFrame(f, /*internal=*/false);
     EXPECT_FLOAT_EQ(shade.getTarget(), 0.0f);
 }
 
-TEST_F(ProcessFrameTest, StepDown_Roller_AtBottom_DoesNotExceedHundred) {
+TEST_F(ProcessFrameTest, StepDown_Roller_AtBottom_DoesNothing) {
     shade.currentPos = 100.0f;
     shade.target     = 100.0f;
     auto f = make_frame(somfy_commands::StepDown);
     f.stepSize = 1;
-    EXPECT_CALL(shade, emitCommand(somfy_commands::StepDown, _, _, _));
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(0);
     shade.processFrame(f, /*internal=*/false);
     EXPECT_FLOAT_EQ(shade.getTarget(), 100.0f);
 }
@@ -551,10 +549,7 @@ TEST_F(ProcessFrameTest, StepUp_TiltOnly_DecreasesTiltTarget) {
     EXPECT_LT(shade.getTiltTarget(), 50.0f);
 }
 
-TEST_F(ProcessFrameTest, StepDown_TiltOnly_IncreasesTarget) {
-    // NOTE: The tiltonly branch of StepDown calls p_target (not p_tiltTarget) —
-    // this appears to be a production bug.  This test documents the actual behaviour
-    // so the refactoring plan can fix it with a known baseline.
+TEST_F(ProcessFrameTest, StepDown_TiltOnly_IncreasesTiltTarget) {
     shade.tiltType       = tilt_types::tiltonly;
     shade.currentTiltPos = 50.0f;
     shade.tiltTarget     = 50.0f;
@@ -563,8 +558,8 @@ TEST_F(ProcessFrameTest, StepDown_TiltOnly_IncreasesTarget) {
     f.stepSize = 1;
     EXPECT_CALL(shade, emitCommand(somfy_commands::StepDown, _, _, _));
     shade.processFrame(f, /*internal=*/false);
-    EXPECT_GT(shade.getTarget(), 50.0f);       // p_target is called (bug: should be p_tiltTarget)
-    EXPECT_FLOAT_EQ(shade.getTiltTarget(), 50.0f);  // tiltTarget unchanged
+    EXPECT_GT(shade.getTiltTarget(), 50.0f);   // p_tiltTarget is called (bug fixed in refactor)
+    EXPECT_FLOAT_EQ(shade.getTarget(), 50.0f); // lift target unchanged
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
