@@ -82,6 +82,7 @@ class SomfyShade : public SomfyRemote {
     void moveToMyPosition();
     void processWaitingFrame();
     void processStepCommand(somfy_commands cmd, int8_t stepDir, bool internal, somfy_frame_t &frame);
+    void processSensorCommand(somfy_frame_t &frame, uint64_t curTime);
     void publish();
     void unpublish();
     static void unpublish(uint8_t id);

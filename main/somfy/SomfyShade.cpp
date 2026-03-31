@@ -1273,6 +1273,31 @@ void SomfyShade::processWaitingFrame() {
   }
 }
 
+void SomfyShade::processSensorCommand(somfy_frame_t &frame, uint64_t curTime) {
+  const uint8_t prevFlags = this->flags;
+  const bool wasSunny = prevFlags & static_cast<uint8_t>(somfy_flags_t::Sunny);
+  const bool wasWindy = prevFlags & static_cast<uint8_t>(somfy_flags_t::Windy);
+  const uint16_t status = frame.rollingCode << 4;
+  this->p_sunny(status & static_cast<uint8_t>(somfy_flags_t::Sunny));
+  this->p_windy(status & static_cast<uint8_t>(somfy_flags_t::Windy));
+  if(frame.rollingCode & static_cast<uint8_t>(somfy_flags_t::DemoMode))
+    this->flags |= static_cast<uint8_t>(somfy_flags_t::DemoMode);
+  else
+    this->flags &= ~(static_cast<uint8_t>(somfy_flags_t::DemoMode));
+  const bool isSunny = this->flags & static_cast<uint8_t>(somfy_flags_t::Sunny);
+  const bool isWindy = this->flags & static_cast<uint8_t>(somfy_flags_t::Windy);
+  if(isSunny) { this->noSunStart = 0; this->noSunDone = true; }
+  else         { this->sunStart   = 0; this->sunDone   = true; }
+  if(isWindy)  { this->noWindStart = 0; this->noWindDone = true; this->windLast = curTime; }
+  else         { this->windStart   = 0; this->windDone   = true; }
+  if(isSunny && !wasSunny)        { this->sunStart   = curTime; this->sunDone   = false; ESP_LOGI(TAG, "[%u] Sun -> start",    this->shadeId); }
+  else if(!isSunny && wasSunny)   { this->noSunStart = curTime; this->noSunDone = false; ESP_LOGI(TAG, "[%u] No Sun -> start", this->shadeId); }
+  if(isWindy && !wasWindy)        { this->windStart   = curTime; this->windDone   = false; ESP_LOGI(TAG, "[%u] Wind -> start",    this->shadeId); }
+  else if(!isWindy && wasWindy)   { this->noWindStart = curTime; this->noWindDone = false; ESP_LOGI(TAG, "[%u] No Wind -> start", this->shadeId); }
+  this->emitState();
+  somfy.updateGroupFlags();
+}
+
 // stepDir: -1 = StepUp (decrease position), +1 = StepDown (increase position)
 void SomfyShade::processStepCommand(somfy_commands cmd, int8_t stepDir, bool internal, somfy_frame_t &frame) {
   if(this->lastFrame.processed) return;
@@ -1349,77 +1374,7 @@ void SomfyShade::processFrame(somfy_frame_t &frame, bool internal) {
     case somfy_commands::Sensor:
       this->lastFrame.processed = true;
       if(this->shadeType == shade_types::drycontact || this->shadeType == shade_types::drycontact2) return;
-      {
-        const uint8_t prevFlags = this->flags;
-        const bool wasSunny = prevFlags & static_cast<uint8_t>(somfy_flags_t::Sunny);
-        const bool wasWindy = prevFlags & static_cast<uint8_t>(somfy_flags_t::Windy);
-        const uint16_t status = frame.rollingCode << 4;
-        if (status & static_cast<uint8_t>(somfy_flags_t::Sunny))
-          this->p_sunny(true);
-          //this->flags |= static_cast<uint8_t>(somfy_flags_t::Sunny);
-        else
-          this->p_sunny(false);
-          //this->flags &= ~(static_cast<uint8_t>(somfy_flags_t::Sunny));
-        if (status & static_cast<uint8_t>(somfy_flags_t::Windy))
-          this->p_windy(true);
-          //this->flags |= static_cast<uint8_t>(somfy_flags_t::Windy);
-        else
-          this->p_windy(false);
-          //this->flags &= ~(static_cast<uint8_t>(somfy_flags_t::Windy));
-        if(frame.rollingCode & static_cast<uint8_t>(somfy_flags_t::DemoMode))
-          this->flags |= static_cast<uint8_t>(somfy_flags_t::DemoMode);
-        else
-          this->flags &= ~(static_cast<uint8_t>(somfy_flags_t::DemoMode));
-        const bool isSunny = this->flags & static_cast<uint8_t>(somfy_flags_t::Sunny);
-        const bool isWindy = this->flags & static_cast<uint8_t>(somfy_flags_t::Windy);
-        if (isSunny)
-        {
-          this->noSunStart = 0;
-          this->noSunDone = true;
-        }
-        else
-        {
-          this->sunStart = 0;
-          this->sunDone = true;
-        }
-        if (isWindy)
-        {
-          this->noWindStart = 0;
-          this->noWindDone = true;
-          this->windLast = curTime;
-        }
-        else
-        {
-          this->windStart = 0;
-          this->windDone = true;
-        }
-        if (isSunny && !wasSunny)
-        {
-          this->sunStart = curTime;
-          this->sunDone = false;
-          ESP_LOGI(TAG, "[%u] Sun -> start", this->shadeId);
-        }
-        else if (!isSunny && wasSunny)
-        {
-          this->noSunStart = curTime;
-          this->noSunDone = false;
-          ESP_LOGI(TAG, "[%u] No Sun -> start", this->shadeId);
-        }
-        if (isWindy && !wasWindy)
-        {
-          this->windStart = curTime;
-          this->windDone = false;
-          ESP_LOGI(TAG, "[%u] Wind -> start", this->shadeId);
-        }
-        else if (!isWindy && wasWindy)
-        {
-          this->noWindStart = curTime;
-          this->noWindDone = false;
-          ESP_LOGI(TAG, "[%u] No Wind -> start", this->shadeId);
-        }
-        this->emitState();
-        somfy.updateGroupFlags();
-      }
+      this->processSensorCommand(frame, curTime);
       break;
     case somfy_commands::Prog:
     case somfy_commands::MyUp:
