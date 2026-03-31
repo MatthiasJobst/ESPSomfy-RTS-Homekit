@@ -1,0 +1,28 @@
+name: Unit Tests
+
+on:
+  push:
+    branches: [RefactorComplexity]
+  pull_request:
+    branches: [RefactorComplexity]
+
+jobs:
+  unit-tests:
+    name: GoogleTest (processFrame)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get install -y cmake ninja-build gcovr
+
+      - name: Configure
+        run: cmake -S test/unit -B test/unit/build -G Ninja
+
+      - name: Build
+        run: cmake --build test/unit/build
+
+      - name: Run tests
+        run: ctest --test-dir test/unit/build --output-on-failure
