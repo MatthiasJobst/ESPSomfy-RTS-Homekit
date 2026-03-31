@@ -1298,6 +1298,14 @@ void SomfyShade::processSensorCommand(somfy_frame_t &frame, uint64_t curTime) {
   somfy.updateGroupFlags();
 }
 
+void SomfyShade::processFlagCommand(bool internal, somfy_frame_t &frame) {
+  this->p_sunFlag(false);
+  somfy.isDirty = true;
+  this->emitState();
+  this->emitCommand(frame.cmd, internal ? "internal" : "remote", frame.remoteAddress);
+  somfy.updateGroupFlags();
+}
+
 void SomfyShade::processSunFlagCommand(bool internal, somfy_frame_t &frame) {
   this->p_sunFlag(true);
   const bool isWindy = this->flags & static_cast<uint8_t>(somfy_flags_t::Windy);
@@ -1479,8 +1487,6 @@ void SomfyShade::processFrame(somfy_frame_t &frame, bool internal) {
   // If the command is coming from a remote then we are aborting all these positioning operations.
   if(!internal) this->settingMyPos = this->settingPos = this->settingTiltPos = false;
   somfy_commands cmd = this->transformCommand(frame.cmd);
-  // At this point we are not processing the combo buttons
-  // will need to see what the shade does when you press both.
   switch(cmd) {
     case somfy_commands::Sensor:
       this->lastFrame.processed = true;
@@ -1501,13 +1507,8 @@ void SomfyShade::processFrame(somfy_frame_t &frame, bool internal) {
       this->lastFrame.processed = true;
       if(this->shadeType == shade_types::drycontact || this->shadeType == shade_types::drycontact2) return;
       if(this->lastFrame.rollingCode & 0x8000) return; // Some sensors send bogus frames with a rollingCode >= 32768 that cause them to change the state.
-      this->p_sunFlag(false);
-      //this->flags &= ~(static_cast<uint8_t>(somfy_flags_t::SunFlag));
-      somfy.isDirty = true;
-      this->emitState();
-      this->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
-      somfy.updateGroupFlags();
-      break;    
+      this->processFlagCommand(internal, frame);
+      break;
     case somfy_commands::SunFlag:
       if(this->shadeType == shade_types::drycontact || this->shadeType == shade_types::drycontact2) return;
       if(this->lastFrame.rollingCode & 0x8000) return; // Some sensors send bogus frames with a rollingCode >= 32768 that cause them to change the state.
@@ -1561,7 +1562,6 @@ void SomfyShade::processFrame(somfy_frame_t &frame, bool internal) {
       dir = 0;                    // LCOV_EXCL_LINE
       break;                      // LCOV_EXCL_LINE
   }
-  //if(dir == 0 && this->tiltType == tilt_types::tiltmotor && this->tiltDirection != 0) this->setTiltMovement(0);
   this->setMovement(dir);
 }
 
