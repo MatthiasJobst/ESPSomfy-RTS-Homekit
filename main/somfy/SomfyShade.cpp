@@ -1367,6 +1367,48 @@ void SomfyShade::processMyCommand(bool internal, somfy_frame_t &frame, uint64_t 
   }
 }
 
+// moveDir: -1 = Up (target 0), +1 = Down (target 100)
+void SomfyShade::processUpDownCommand(somfy_commands cmd, int8_t moveDir, bool internal, somfy_frame_t &frame, uint64_t curTime) {
+  const float endpoint = moveDir < 0 ? 0.0f : 100.0f;
+  if(this->shadeType == shade_types::drycontact) {
+    this->lastFrame.processed = true;
+    return;
+  }
+  if(this->shadeType == shade_types::drycontact2) {
+    if(this->lastFrame.processed) return;
+    this->lastFrame.processed = true;
+    if(this->currentPos != endpoint) this->p_target(endpoint);
+    this->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
+    return;
+  }
+  // Down is suppressed for a period after a wind event.
+  if(moveDir > 0 && this->windLast && (curTime - this->windLast) < SOMFY_NO_WIND_REMOTE_TIMEOUT) return;
+
+  if(this->tiltType == tilt_types::tiltmotor || this->tiltType == tilt_types::euromode) {
+    if(!internal) this->lastFrame.await = curTime + 500;
+    else          this->lastFrame.processed = true;
+    // Up: emitCommand is deferred to processWaitingFrame when await is set.
+    // Down: emitCommand fires immediately so the motor starts moving.
+    if(moveDir < 0 && !internal) return;
+  }
+  else {
+    if(!internal) {
+      if(moveDir < 0) {
+        // Up: tiltonly only moves tilt; everything else moves both
+        if(this->tiltType == tilt_types::tiltonly) this->p_tiltTarget(endpoint);
+        else { this->p_target(endpoint); this->p_tiltTarget(endpoint); }
+      }
+      else {
+        // Down: move lift unless tiltonly; move tilt unless none
+        if(this->tiltType != tilt_types::tiltonly) this->p_target(endpoint);
+        if(this->tiltType != tilt_types::none)     this->p_tiltTarget(endpoint);
+      }
+    }
+    this->lastFrame.processed = true;
+  }
+  this->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
+}
+
 // stepDir: -1 = StepUp (decrease position), +1 = StepDown (increase position)
 void SomfyShade::processStepCommand(somfy_commands cmd, int8_t stepDir, bool internal, somfy_frame_t &frame) {
   if(this->lastFrame.processed) return;
@@ -1472,60 +1514,10 @@ void SomfyShade::processFrame(somfy_frame_t &frame, bool internal) {
       this->processSunFlagCommand(internal, frame);
       break;
     case somfy_commands::Up:
-      if(this->shadeType == shade_types::drycontact) {
-        this->lastFrame.processed = true;
-        return;
-      }
-      else if(this->shadeType == shade_types::drycontact2) {
-        if(this->lastFrame.processed) return;
-        this->lastFrame.processed = true;
-        if(this->currentPos != 0.0f) this->p_target(0);
-        this->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
-        return;
-      }
-      if(this->tiltType == tilt_types::tiltmotor || this->tiltType == tilt_types::euromode) {
-        // Wait another half second just in case we are potentially processing a tilt.
-        if(!internal) this->lastFrame.await = curTime + 500;
-        else this->lastFrame.processed = true;
-      }
-      else {
-        // If from a remote we will simply be going up.
-        if(this->tiltType == tilt_types::tiltonly && !internal) this->p_tiltTarget(0.0f);
-        else if(!internal) {
-          if(this->tiltType != tilt_types::tiltonly) this->p_target(0.0f);
-          this->p_tiltTarget(0.0f);
-        }
-        this->lastFrame.processed = true;
-        this->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
-      }
+      this->processUpDownCommand(cmd, -1, internal, frame, curTime);
       break;
     case somfy_commands::Down:
-      if(this->shadeType == shade_types::drycontact) {
-        this->lastFrame.processed = true;
-        return;
-      }
-      else if(this->shadeType == shade_types::drycontact2) {
-        if(this->lastFrame.processed) return;
-        this->lastFrame.processed = true;
-        if(this->currentPos != 100.0f) this->p_target(100);
-        this->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
-        return;
-      }
-      if (!this->windLast || (curTime - this->windLast) >= SOMFY_NO_WIND_REMOTE_TIMEOUT) {
-        if(this->tiltType == tilt_types::tiltmotor || this->tiltType == tilt_types::euromode) {
-          // Wait another half seccond just in case we are potentially processing a tilt.
-          if(!internal) this->lastFrame.await = curTime + 500;
-          else this->lastFrame.processed = true;
-        }
-        else {
-          this->lastFrame.processed = true;
-          if(!internal) {
-            if(this->tiltType != tilt_types::tiltonly) this->p_target(100.0f);
-            if(this->tiltType != tilt_types::none) this->p_tiltTarget(100.0f);
-          }
-        }
-        this->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
-      }
+      this->processUpDownCommand(cmd, +1, internal, frame, curTime);
       break;
     case somfy_commands::My:
       if(this->shadeType == shade_types::drycontact2) return;
