@@ -1322,6 +1322,51 @@ void SomfyShade::processSunFlagCommand(bool internal, somfy_frame_t &frame) {
   somfy.updateGroupFlags();
 }
 
+void SomfyShade::processMyCommand(bool internal, somfy_frame_t &frame, uint64_t curTime) {
+  const somfy_commands cmd = frame.cmd;
+  if(this->isToggle()) {
+    if(this->lastFrame.processed) return;
+    this->lastFrame.processed = true;
+    if(!this->isIdle())               this->p_target(this->currentPos);
+    else if(this->currentPos == 100.0f) this->p_target(0.0f);
+    else if(this->currentPos == 0.0f)   this->p_target(100.0f);
+    else                               this->p_target(this->lastMovement == -1 ? 100 : 0);
+    this->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
+    return;
+  }
+  if(this->shadeType == shade_types::drycontact) {
+    if(this->lastFrame.processed) return;
+    this->lastFrame.processed = true;
+    if(this->currentPos == 100.0f)    this->p_target(0);
+    else if(this->currentPos == 0.0f) this->p_target(100);
+    else                              this->p_target(this->lastMovement == -1 ? 100 : 0);
+    this->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
+    return;
+  }
+  if(this->isIdle()) {
+    if(!internal) {
+      this->lastFrame.await = curTime + 500;
+    }
+    else {
+      if(this->lastFrame.processed) return;
+      ESP_LOGI(TAG, "Moving to My target");
+      this->lastFrame.processed = true;
+      if(this->myTiltPos >= 0.0f && this->myTiltPos <= 100.0f) this->p_tiltTarget(this->myTiltPos);
+      if(this->myPos >= 0.0f && this->myPos <= 100.0f && this->tiltType != tilt_types::tiltonly) this->p_target(this->myPos);
+      this->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
+    }
+  }
+  else {
+    if(this->lastFrame.processed) return;
+    this->lastFrame.processed = true;
+    if(!internal) {
+      if(this->tiltType != tilt_types::tiltonly) this->p_target(this->currentPos);
+      this->p_tiltTarget(this->currentTiltPos);
+    }
+    this->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
+  }
+}
+
 // stepDir: -1 = StepUp (decrease position), +1 = StepDown (increase position)
 void SomfyShade::processStepCommand(somfy_commands cmd, int8_t stepDir, bool internal, somfy_frame_t &frame) {
   if(this->lastFrame.processed) return;
@@ -1484,51 +1529,7 @@ void SomfyShade::processFrame(somfy_frame_t &frame, bool internal) {
       break;
     case somfy_commands::My:
       if(this->shadeType == shade_types::drycontact2) return;
-      if(this->isToggle()) { // This is a one button device
-        if(this->lastFrame.processed) return;
-        this->lastFrame.processed = true;
-        if(!this->isIdle()) this->p_target(this->currentPos);
-        else if(this->currentPos == 100.0f) this->p_target(0.0f);
-        else if(this->currentPos == 0.0f) this->p_target(100.0f);
-        else this->p_target(this->lastMovement == -1 ? 100 : 0);
-        this->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
-        return;
-      }
-      else if(this->shadeType == shade_types::drycontact) {
-        // In this case we need to toggle the contact but we only should do this if
-        // this is not a repeat.
-        if(this->lastFrame.processed) return;
-        this->lastFrame.processed = true;
-        if(this->currentPos == 100.0f) this->p_target(0);
-        else if(this->currentPos == 0.0f) this->p_target(100);
-        else this->p_target(this->lastMovement == -1 ? 100 : 0);
-        this->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
-        return;
-      }
-      if(this->isIdle()) {
-        if(!internal) {
-          // This frame is coming from a remote. We are potentially setting
-          // the my position.
-          this->lastFrame.await = curTime + 500;
-        }
-        else {
-          if(this->lastFrame.processed) return;
-          ESP_LOGI(TAG, "Moving to My target");
-          this->lastFrame.processed = true;
-          if(this->myTiltPos >= 0.0f && this->myTiltPos <= 100.0f) this->p_tiltTarget(this->myTiltPos);
-          if(this->myPos >= 0.0f && this->myPos <= 100.0f && this->tiltType != tilt_types::tiltonly) this->p_target(this->myPos);
-          this->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
-        }
-      }
-      else {
-        if(this->lastFrame.processed) return;
-        this->lastFrame.processed = true;
-        if(!internal) {
-          if(this->tiltType != tilt_types::tiltonly) this->p_target(this->currentPos);
-          this->p_tiltTarget(this->currentTiltPos);
-        }
-        this->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
-      }
+      this->processMyCommand(internal, frame, curTime);
       break;
     case somfy_commands::StepUp:
       this->processStepCommand(cmd, -1, internal, frame);
