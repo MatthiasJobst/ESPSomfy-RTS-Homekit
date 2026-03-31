@@ -1298,6 +1298,30 @@ void SomfyShade::processSensorCommand(somfy_frame_t &frame, uint64_t curTime) {
   somfy.updateGroupFlags();
 }
 
+void SomfyShade::processSunFlagCommand(bool internal, somfy_frame_t &frame) {
+  this->p_sunFlag(true);
+  const bool isWindy = this->flags & static_cast<uint8_t>(somfy_flags_t::Windy);
+  if(!isWindy) {
+    const bool isSunny = this->flags & static_cast<uint8_t>(somfy_flags_t::Sunny);
+    if(isSunny && this->sunDone) {
+      if(this->tiltType == tilt_types::tiltonly)
+        this->p_tiltTarget(this->myTiltPos >= 0 ? this->myTiltPos : 100.0f);
+      else
+        this->p_target(this->myPos >= 0 ? this->myPos : 100.0f);
+    }
+    else if(!isSunny && this->noSunDone) {
+      if(this->tiltType == tilt_types::tiltonly)
+        this->p_tiltTarget(0.0f);
+      else
+        this->p_target(0.0f);
+    }
+  }
+  somfy.isDirty = true;
+  this->emitState();
+  this->emitCommand(frame.cmd, internal ? "internal" : "remote", frame.remoteAddress);
+  somfy.updateGroupFlags();
+}
+
 // stepDir: -1 = StepUp (decrease position), +1 = StepDown (increase position)
 void SomfyShade::processStepCommand(somfy_commands cmd, int8_t stepDir, bool internal, somfy_frame_t &frame) {
   if(this->lastFrame.processed) return;
@@ -1400,31 +1424,7 @@ void SomfyShade::processFrame(somfy_frame_t &frame, bool internal) {
     case somfy_commands::SunFlag:
       if(this->shadeType == shade_types::drycontact || this->shadeType == shade_types::drycontact2) return;
       if(this->lastFrame.rollingCode & 0x8000) return; // Some sensors send bogus frames with a rollingCode >= 32768 that cause them to change the state.
-      {
-        const bool isWindy = this->flags & static_cast<uint8_t>(somfy_flags_t::Windy);
-        //this->flags |= static_cast<uint8_t>(somfy_flags_t::SunFlag);
-        this->p_sunFlag(true);
-        if (!isWindy)
-        {
-          const bool isSunny = this->flags & static_cast<uint8_t>(somfy_flags_t::Sunny);
-          if (isSunny && this->sunDone) {
-            if(this->tiltType == tilt_types::tiltonly)
-              this->p_tiltTarget(this->myTiltPos >= 0 ? this->myTiltPos : 100.0f);
-            else
-              this->p_target(this->myPos >= 0 ? this->myPos : 100.0f);
-          }
-          else if (!isSunny && this->noSunDone) {
-            if(this->tiltType == tilt_types::tiltonly)
-              this->p_tiltTarget(0.0f);
-            else
-              this->p_target(0.0f);
-          }
-        }
-        somfy.isDirty = true;
-        this->emitState();
-        this->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
-        somfy.updateGroupFlags();
-      }
+      this->processSunFlagCommand(internal, frame);
       break;
     case somfy_commands::Up:
       if(this->shadeType == shade_types::drycontact) {
