@@ -24,6 +24,7 @@ FetchContent_MakeAvailable(arduinojson)
 # ── Source files under test ─────────────────────────────────────────────────
 # We compile only the Somfy protocol/shade files; everything else is stubbed.
 set(PRODUCTION_SOURCES
+    ../../main/somfy/SomfyFlagManager.cpp
     ../../main/somfy/SomfyShade.cpp
     ../../main/somfy/SomfyRemote.cpp
     ../../main/somfy/SomfyFrame.cpp

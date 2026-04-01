@@ -3,21 +3,13 @@
 // and light flags, GPIO relay outputs, MQTT state publishing, and HomeKit integration.
 #pragma once
 #include "SomfyRemote.h"
+#include "SomfyFlagManager.h"
 
 class SomfyShade : public SomfyRemote {
   protected:
     uint8_t shadeId = 255;
     uint64_t moveStart = 0;
     uint64_t tiltStart = 0;
-    uint64_t noSunStart = 0;
-    uint64_t sunStart = 0;
-    uint64_t windStart = 0;
-    uint64_t windLast = 0;
-    uint64_t noWindStart = 0;
-    bool noSunDone = true;
-    bool sunDone = true;
-    bool windDone = true;
-    bool noWindDone = true;
     float startPos = 0.0f;
     float startTiltPos = 0.0f;
     bool settingMyPos = false;
@@ -25,6 +17,7 @@ class SomfyShade : public SomfyRemote {
     bool settingTiltPos = false;
     uint32_t awaitMy = 0;
   public:
+    SomfyFlagManager flagManager;
     uint8_t roomId = 0;
     int8_t sortOrder = 0;
     bool flipPosition = false;
