@@ -187,130 +187,12 @@ bool SomfyShade::isInGroup() {
 }
 
 void SomfyShade::setGPIOs() {
-  if(this->proto == radio_proto::GP_Relay) {
-    // Determine whether the direction needs to be set.
-    uint8_t p_on = (this->gpioFlags & (uint8_t)gpio_flags_t::LowLevelTrigger) == 0x00 ? HIGH : LOW;
-    uint8_t p_off = (this->gpioFlags & (uint8_t)gpio_flags_t::LowLevelTrigger) == 0x00 ? LOW : HIGH;
-    
-    int8_t dir = this->direction;
-    if(dir == 0 && this->tiltType == tilt_types::integrated)
-      dir = this->tiltDirection;
-    else if(this->tiltType == tilt_types::tiltonly)
-      dir = this->tiltDirection;
-    if(this->shadeType == shade_types::drycontact) {
-      gpio_set_level((gpio_num_t)this->gpioDown,this->currentPos == 100 ? p_on : p_off);
-      this->gpioDir = this->currentPos == 100 ? 1 : -1;
-    }
-    else if(this->shadeType == shade_types::drycontact2) {
-      if(this->currentPos == 100) {
-        gpio_set_level((gpio_num_t)this->gpioDown,p_off);
-        gpio_set_level((gpio_num_t)this->gpioUp,p_on);
-      }
-      else {
-        gpio_set_level((gpio_num_t)this->gpioUp,p_off);
-        gpio_set_level((gpio_num_t)this->gpioDown,p_on);
-      }
-      this->gpioDir = this->currentPos == 100 ? 1 : -1;
-    }
-    else {
-      switch(dir) {
-        case -1:
-          gpio_set_level((gpio_num_t)this->gpioDown,p_off);
-          gpio_set_level((gpio_num_t)this->gpioUp,p_on);
-          if(dir != this->gpioDir) ESP_LOGI(TAG, "UP: true, DOWN: false");
-          this->gpioDir = dir;
-          break;
-        case 1:
-          gpio_set_level((gpio_num_t)this->gpioUp,p_off);
-          gpio_set_level((gpio_num_t)this->gpioDown,p_on);
-          if(dir != this->gpioDir) ESP_LOGI(TAG, "UP: false, DOWN: true");
-          this->gpioDir = dir;
-          break;
-        default:
-          gpio_set_level((gpio_num_t)this->gpioUp,p_off);
-          gpio_set_level((gpio_num_t)this->gpioDown,p_off);
-          if(dir != this->gpioDir) ESP_LOGI(TAG, "UP: false, DOWN: false");
-          this->gpioDir = dir;
-          break;
-      }
-    }
-  }
-  else if(this->proto == radio_proto::GP_Remote) {
-    if(millis() > this->gpioRelease) {
-      //uint8_t p_on = (this->gpioFlags & (uint8_t)gpio_flags_t::LowLevelTrigger) == 0x00 ? HIGH : LOW;
-      uint8_t p_off = (this->gpioFlags & (uint8_t)gpio_flags_t::LowLevelTrigger) == 0x00 ? LOW : HIGH;
-      gpio_set_level((gpio_num_t)this->gpioUp,p_off);
-      gpio_set_level((gpio_num_t)this->gpioDown,p_off);
-      gpio_set_level((gpio_num_t)this->gpioMy,p_off);
-      this->gpioRelease = 0;
-    }
-  }
+  this->gpioControl.setGPIOs(this->proto, this->currentPos, this->direction,
+                              this->tiltDirection, this->shadeType, this->tiltType);
 }
 
 void SomfyShade::triggerGPIOs(somfy_frame_t &frame) {
-  if(this->proto == radio_proto::GP_Remote) {
-    uint8_t p_on = (this->gpioFlags & (uint8_t)gpio_flags_t::LowLevelTrigger) == 0x00 ? HIGH : LOW;
-    uint8_t p_off = (this->gpioFlags & (uint8_t)gpio_flags_t::LowLevelTrigger) == 0x00 ? LOW : HIGH;
-    int8_t dir = 0;
-    switch(frame.cmd) {
-      case somfy_commands::My:
-        if(this->shadeType != shade_types::drycontact && !this->isToggle()) {
-          gpio_set_level((gpio_num_t)this->gpioUp,p_off);
-          gpio_set_level((gpio_num_t)this->gpioDown,p_off);
-          gpio_set_level((gpio_num_t)this->gpioMy,p_on);
-          dir = 0;
-          if(dir != this->gpioDir) ESP_LOGI(TAG, "UP: false, DOWN: false, MY: true");
-        }
-        break;
-      case somfy_commands::Up:
-        if(this->shadeType != shade_types::drycontact && !this->isToggle() && this->shadeType != shade_types::drycontact2) {
-          gpio_set_level((gpio_num_t)this->gpioMy,p_off);
-          gpio_set_level((gpio_num_t)this->gpioDown,p_off);
-          gpio_set_level((gpio_num_t)this->gpioUp,p_on);
-          dir = -1;
-          ESP_LOGI(TAG, "UP: true, DOWN: false, MY: false");
-        }
-        break;
-      case somfy_commands::Toggle:
-      case somfy_commands::Down:
-        if(this->shadeType != shade_types::drycontact && !this->isToggle() && this->shadeType != shade_types::drycontact2) {
-          gpio_set_level((gpio_num_t)this->gpioMy,p_off);
-          gpio_set_level((gpio_num_t)this->gpioUp,p_off);
-        }
-        gpio_set_level((gpio_num_t)this->gpioDown,p_on);
-        dir = 1;
-        ESP_LOGI(TAG, "UP: false, DOWN: true, MY: false");
-        break;
-      case somfy_commands::MyUp:
-        if(this->shadeType != shade_types::drycontact && !this->isToggle() && this->shadeType != shade_types::drycontact2) {
-          gpio_set_level((gpio_num_t)this->gpioDown,p_off);
-          gpio_set_level((gpio_num_t)this->gpioMy,p_on);
-          gpio_set_level((gpio_num_t)this->gpioUp,p_on);
-          ESP_LOGI(TAG, "UP: true, DOWN: false, MY: true");
-        }
-        break;
-      case somfy_commands::MyDown:
-        if(this->shadeType != shade_types::drycontact && !this->isToggle() && this->shadeType != shade_types::drycontact2) {
-          gpio_set_level((gpio_num_t)this->gpioUp,p_off);
-          gpio_set_level((gpio_num_t)this->gpioMy,p_on);
-          gpio_set_level((gpio_num_t)this->gpioDown,p_on);
-          ESP_LOGI(TAG, "UP: false, DOWN: true, MY: true");
-        }
-        break;
-      case somfy_commands::MyUpDown:
-        if(this->shadeType != shade_types::drycontact && this->isToggle() && this->shadeType != shade_types::drycontact2) {
-          gpio_set_level((gpio_num_t)this->gpioUp,p_on);
-          gpio_set_level((gpio_num_t)this->gpioMy,p_on);
-          gpio_set_level((gpio_num_t)this->gpioDown,p_on);
-          ESP_LOGI(TAG, "UP: true, DOWN: true, MY: true");
-        }
-        break;
-      default:
-        break;
-    }
-    this->gpioRelease = millis() + (frame.repeats * 200);
-    this->gpioDir = dir;
-  }  
+  this->gpioControl.triggerGPIOs(frame, this->proto, this->shadeType, this->isToggle());
 }
 
 void SomfyShade::checkMovement() {
@@ -2039,21 +1921,7 @@ bool SomfyShade::isToggle() {
 }
 
 bool SomfyShade::usesPin(uint8_t pin) {
-  if(this->proto != radio_proto::GP_Remote && this->proto != radio_proto::GP_Relay) return false;
-  if(this->gpioDown == pin) return true;
-  else if(this->shadeType == shade_types::drycontact)
-    return this->gpioDown == pin;
-  else if(this->isToggle()) {
-    if(this->proto == radio_proto::GP_Relay && this->gpioUp == pin) return true;    
-  }
-  else if(this->shadeType == shade_types::drycontact2) {
-    if(this->proto == radio_proto::GP_Relay && (this->gpioUp == pin || this->gpioDown == pin)) return true;
-  }
-  else {
-    if(this->gpioUp == pin) return true;
-    else if(this->proto == radio_proto::GP_Remote && this->gpioMy == pin) return true;    
-  }
-  return false;
+  return this->gpioControl.usesPin(pin, this->proto, this->shadeType, this->isToggle());
 }
 
 int8_t SomfyShade::validateJSON(JsonObject &obj) {
@@ -2093,9 +1961,9 @@ int8_t SomfyShade::validateJSON(JsonObject &obj) {
     if(proto == radio_proto::GP_Relay || proto == radio_proto::GP_Remote) {
       // Check to see if we are using the up and or down
       // GPIOs anywhere else.
-      uint8_t upPin = obj.containsKey("gpioUp") ? obj["gpioUp"].as<uint8_t>() : this->gpioUp;
-      uint8_t downPin = obj.containsKey("gpioDown") ? obj["gpioDown"].as<uint8_t>() : this->gpioDown;
-      uint8_t myPin = obj.containsKey("gpioMy") ? obj["gpioMy"].as<uint8_t>() : this->gpioMy;
+      uint8_t upPin = obj.containsKey("gpioUp") ? obj["gpioUp"].as<uint8_t>() : this->gpioControl.gpioUp;
+      uint8_t downPin = obj.containsKey("gpioDown") ? obj["gpioDown"].as<uint8_t>() : this->gpioControl.gpioDown;
+      uint8_t myPin = obj.containsKey("gpioMy") ? obj["gpioMy"].as<uint8_t>() : this->gpioControl.gpioMy;
       if(type == shade_types::drycontact || 
         ((type == shade_types::garage1 || type == shade_types::lgate1 || type == shade_types::cgate1 || type == shade_types::rgate1) 
         && proto == radio_proto::GP_Remote)) upPin = myPin = 255;
@@ -2146,12 +2014,12 @@ int8_t SomfyShade::fromJSON(JsonObject &obj) {
     if(obj.containsKey("sunSensor")) this->setSunSensor(obj["sunSensor"]);
     if(obj.containsKey("simMy")) this->setSimMy(obj["simMy"]);
     if(obj.containsKey("light")) this->setLight(obj["light"]);
-    if(obj.containsKey("gpioFlags")) this->gpioFlags = obj["gpioFlags"];
+    if(obj.containsKey("gpioFlags")) this->gpioControl.gpioFlags = obj["gpioFlags"];
     if(obj.containsKey("gpioLLTrigger")) {
       if(obj["gpioLLTrigger"].as<bool>())
-        this->gpioFlags |= (uint8_t)gpio_flags_t::LowLevelTrigger;
+        this->gpioControl.gpioFlags |= (uint8_t)gpio_flags_t::LowLevelTrigger;
       else
-        this->gpioFlags &= ~(uint8_t)gpio_flags_t::LowLevelTrigger;
+        this->gpioControl.gpioFlags &= ~(uint8_t)gpio_flags_t::LowLevelTrigger;
     }
     
     if(obj.containsKey("shadeType")) {
@@ -2215,14 +2083,14 @@ int8_t SomfyShade::fromJSON(JsonObject &obj) {
     }
     if(obj.containsKey("flags")) this->flags = obj["flags"];
     if(this->proto == radio_proto::GP_Remote || this->proto == radio_proto::GP_Relay) {
-      if(obj.containsKey("gpioUp")) this->gpioUp = obj["gpioUp"];
-      if(obj.containsKey("gpioDown")) this->gpioDown = obj["gpioDown"];
-      gpio_set_direction((gpio_num_t)this->gpioUp, GPIO_MODE_OUTPUT);
-      gpio_set_direction((gpio_num_t)this->gpioDown, GPIO_MODE_OUTPUT);
+      if(obj.containsKey("gpioUp")) this->gpioControl.gpioUp = obj["gpioUp"];
+      if(obj.containsKey("gpioDown")) this->gpioControl.gpioDown = obj["gpioDown"];
+      gpio_set_direction((gpio_num_t)this->gpioControl.gpioUp, GPIO_MODE_OUTPUT);
+      gpio_set_direction((gpio_num_t)this->gpioControl.gpioDown, GPIO_MODE_OUTPUT);
     }
     if(this->proto == radio_proto::GP_Remote) {
-      if(obj.containsKey("gpioMy")) this->gpioMy = obj["gpioMy"];
-      gpio_set_direction((gpio_num_t)this->gpioMy, GPIO_MODE_OUTPUT);
+      if(obj.containsKey("gpioMy")) this->gpioControl.gpioMy = obj["gpioMy"];
+      gpio_set_direction((gpio_num_t)this->gpioControl.gpioMy, GPIO_MODE_OUTPUT);
     }
   }
   return err;
@@ -2278,10 +2146,10 @@ void SomfyShade::toJSON(JsonResponse &json) {
   json.addElem("light", this->hasLight());
   json.addElem("repeats", this->repeats);
   json.addElem("sortOrder", this->sortOrder);  
-  json.addElem("gpioUp", this->gpioUp);
-  json.addElem("gpioDown", this->gpioDown);
-  json.addElem("gpioMy", this->gpioMy);
-  json.addElem("gpioLLTrigger", ((this->gpioFlags & (uint8_t)gpio_flags_t::LowLevelTrigger) == 0) ? false : true);
+  json.addElem("gpioUp", this->gpioControl.gpioUp);
+  json.addElem("gpioDown", this->gpioControl.gpioDown);
+  json.addElem("gpioMy", this->gpioControl.gpioMy);
+  json.addElem("gpioLLTrigger", ((this->gpioControl.gpioFlags & (uint8_t)gpio_flags_t::LowLevelTrigger) == 0) ? false : true);
   json.addElem("simMy", this->simMy());
   json.beginArray("linkedRemotes");
   for(uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++) {

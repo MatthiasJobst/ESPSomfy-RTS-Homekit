@@ -1,6 +1,7 @@
 #include "compat/preferences.h"
 #include "ShadeConfigFile.h"
 #include "esp_log.h"
+#include "driver/gpio.h"
 
 extern Preferences pref;
 extern ConfigSettings settings;
@@ -548,24 +549,24 @@ bool ShadeConfigFile::readShadeRecord(SomfyShade *shade) {
   if(this->header.version >= 13) shade->sortOrder = this->readUInt8(shade->getShadeId() - 1);
   else shade->sortOrder = shade->getShadeId() - 1;
   if(this->header.version > 14) {
-    shade->gpioUp = this->readUInt8(shade->gpioUp);
-    shade->gpioDown = this->readUInt8(shade->gpioDown);
+    shade->gpioControl.gpioUp = this->readUInt8(shade->gpioControl.gpioUp);
+    shade->gpioControl.gpioDown = this->readUInt8(shade->gpioControl.gpioDown);
   }
   if(this->header.version > 15)
-    shade->gpioMy = this->readUInt8(shade->gpioMy);
+    shade->gpioControl.gpioMy = this->readUInt8(shade->gpioControl.gpioMy);
   if(this->header.version > 16)
-    shade->gpioFlags = this->readUInt8(shade->gpioFlags);
+    shade->gpioControl.gpioFlags = this->readUInt8(shade->gpioControl.gpioFlags);
   if(shade->getShadeId() == 255) shade->clear();
   else if(shade->tiltType == tilt_types::tiltonly) {
     shade->myPos = shade->currentPos = shade->target = 100.0f;
   }
   pref.end();
   if(shade->proto == radio_proto::GP_Relay || shade->proto == radio_proto::GP_Remote) {
-    pinMode(shade->gpioUp, OUTPUT);
-    pinMode(shade->gpioDown, OUTPUT);
+    gpio_set_direction((gpio_num_t)shade->gpioControl.gpioUp, GPIO_MODE_OUTPUT);
+    gpio_set_direction((gpio_num_t)shade->gpioControl.gpioDown, GPIO_MODE_OUTPUT);
   }
   if(shade->proto == radio_proto::GP_Remote)
-    pinMode(shade->gpioMy, OUTPUT);
+    gpio_set_direction((gpio_num_t)shade->gpioControl.gpioMy, GPIO_MODE_OUTPUT);
   if(this->header.version >= 19) shade->roomId = this->readUInt8(0);
   if(this->file.position() != startPos + this->header.shadeRecordSize) {
     ESP_LOGI(TAG, "Reading to end of shade record");

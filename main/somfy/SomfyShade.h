@@ -4,6 +4,7 @@
 #pragma once
 #include "SomfyRemote.h"
 #include "SomfyFlagManager.h"
+#include "SomfyGPIOControl.h"
 
 class SomfyShade : public SomfyRemote {
   protected:
@@ -17,7 +18,8 @@ class SomfyShade : public SomfyRemote {
     bool settingTiltPos = false;
     uint32_t awaitMy = 0;
   public:
-    SomfyFlagManager flagManager;
+    SomfyFlagManager  flagManager;
+    SomfyGPIOControl  gpioControl;
     uint8_t roomId = 0;
     int8_t sortOrder = 0;
     bool flipPosition = false;
