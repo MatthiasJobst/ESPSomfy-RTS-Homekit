@@ -71,5 +71,19 @@ public:
     int8_t   getDirection()     const { return direction; }
     int8_t   getTiltDirection() const { return tiltDirection; }
     uint64_t getMoveStart()     const { return moveStart; }
+    bool     getSettingPos()    const { return settingPos; }
+    bool     getSettingTiltPos()const { return settingTiltPos; }
     bool     getSettingMyPos()  const { return settingMyPos; }
+
+    // ── GPIO state reads ────────────────────────────────────────────────────
+    int8_t   getGpioDir()       const { return gpioDir; }
+    uint32_t getGpioRelease()   const { return gpioRelease; }
+
+    // ── GPIO state writes (test setup helpers) ──────────────────────────────
+    void setProto(radio_proto p)      { proto = p; }
+    void setGpioUp(uint8_t v)         { gpioUp = v; }
+    void setGpioDown(uint8_t v)       { gpioDown = v; }
+    void setGpioMy(uint8_t v)         { gpioMy = v; }
+    void setGpioFlags(uint8_t v)      { gpioFlags = v; }
+    void setGpioRelease(uint32_t v)   { gpioRelease = v; }
 };

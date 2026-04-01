@@ -5,6 +5,10 @@
 
 // ── NVS stub state ─────────────────────────────────────────────────────────
 std::unordered_map<uint32_t, NvsStore> nvs_stub_stores;
+
+// ── GPIO stub state ────────────────────────────────────────────────────────
+#include "driver/gpio.h"
+std::unordered_map<int, uint32_t> gpio_pin_levels;
 uint32_t nvs_stub_next_handle = 1;
 
 // ── ELECHOUSE CC1101 stub instance ─────────────────────────────────────────

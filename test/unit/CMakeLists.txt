@@ -33,6 +33,8 @@ set(PRODUCTION_SOURCES
 add_executable(shade_tests
     test_processFrame.cpp
     test_checkMovement.cpp
+    test_motionIntent.cpp
+    test_gpio.cpp
     stubs/globals_stub.cpp
     ${PRODUCTION_SOURCES}
 )
@@ -68,4 +70,4 @@ target_compile_options(shade_tests PRIVATE
 target_link_options(shade_tests PRIVATE --coverage)
 
 include(GoogleTest)
-gtest_add_tests(TARGET shade_tests SOURCES test_processFrame.cpp test_checkMovement.cpp)
+gtest_add_tests(TARGET shade_tests SOURCES test_processFrame.cpp test_checkMovement.cpp test_motionIntent.cpp test_gpio.cpp)
