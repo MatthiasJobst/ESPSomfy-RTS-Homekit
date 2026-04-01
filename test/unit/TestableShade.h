@@ -47,9 +47,29 @@ public:
     uint32_t getLastFrameAwait() const { return lastFrame.await; }
 
     // ── State writes (test setup helpers) ───────────────────────────────────
-    void setFlags(uint8_t f)      { flags = f; }
-    void setWindLast(uint64_t t)  { windLast = t; }
-    void setDirection(int8_t d)   { direction = d; }
-    void setSunDone(bool v)       { sunDone = v; }
-    void setNoSunDone(bool v)     { noSunDone = v; }
+    void setFlags(uint8_t f)        { flags = f; }
+    void setWindLast(uint64_t t)    { windLast = t; }
+    void setDirection(int8_t d)     { direction = d; }
+    void setSunDone(bool v)         { sunDone = v; }
+    void setNoSunDone(bool v)       { noSunDone = v; }
+    void setWindDone(bool v)        { windDone = v; }
+    void setNoWindDone(bool v)      { noWindDone = v; }
+    void setSunStart(uint64_t t)    { sunStart = t; }
+    void setNoSunStart(uint64_t t)  { noSunStart = t; }
+    void setWindStart(uint64_t t)   { windStart = t; }
+    void setNoWindStart(uint64_t t) { noWindStart = t; }
+    void setMoveStart(uint64_t t)   { moveStart = t; }
+    void setTiltStart(uint64_t t)   { tiltStart = t; }
+    void setStartPos(float v)       { startPos = v; }
+    void setStartTiltPos(float v)   { startTiltPos = v; }
+    void setSettingPos(bool v)      { settingPos = v; }
+    void setSettingTiltPos(bool v)  { settingTiltPos = v; }
+    void setSettingMyPos(bool v)    { settingMyPos = v; }
+
+    // ── Additional state reads ───────────────────────────────────────────────
+    int8_t   getLastMovement()  const { return lastMovement; }
+    int8_t   getDirection()     const { return direction; }
+    int8_t   getTiltDirection() const { return tiltDirection; }
+    uint64_t getMoveStart()     const { return moveStart; }
+    bool     getSettingMyPos()  const { return settingMyPos; }
 };

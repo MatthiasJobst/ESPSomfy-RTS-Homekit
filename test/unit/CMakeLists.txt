@@ -31,6 +31,7 @@ set(PRODUCTION_SOURCES
 
 add_executable(shade_tests
     test_processFrame.cpp
+    test_checkMovement.cpp
     stubs/globals_stub.cpp
     ${PRODUCTION_SOURCES}
 )
@@ -60,7 +61,10 @@ target_compile_options(shade_tests PRIVATE
     -Wno-inconsistent-missing-override
     -Wno-non-pod-varargs
     -Wno-deprecated-declarations
+    --coverage
 )
 
+target_link_options(shade_tests PRIVATE --coverage)
+
 include(GoogleTest)
-gtest_add_tests(TARGET shade_tests SOURCES test_processFrame.cpp)
+gtest_add_tests(TARGET shade_tests SOURCES test_processFrame.cpp test_checkMovement.cpp)

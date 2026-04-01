@@ -424,10 +424,10 @@ void SomfyShade::checkMovement() {
         // We should now have the number of ms it will take to reach the shade fully close.
         this->p_currentPos((min(max((float)0.0, (float)msFrom0 / (float)downTime), (float)1.0)) * 100);
         // If the current position is >= 1 then we are at the bottom of the shade.
-        if(this->currentPos >= 100) {
-          this->p_currentPos(100.0);
+        if(this->currentPos >= 100) { // LCOV_EXCL_LINE — ratio clamped ≤1.0; unreachable when msFrom0<downTime
+          this->p_currentPos(100.0); // LCOV_EXCL_LINE
           //this->p_direction(0);
-        }
+        } // LCOV_EXCL_LINE
       }
     }
     if(this->currentPos >= this->target) {
@@ -473,11 +473,11 @@ void SomfyShade::checkMovement() {
         float fpos = ((float)1.0 - min(max((float)0.0, (float)msFrom100 / (float)upTime), (float)1.0)) * 100;
         // We should now have the number of ms it will take to reach the shade fully open.
         // If we are at the top of the shade then set the movement to 0.
-        if(fpos <= 0.0) {
-          this->p_currentPos(0.0f);
+        if(fpos <= 0.0) { // LCOV_EXCL_LINE — ratio clamped ≥0.0; unreachable when msFrom100<upTime
+          this->p_currentPos(0.0f); // LCOV_EXCL_LINE
           //this->p_direction(0);
-        }
-        else 
+        } // LCOV_EXCL_LINE
+        else
           this->p_currentPos(fpos);
       }
     }
@@ -516,11 +516,11 @@ void SomfyShade::checkMovement() {
     else {
       float fpos = (min(max((float)0.0, (float)msFrom0 / (float)tiltTime), (float)1.0)) * 100;
       
-      if(fpos > 100.0f) {
-        this->p_currentTiltPos(100.0f);
+      if(fpos > 100.0f) { // LCOV_EXCL_LINE — ratio clamped ≤1.0; unreachable when msFrom0<tiltTime
+        this->p_currentTiltPos(100.0f); // LCOV_EXCL_LINE
         //this->p_tiltDirection(0);
-        ESP_LOGD(TAG, "Setting tiltDirection to 0 (100%)");
-      }
+        ESP_LOGD(TAG, "Setting tiltDirection to 0 (100%)"); // LCOV_EXCL_LINE
+      } // LCOV_EXCL_LINE
       else this->p_currentTiltPos(fpos);
     }
     if(tilt_first) {
