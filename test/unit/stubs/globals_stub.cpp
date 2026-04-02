@@ -4,7 +4,9 @@
 #include "nvs.h"  // NVS in-memory store definitions
 
 // ── NVS stub state ─────────────────────────────────────────────────────────
-std::unordered_map<uint32_t, NvsStore> nvs_stub_stores;
+std::unordered_map<std::string, NvsStore> nvs_ns_stores;
+std::unordered_map<uint32_t, std::string> nvs_handle_ns;
+bool nvs_stub_use_nvs = false;
 
 // ── GPIO stub state ────────────────────────────────────────────────────────
 #include "driver/gpio.h"
@@ -58,7 +60,7 @@ uint8_t bit_length = 56;
 SomfyShadeController::SomfyShadeController() {}
 
 void SomfyShadeController::updateGroupFlags() {}
-bool SomfyShadeController::useNVS() { return false; }
+bool SomfyShadeController::useNVS() { return nvs_stub_use_nvs; }
 uint8_t SomfyShadeController::getNextShadeId() { return 0; }
 uint8_t SomfyShadeController::getNextGroupId() { return 0; }
 uint8_t SomfyShadeController::getNextRoomId()  { return 0; }

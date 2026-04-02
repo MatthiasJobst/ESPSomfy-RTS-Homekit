@@ -38,6 +38,7 @@ add_executable(shade_tests
     test_motionIntent.cpp
     test_gpio.cpp
     test_mqttPublisher.cpp
+    test_persistence.cpp
     stubs/globals_stub.cpp
     ${PRODUCTION_SOURCES}
 )
@@ -60,6 +61,8 @@ target_link_libraries(shade_tests
 )
 
 # Suppress warnings that fire due to stub headers or ESP-IDF code patterns.
+target_compile_definitions(shade_tests PRIVATE USE_NVS)
+
 target_compile_options(shade_tests PRIVATE
     -Wno-unused-parameter
     -Wno-sign-compare
@@ -73,4 +76,4 @@ target_compile_options(shade_tests PRIVATE
 target_link_options(shade_tests PRIVATE --coverage)
 
 include(GoogleTest)
-gtest_add_tests(TARGET shade_tests SOURCES test_processFrame.cpp test_checkMovement.cpp test_motionIntent.cpp test_gpio.cpp test_mqttPublisher.cpp)
+gtest_add_tests(TARGET shade_tests SOURCES test_processFrame.cpp test_checkMovement.cpp test_motionIntent.cpp test_gpio.cpp test_mqttPublisher.cpp test_persistence.cpp)
