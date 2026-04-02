@@ -45,6 +45,9 @@ public:
     bool     getWindDone()    const { return flagManager.windDone; }
     bool     getNoWindDone()  const { return flagManager.noWindDone; }
     uint32_t getLastFrameAwait() const { return lastFrame.await; }
+    const somfy_frame_t &getLastFrame() const { return lastFrame; }
+    uint8_t  getRepeats()    const { return repeats; }
+    uint8_t  getBitLength()  const { return bitLength; }
 
     // ── State writes (test setup helpers) ───────────────────────────────────
     void setFlags(uint8_t f)        { flags = f; }
