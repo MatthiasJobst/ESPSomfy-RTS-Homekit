@@ -9,6 +9,12 @@ std::unordered_map<uint32_t, NvsStore> nvs_stub_stores;
 // ── GPIO stub state ────────────────────────────────────────────────────────
 #include "driver/gpio.h"
 std::unordered_map<int, uint32_t> gpio_pin_levels;
+
+// ── MQTT stub state ────────────────────────────────────────────────────────
+#include "MQTT.h"
+bool mqtt_connected_flag = false;
+std::unordered_map<std::string, std::string> mqtt_published;
+std::unordered_map<std::string, std::string> mqtt_unpublished;
 uint32_t nvs_stub_next_handle = 1;
 
 // ── ELECHOUSE CC1101 stub instance ─────────────────────────────────────────

@@ -75,6 +75,15 @@ public:
     bool     getSettingTiltPos()const { return settingTiltPos; }
     bool     getSettingMyPos()  const { return settingMyPos; }
 
+    // ── Real emitCommand (bypasses mock for MQTT side-effect tests) ─────────
+    void callRealEmitCommand(somfy_commands cmd, const char *source,
+                             uint32_t sourceAddress, const char *evt = "shadeCommand") {
+        SomfyShade::emitCommand(255, cmd, source, sourceAddress, evt);
+    }
+    void callRealEmitState(const char *evt = "shadeState") {
+        SomfyShade::emitState(255, evt);
+    }
+
     // ── GPIO state reads ────────────────────────────────────────────────────
     int8_t   getGpioDir()       const { return gpioControl.gpioDir; }
     uint32_t getGpioRelease()   const { return gpioControl.gpioRelease; }
