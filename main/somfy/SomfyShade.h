@@ -5,6 +5,7 @@
 #include "SomfyRemote.h"
 #include "SomfyFlagManager.h"
 #include "SomfyGPIOControl.h"
+#include "SomfyMQTTPublisher.h"
 
 class SomfyShade : public SomfyRemote {
   protected:
@@ -18,8 +19,10 @@ class SomfyShade : public SomfyRemote {
     bool settingTiltPos = false;
     uint32_t awaitMy = 0;
   public:
-    SomfyFlagManager  flagManager;
-    SomfyGPIOControl  gpioControl;
+    SomfyShade() { mqttPublisher.shade = this; }
+    SomfyFlagManager   flagManager;
+    SomfyGPIOControl   gpioControl;
+    SomfyMQTTPublisher mqttPublisher;
     uint8_t roomId = 0;
     int8_t sortOrder = 0;
     bool flipPosition = false;

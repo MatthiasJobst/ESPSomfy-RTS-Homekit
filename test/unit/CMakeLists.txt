@@ -26,6 +26,7 @@ FetchContent_MakeAvailable(arduinojson)
 set(PRODUCTION_SOURCES
     ../../main/somfy/SomfyFlagManager.cpp
     ../../main/somfy/SomfyGPIOControl.cpp
+    ../../main/somfy/SomfyMQTTPublisher.cpp
     ../../main/somfy/SomfyShade.cpp
     ../../main/somfy/SomfyRemote.cpp
     ../../main/somfy/SomfyFrame.cpp

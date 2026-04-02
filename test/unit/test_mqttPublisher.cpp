@@ -424,7 +424,123 @@ TEST_F(MQTTPublisherTest, UnpublishDisco_DryContact_ClearsSwitchTopic) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// H. Tilt-specific p_*() setters
+// H. publish() / unpublish() gaps — remaining overloads + no-arg publish
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(MQTTPublisherTest, Publish_CString_NotConnected_ReturnsFalse) {
+    mqtt_connected_flag = false;
+    EXPECT_FALSE(shade.publish("name", "test", false));
+    EXPECT_TRUE(mqtt_published.empty());
+}
+
+TEST_F(MQTTPublisherTest, Publish_UInt32_NotConnected_ReturnsFalse) {
+    mqtt_connected_flag = false;
+    EXPECT_FALSE(shade.publish("remoteAddress", (uint32_t)1u, false));
+    EXPECT_TRUE(mqtt_published.empty());
+}
+
+TEST_F(MQTTPublisherTest, Publish_Bool_NotConnected_ReturnsFalse) {
+    mqtt_connected_flag = false;
+    EXPECT_FALSE(shade.publish("flipPosition", true, false));
+    EXPECT_TRUE(mqtt_published.empty());
+}
+
+TEST_F(MQTTPublisherTest, Publish_NoArg_Connected_WritesAllTopics) {
+    mqtt_connected_flag = true;
+    settings.MQTT.pubDisco = false;
+    shade.publish();
+    EXPECT_EQ(mqtt_published.count("shades/1/shadeId"),       1u);
+    EXPECT_EQ(mqtt_published.count("shades/1/remoteAddress"), 1u);
+    EXPECT_EQ(mqtt_published.count("shades/1/position"),      1u);
+}
+
+TEST_F(MQTTPublisherTest, Publish_NoArg_NotConnected_WritesNothing) {
+    mqtt_connected_flag = false;
+    shade.publish();
+    EXPECT_TRUE(mqtt_published.empty());
+}
+
+TEST_F(MQTTPublisherTest, Unpublish_ById_PubDiscoTrue_ClearsDiscoTopics) {
+    mqtt_connected_flag = true;
+    settings.MQTT.pubDisco = true;
+    SomfyShade::unpublish(2);
+    EXPECT_EQ(mqtt_unpublished.count("homeassistant/cover/2/config"),  1u);
+    EXPECT_EQ(mqtt_unpublished.count("homeassistant/switch/2/config"), 1u);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// I_extra. publishDisco() — additional shade-type device_class coverage
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(MQTTPublisherTest, PublishDisco_Blind_UsesCoverTopicAndBlindClass) {
+    mqtt_connected_flag = true;
+    settings.MQTT.pubDisco = true;
+    shade.shadeType = shade_types::blind;
+    shade.publishDisco();
+    EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"), 1u);
+}
+
+TEST_F(MQTTPublisherTest, PublishDisco_Awning_UsesCoverTopic) {
+    mqtt_connected_flag = true;
+    settings.MQTT.pubDisco = true;
+    shade.shadeType = shade_types::awning;
+    shade.publishDisco();
+    EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"), 1u);
+}
+
+TEST_F(MQTTPublisherTest, PublishDisco_Shutter_UsesCoverTopic) {
+    mqtt_connected_flag = true;
+    settings.MQTT.pubDisco = true;
+    shade.shadeType = shade_types::shutter;
+    shade.publishDisco();
+    EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"), 1u);
+}
+
+TEST_F(MQTTPublisherTest, PublishDisco_Garage_UsesCoverTopic) {
+    mqtt_connected_flag = true;
+    settings.MQTT.pubDisco = true;
+    shade.shadeType = shade_types::garage1;
+    shade.publishDisco();
+    EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"), 1u);
+}
+
+TEST_F(MQTTPublisherTest, PublishDisco_Gate_UsesCoverTopic) {
+    mqtt_connected_flag = true;
+    settings.MQTT.pubDisco = true;
+    shade.shadeType = shade_types::lgate;
+    shade.publishDisco();
+    EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"), 1u);
+}
+
+TEST_F(MQTTPublisherTest, PublishDisco_Garage3_UsesCoverTopic) {
+    mqtt_connected_flag = true;
+    settings.MQTT.pubDisco = true;
+    shade.shadeType = shade_types::garage3;
+    shade.publishDisco();
+    EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"), 1u);
+}
+
+TEST_F(MQTTPublisherTest, PublishDisco_TiltOnly_OmitsPositionTopics) {
+    mqtt_connected_flag = true;
+    settings.MQTT.pubDisco = true;
+    shade.shadeType = shade_types::roller;
+    shade.tiltType  = tilt_types::tiltonly;
+    shade.publishDisco();
+    // tiltonly suppresses command_topic/position_topic — still a cover topic
+    EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"), 1u);
+}
+
+TEST_F(MQTTPublisherTest, PublishDisco_WithIntegratedTilt_AddsTiltTopics) {
+    mqtt_connected_flag = true;
+    settings.MQTT.pubDisco = true;
+    shade.shadeType = shade_types::roller;
+    shade.tiltType  = tilt_types::integrated;
+    shade.publishDisco();
+    EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"), 1u);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// J. Tilt-specific p_*() setters
 // ══════════════════════════════════════════════════════════════════════════════
 
 TEST_F(MQTTPublisherTest, p_tiltDirection_ChangedValue_Publishes) {
