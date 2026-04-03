@@ -28,6 +28,7 @@ set(PRODUCTION_SOURCES
     ../../main/somfy/SomfyGPIOControl.cpp
     ../../main/somfy/SomfyMQTTPublisher.cpp
     ../../main/somfy/SomfyPersistence.cpp
+    ../../main/somfy/SomfyCommandTransmitter.cpp
     ../../main/somfy/SomfyShade.cpp
     ../../main/somfy/SomfyRemote.cpp
     ../../main/somfy/SomfyFrame.cpp

@@ -15,7 +15,6 @@ static const char *TAG = "SomfyShade";
 
 extern SomfyShadeController somfy;
 extern ConfigSettings settings;
-extern Preferences pref;
 extern GitUpdater git;
 
 void SomfyShade::clear() {
@@ -59,39 +58,7 @@ void SomfyShade::clear() {
 }
 
 bool SomfyShade::linkRemote(uint32_t address, uint16_t rollingCode) {
-  // Check to see if the remote is already linked. If it is
-  // just return true after setting the rolling code
-  for(uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++) {
-    if(this->linkedRemotes[i].getRemoteAddress() == address) {
-      this->linkedRemotes[i].setRollingCode(rollingCode);
-      return true;
-    }
-  }
-  for(uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++) {
-    if(this->linkedRemotes[i].getRemoteAddress() == 0) {
-      this->linkedRemotes[i].setRemoteAddress(address);
-      this->linkedRemotes[i].setRollingCode(rollingCode);
-      #ifdef USE_NVS
-      if(somfy.useNVS()) {
-        uint32_t linkedAddresses[SOMFY_MAX_LINKED_REMOTES];
-        memset(linkedAddresses, 0x00, sizeof(linkedAddresses));
-        uint8_t j = 0;
-        for(uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++) {
-          SomfyLinkedRemote lremote = this->linkedRemotes[i];
-          if(lremote.getRemoteAddress() != 0) linkedAddresses[j++] = lremote.getRemoteAddress();
-        }
-        char shadeKey[15];
-        snprintf(shadeKey, sizeof(shadeKey), "SomfyShade%u", this->getShadeId());
-        pref.begin(shadeKey);
-        pref.putBytes("linkedAddr", linkedAddresses, sizeof(uint32_t) * SOMFY_MAX_LINKED_REMOTES);
-        pref.end();
-      }
-      #endif
-      this->commit();
-      return true;
-    }
-  }
-  return false;
+  return commandTransmitter.linkRemote(address, rollingCode);
 }
 
 void SomfyShade::commit()              { persistence.commit(); }
@@ -100,30 +67,7 @@ void SomfyShade::commitMyPosition()    { persistence.commitMyPosition(); }
 void SomfyShade::commitTiltPosition()  { persistence.commitTiltPosition(); }
 
 bool SomfyShade::unlinkRemote(uint32_t address) {
-  for(uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++) {
-    if(this->linkedRemotes[i].getRemoteAddress() == address) {
-      this->linkedRemotes[i].setRemoteAddress(0);
-      #ifdef USE_NVS
-      if(somfy.useNVS()) {
-        char shadeKey[15];
-        snprintf(shadeKey, sizeof(shadeKey), "SomfyShade%u", this->getShadeId());
-        uint32_t linkedAddresses[SOMFY_MAX_LINKED_REMOTES];
-        memset(linkedAddresses, 0x00, sizeof(linkedAddresses));
-        uint8_t j = 0;
-        for(uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++) {
-          SomfyLinkedRemote lremote = this->linkedRemotes[i];
-          if(lremote.getRemoteAddress() != 0) linkedAddresses[j++] = lremote.getRemoteAddress();
-        }
-        pref.begin(shadeKey);
-        pref.putBytes("linkedAddr", linkedAddresses, sizeof(uint32_t) * SOMFY_MAX_LINKED_REMOTES);
-        pref.end();
-      }
-      #endif
-      this->commit();
-      return true;
-    }
-  }
-  return false;
+  return commandTransmitter.unlinkRemote(address);
 }
 
 bool SomfyShade::isAtTarget() { 
@@ -1293,88 +1237,9 @@ void SomfyShade::moveToMyPosition() {
     SomfyRemote::sendCommand(somfy_commands::My, this->repeats);
 }
 
-void SomfyShade::sendCommand(somfy_commands cmd) { this->sendCommand(cmd, this->repeats); }
-
-void SomfyShade::sendCommand(somfy_commands cmd, uint8_t repeat, uint8_t stepSize) {
-  // This sendCommand function will always be called externally. sendCommand at the remote level
-  // is expected to be called internally when the motor needs commanded.
-  if(this->bitLength == 0) this->bitLength = somfy.transceiver.config.type;
-  if(cmd == somfy_commands::Up) {
-    if(this->tiltType == tilt_types::euromode) {
-      // In euromode we need to long press for 2 seconds on the
-      // up command.
-      SomfyRemote::sendCommand(cmd, TILT_REPEATS);
-      this->p_target(0.0f);     
-    }
-    else {
-      SomfyRemote::sendCommand(cmd, repeat);
-      if(this->tiltType == tilt_types::tiltonly) {
-        this->p_target(100.0f);
-        this->p_tiltTarget(0.0f);
-        this->p_currentPos(100.0f);
-      }
-      else this->p_target(0.0f);
-      if(this->tiltType == tilt_types::integrated) this->p_tiltTarget(0.0f);
-    }
-  }
-  else if(cmd == somfy_commands::Down) {
-    if(this->tiltType == tilt_types::euromode) {
-      // In euromode we need to long press for 2 seconds on the
-      // down command.
-      SomfyRemote::sendCommand(cmd, TILT_REPEATS);
-      this->p_target(100.0f);     
-    }
-    else {
-      SomfyRemote::sendCommand(cmd, repeat);
-      if(this->tiltType == tilt_types::tiltonly) {
-        this->p_target(100.0f);
-        this->p_tiltTarget(100.0f);
-        this->p_currentPos(100.0f);
-      }
-      else this->p_target(100.0f);
-      if(this->tiltType == tilt_types::integrated) this->p_tiltTarget(100.0f);
-    }
-  }
-  else if(cmd == somfy_commands::My) {
-    if(this->isToggle() || this->shadeType == shade_types::drycontact)
-      SomfyRemote::sendCommand(cmd, repeat);
-    else if(this->shadeType == shade_types::drycontact2) return;   
-    else if(this->isIdle()) {
-      this->moveToMyPosition();      
-      return;
-    }
-    else {
-      SomfyRemote::sendCommand(cmd, repeat);
-      if(this->tiltType != tilt_types::tiltonly) this->p_target(this->currentPos);
-      this->p_tiltTarget(this->currentTiltPos);
-    }
-  }
-  else if(cmd == somfy_commands::Toggle) {
-    if(this->bitLength != 80) SomfyRemote::sendCommand(somfy_commands::My, repeat, stepSize);
-    else SomfyRemote::sendCommand(somfy_commands::Toggle, repeat);
-  }
-  else if(this->isToggle() && cmd == somfy_commands::Prog) {
-    SomfyRemote::sendCommand(somfy_commands::Toggle, repeat, stepSize);
-  }
-  else {
-    SomfyRemote::sendCommand(cmd, repeat, stepSize);
-  }
-}
-
-void SomfyShade::sendTiltCommand(somfy_commands cmd) {
-  if(cmd == somfy_commands::Up) {
-    SomfyRemote::sendCommand(cmd, this->tiltType == tilt_types::tiltmotor ? TILT_REPEATS : this->repeats);
-    this->p_tiltTarget(0.0f);
-  }
-  else if(cmd == somfy_commands::Down) {
-    SomfyRemote::sendCommand(cmd, this->tiltType == tilt_types::tiltmotor ? TILT_REPEATS : this->repeats);
-    this->p_tiltTarget(100.0f);
-  }
-  else if(cmd == somfy_commands::My) {
-    SomfyRemote::sendCommand(cmd, this->tiltType == tilt_types::tiltmotor ? TILT_REPEATS : this->repeats);
-    this->p_tiltTarget(this->currentTiltPos);
-  }
-}
+void SomfyShade::sendCommand(somfy_commands cmd) { commandTransmitter.sendCommand(cmd); }
+void SomfyShade::sendCommand(somfy_commands cmd, uint8_t repeat, uint8_t stepSize) { commandTransmitter.sendCommand(cmd, repeat, stepSize); }
+void SomfyShade::sendTiltCommand(somfy_commands cmd) { commandTransmitter.sendTiltCommand(cmd); }
 
 void SomfyShade::moveToTiltTarget(float target) {
   somfy_commands cmd = somfy_commands::My;

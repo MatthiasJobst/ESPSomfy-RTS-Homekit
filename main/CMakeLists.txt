@@ -19,6 +19,7 @@ idf_component_register(
         "somfy/SomfyGPIOControl.cpp"
         "somfy/SomfyMQTTPublisher.cpp"
         "somfy/SomfyPersistence.cpp"
+        "somfy/SomfyCommandTransmitter.cpp"
         "somfy/SomfyShade.cpp"
         "somfy/SomfyController.cpp"
         "SSDP.cpp"
