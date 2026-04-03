@@ -86,6 +86,14 @@ public:
     void callRealEmitState(const char *evt = "shadeState") {
         SomfyShade::emitState(255, evt);
     }
+    // ── Delegate wrappers (cover the 1-arg / 4-arg dispatch lines) ──────────
+    void callRealEmitState1(const char *evt = "shadeState") {
+        SomfyShade::emitState(evt);   // hits line 497: emitState(const char*)
+    }
+    void callRealEmitCommand4(somfy_commands cmd, const char *source,
+                              uint32_t sourceAddress, const char *evt = "shadeCommand") {
+        SomfyShade::emitCommand(cmd, source, sourceAddress, evt); // hits line 500
+    }
 
     // ── GPIO state reads ────────────────────────────────────────────────────
     int8_t   getGpioDir()       const { return gpioControl.gpioDir; }
