@@ -8,6 +8,7 @@
 #include "SomfyMQTTPublisher.h"
 #include "SomfyPersistence.h"
 #include "SomfyCommandTransmitter.h"
+#include "SomfyJSONSerializer.h"
 
 class SomfyShade : public SomfyRemote {
   protected:
@@ -21,12 +22,13 @@ class SomfyShade : public SomfyRemote {
     bool settingTiltPos = false;
     uint32_t awaitMy = 0;
   public:
-    SomfyShade() { mqttPublisher.shade = this; persistence.shade = this; commandTransmitter.shade = this; }
-    SomfyFlagManager       flagManager;
-    SomfyGPIOControl       gpioControl;
-    SomfyMQTTPublisher     mqttPublisher;
-    SomfyPersistence       persistence;
+    SomfyShade() { mqttPublisher.shade = this; persistence.shade = this; commandTransmitter.shade = this; jsonSerializer.shade = this; }
+    SomfyFlagManager        flagManager;
+    SomfyGPIOControl        gpioControl;
+    SomfyMQTTPublisher      mqttPublisher;
+    SomfyPersistence        persistence;
     SomfyCommandTransmitter commandTransmitter;
+    SomfyJSONSerializer     jsonSerializer;
     uint8_t roomId = 0;
     int8_t sortOrder = 0;
     bool flipPosition = false;

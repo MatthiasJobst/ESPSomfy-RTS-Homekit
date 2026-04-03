@@ -124,7 +124,8 @@ void Transceiver::beginFrequencyScan()  {}
 void Transceiver::endFrequencyScan()    {}
 void Transceiver::processFrequencyScan(bool) {}
 void Transceiver::emitFrequencyScan(uint8_t) {}
-bool Transceiver::usesPin(uint8_t) { return false; }
+bool transceiver_stub_uses_pin = false;
+bool Transceiver::usesPin(uint8_t) { return transceiver_stub_uses_pin; }
 bool Transceiver::save()           { return false; }
 bool Transceiver::fromJSON(JsonObject &) { return false; }
 void Transceiver::toJSON(JsonResponse &) {}

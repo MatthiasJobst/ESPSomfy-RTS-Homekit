@@ -6,7 +6,7 @@
 #include "esp_log.h"
 #include <cmath>
 
-static const char *PERSIST_TAG = "SomfyPersistence";
+static const char * __attribute__((unused)) PERSIST_TAG = "SomfyPersistence";
 
 extern SomfyShadeController somfy;
 extern Preferences          pref;

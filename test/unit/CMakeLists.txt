@@ -29,6 +29,7 @@ set(PRODUCTION_SOURCES
     ../../main/somfy/SomfyMQTTPublisher.cpp
     ../../main/somfy/SomfyPersistence.cpp
     ../../main/somfy/SomfyCommandTransmitter.cpp
+    ../../main/somfy/SomfyJSONSerializer.cpp
     ../../main/somfy/SomfyShade.cpp
     ../../main/somfy/SomfyRemote.cpp
     ../../main/somfy/SomfyFrame.cpp
@@ -42,6 +43,7 @@ add_executable(shade_tests
     test_mqttPublisher.cpp
     test_persistence.cpp
     test_commandTransmitter.cpp
+    test_jsonSerializer.cpp
     stubs/globals_stub.cpp
     ${PRODUCTION_SOURCES}
 )
@@ -79,4 +81,4 @@ target_compile_options(shade_tests PRIVATE
 target_link_options(shade_tests PRIVATE --coverage)
 
 include(GoogleTest)
-gtest_add_tests(TARGET shade_tests SOURCES test_processFrame.cpp test_checkMovement.cpp test_motionIntent.cpp test_gpio.cpp test_mqttPublisher.cpp test_persistence.cpp test_commandTransmitter.cpp)
+gtest_add_tests(TARGET shade_tests SOURCES test_processFrame.cpp test_checkMovement.cpp test_motionIntent.cpp test_gpio.cpp test_mqttPublisher.cpp test_persistence.cpp test_commandTransmitter.cpp test_jsonSerializer.cpp)

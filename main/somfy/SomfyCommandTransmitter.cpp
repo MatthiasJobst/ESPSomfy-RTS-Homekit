@@ -94,6 +94,7 @@ void SomfyCommandTransmitter::sendTiltCommand(somfy_commands cmd) {
 
 // ── linkRemote / unlinkRemote ────────────────────────────────────────────────
 
+#ifdef USE_NVS
 static void saveLinkedAddresses(SomfyShade *shade) {
   uint32_t linkedAddresses[SOMFY_MAX_LINKED_REMOTES];
   memset(linkedAddresses, 0x00, sizeof(linkedAddresses));
@@ -108,6 +109,7 @@ static void saveLinkedAddresses(SomfyShade *shade) {
   pref.putBytes("linkedAddr", linkedAddresses, sizeof(uint32_t) * SOMFY_MAX_LINKED_REMOTES);
   pref.end();
 }
+#endif // USE_NVS
 
 bool SomfyCommandTransmitter::linkRemote(uint32_t address, uint16_t rollingCode) {
   for(uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++) {
