@@ -141,6 +141,16 @@ TEST_F(TargetSeqTest, MoveToTarget_TiltOnly_ForcesPos100) {
     EXPECT_FLOAT_EQ(shade.target, 100.0f);
 }
 
+// A8b. tiltType::tiltonly, tilt > currentTiltPos → Down command
+TEST_F(TargetSeqTest, MoveToTarget_TiltOnly_TiltHigher_SendsDown) {
+    shade.tiltType       = tilt_types::tiltonly;
+    shade.currentPos     = 100.0f;
+    shade.currentTiltPos = 30.0f;
+    shade.myPos          = -1.0f;
+    shade.moveToTarget(100.0f, 80.0f);  // tilt(80) > currentTiltPos(30) → Down
+    EXPECT_EQ(lastCmd(), somfy_commands::Down);
+}
+
 // A9. Toggle shade (garage1) → sets target+currentPos directly, no RF command
 TEST_F(TargetSeqTest, MoveToTarget_ToggleShade_SetsPositionDirectly) {
     shade.shadeType  = shade_types::garage1;
@@ -284,6 +294,7 @@ TEST_F(TargetSeqTest, MoveToMyPos_AlreadyAtMyPos_WithTilt_EarlyReturn) {
     shade.myTiltPos      = 30.0f;
     shade.currentPos     = 50.0f;
     shade.currentTiltPos = 30.0f;
+    shade.tiltTarget     = 30.0f;  // must match currentTiltPos for isAtTarget()/isIdle()
     uint16_t rcBefore = shade.getLastFrame().rollingCode;
     shade.moveToMyPosition();
     EXPECT_EQ(shade.getLastFrame().rollingCode, rcBefore);
@@ -522,4 +533,78 @@ TEST_F(TargetSeqTest, SetMyPos_HasTilt_AtCurrentNotMyPos_SendsMyAndStoresMyPos) 
     EXPECT_EQ(shade.getLastFrame().repeats, SETMY_REPEATS);
     EXPECT_FLOAT_EQ(shade.myPos,     50.0f);
     EXPECT_FLOAT_EQ(shade.myTiltPos, 30.0f);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// G. Float-precision edge cases (floor(x)==floor(y) but x != y)
+// ══════════════════════════════════════════════════════════════════════════════
+
+// E. tiltonly: tilt == currentTiltPos AND tilt == myTiltPos →
+//    "already at the requested my-position" clear-path; sends My + settingMyPos=true
+TEST_F(TargetSeqTest, SetMyPos_TiltOnly_AtCurrentAndMyTilt_SendsMy) {
+    shade.tiltType       = tilt_types::tiltonly;
+    shade.currentPos     = 100.0f;
+    shade.target         = 100.0f;
+    shade.currentTiltPos = 30.0f;
+    shade.tiltTarget     = 30.0f;
+    shade.myTiltPos      = 30.0f;  // tilt == currentTiltPos == myTiltPos
+    shade.setMyPosition(100, 30);
+    EXPECT_EQ(lastCmd(), somfy_commands::My);
+    EXPECT_TRUE(shade.getSettingMyPos());
+}
+
+// F5. has-tilt: floor(currentPos)==floor(myPos) but currentPos != myPos
+//     → "clear my pos" branch with float sub-integer precision; calls moveToMyPosition
+TEST_F(TargetSeqTest, SetMyPos_HasTilt_FloorMatchButExactDiffers_CallsMoveToMyPos) {
+    shade.tiltType       = tilt_types::integrated;
+    shade.currentPos     = 50.5f;  // floor = 50
+    shade.target         = 50.5f;
+    shade.currentTiltPos = 30.0f;
+    shade.tiltTarget     = 30.0f;
+    shade.myPos          = 50.8f;  // floor = 50; exact differs from currentPos
+    shade.myTiltPos      = 30.0f;
+    shade.setMyPosition(50, 30);   // pos=50 == floor(50.5) and == floor(50.8)
+    EXPECT_TRUE(shade.getSettingMyPos());
+    EXPECT_EQ(lastCmd(), somfy_commands::My);  // moveToMyPosition → My
+}
+
+// D6. tiltType::none: floor(currentPos)==floor(myPos) but exact differs
+//     → "clear my pos" branch; calls moveToMyPosition
+TEST_F(TargetSeqTest, SetMyPos_None_FloorMatchButExactDiffers_CallsMoveToMyPos) {
+    shade.tiltType   = tilt_types::none;
+    shade.currentPos = 50.5f;  // floor = 50
+    shade.target     = 50.5f;
+    shade.myPos      = 50.8f;  // floor = 50; exact differs
+    shade.setMyPosition(50, -1);
+    EXPECT_TRUE(shade.getSettingMyPos());
+    EXPECT_EQ(lastCmd(), somfy_commands::My);  // moveToMyPosition → My
+}
+
+// C3b. moveToMyPosition: currentPos==myPos AND tiltType!=none AND currentTiltPos!=myTiltPos
+//      → does NOT return early; continues to set tilt target and send My
+TEST_F(TargetSeqTest, MoveToMyPos_AtPosNotAtTilt_ContinuesToSetTilt) {
+    shade.tiltType       = tilt_types::integrated;
+    shade.myPos          = 80.0f;
+    shade.myTiltPos      = 30.0f;
+    shade.currentPos     = 80.0f;  // already at myPos
+    shade.target         = 80.0f;
+    shade.currentTiltPos = 50.0f;  // NOT at myTiltPos
+    shade.tiltTarget     = 50.0f;
+    shade.moveToMyPosition();
+    EXPECT_FLOAT_EQ(shade.tiltTarget, 30.0f);  // tilt target updated
+    EXPECT_EQ(lastCmd(), somfy_commands::My);
+}
+
+// E2b. tiltonly: floor(currentTiltPos)==floor(myTiltPos)==tilt but exact values differ
+//      → "clear my pos" branch; currentTiltPos != myTiltPos → settingMyPos + moveToMyPosition
+TEST_F(TargetSeqTest, SetMyPos_TiltOnly_FloorTiltMatchButExactDiffers_CallsMoveToMyPos) {
+    shade.tiltType       = tilt_types::tiltonly;
+    shade.currentPos     = 100.0f;
+    shade.target         = 100.0f;
+    shade.currentTiltPos = 30.1f;  // floor = 30
+    shade.tiltTarget     = 30.1f;
+    shade.myTiltPos      = 30.8f;  // floor = 30; exact differs
+    shade.setMyPosition(100, 30);  // tilt(30)==floor(30.1) → first if false; tilt==floor(30.8) → else if
+    EXPECT_TRUE(shade.getSettingMyPos());
+    EXPECT_EQ(lastCmd(), somfy_commands::My);  // moveToMyPosition → My
 }
