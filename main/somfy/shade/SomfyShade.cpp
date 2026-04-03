@@ -25,9 +25,7 @@ void SomfyShade::clear() {
   this->flagManager = SomfyFlagManager{};
   this->startPos = 0.0f;
   this->startTiltPos = 0.0f;
-  this->settingMyPos = false;
-  this->settingPos = false;
-  this->settingTiltPos = false;
+  this->motionState = MotionState{};
   this->awaitMy = 0;
   this->flipPosition = false;
   this->flipCommands = false;
@@ -174,7 +172,7 @@ void SomfyShade::checkMovement() {
       
       // If we need to stop the shade do this before we indicate that we are
       // not moving otherwise the my function will kick in.
-      if(this->settingPos) {
+      if(this->motionState.settingPos) {
         if(!isAtTarget()) {
           ESP_LOGI(TAG, "We are not at our tilt target: %.2f", this->tiltTarget);
           if(this->target != 100.0) SomfyRemote::sendCommand(somfy_commands::My, this->repeats);
@@ -225,7 +223,7 @@ void SomfyShade::checkMovement() {
       
       // If we need to stop the shade do this before we indicate that we are
       // not moving otherwise the my function will kick in.
-      if(this->settingPos) {
+      if(this->motionState.settingPos) {
         if(!isAtTarget()) {
           ESP_LOGI(TAG, "We are not at our tilt target: %.2f", this->tiltTarget);
           if(this->target != 0.0) SomfyRemote::sendCommand(somfy_commands::My, this->repeats);
@@ -275,7 +273,7 @@ void SomfyShade::checkMovement() {
       this->p_currentTiltPos(this->tiltTarget);
       // If we need to stop the shade do this before we indicate that we are
       // not moving otherwise the my function will kick in.
-      if(this->settingTiltPos) {
+      if(this->motionState.settingTiltPos) {
         if(this->tiltType == tilt_types::integrated) {
           // If this is an integrated tilt mechanism the we will simply let it finish.  If it is not then we will stop it.
           ESP_LOGD(TAG, "Sending My -- tiltTarget: %.2f, tiltDirection: %d", this->tiltTarget, this->tiltDirection);
@@ -287,7 +285,7 @@ void SomfyShade::checkMovement() {
         }
       }
       this->p_tiltDirection(0);
-      this->settingTiltPos = false;
+      this->motionState.settingTiltPos = false;
       if(this->isAtTarget()) this->commitShadePosition();
     }
   }
@@ -325,7 +323,7 @@ void SomfyShade::checkMovement() {
       this->p_currentTiltPos(this->tiltTarget);
       // If we need to stop the shade do this before we indicate that we are
       // not moving otherwise the my function will kick in.
-      if(this->settingTiltPos) {
+      if(this->motionState.settingTiltPos) {
         if(this->tiltType == tilt_types::integrated) {
           // If this is an integrated tilt mechanism the we will simply let it finish.  If it is not then we will stop it.
           ESP_LOGD(TAG, "Sending My -- tiltTarget: %.2f, tiltDirection: %d", this->tiltTarget, this->tiltDirection);
@@ -337,12 +335,12 @@ void SomfyShade::checkMovement() {
         }
       }
       this->p_tiltDirection(0);
-      this->settingTiltPos = false;
+      this->motionState.settingTiltPos = false;
       ESP_LOGI(TAG, "Stopping at tilt position");
       if(this->isAtTarget()) this->commitShadePosition();
     }
   }
-  if(this->settingMyPos && this->isAtTarget()) {
+  if(this->motionState.settingMyPos && this->isAtTarget()) {
     delay(200);
     // Set this position before sending the command.  If you don't the processFrame function
     // will send the shade back to its original My position.
@@ -359,7 +357,7 @@ void SomfyShade::checkMovement() {
       else this->p_myPos(this->currentPos);
     }
     SomfyRemote::sendCommand(somfy_commands::My, SETMY_REPEATS);
-    this->settingMyPos = false;
+    this->motionState.settingMyPos = false;
     this->commitMyPosition();
     this->emitState();
   }
@@ -827,7 +825,7 @@ void SomfyShade::processFrame(somfy_frame_t &frame, bool internal) {
   this->startPos = this->currentPos;
   this->startTiltPos = this->currentTiltPos;
   // If the command is coming from a remote then we are aborting all these positioning operations.
-  if(!internal) this->settingMyPos = this->settingPos = this->settingTiltPos = false;
+  if(!internal) this->motionState.clear();
   somfy_commands cmd = this->transformCommand(frame.cmd);
   switch(cmd) {
     case somfy_commands::Sensor:
@@ -1121,7 +1119,7 @@ void SomfyShade::setMyPosition(int8_t pos, int8_t tilt) {
   if(this->tiltType == tilt_types::tiltonly) {
     this->p_myPos(-1.0f);    
     if(tilt != floor(this->currentTiltPos)) {
-      this->settingMyPos = true;
+      this->motionState.settingMyPos = true;
       if(tilt == floor(this->myTiltPos))
         this->moveToMyPosition();
       else 
@@ -1132,13 +1130,13 @@ void SomfyShade::setMyPosition(int8_t pos, int8_t tilt) {
       // a my command to ensure we are actually at the my position then send the clear
       // command.  There really is no other way to do this.
       if(this->currentTiltPos != this->myTiltPos) {
-        this->settingMyPos = true;
+        this->motionState.settingMyPos = true;
         this->moveToMyPosition();      
       }
       else {
         SomfyRemote::sendCommand(somfy_commands::My, this->repeats);
-        this->settingPos = false;
-        this->settingMyPos = true;
+        this->motionState.settingPos = false;
+        this->motionState.settingMyPos = true;
       }
     }
     else {
@@ -1151,7 +1149,7 @@ void SomfyShade::setMyPosition(int8_t pos, int8_t tilt) {
   else if(this->tiltType != tilt_types::none) {
       if(tilt < 0) tilt = 0;
       if(pos != floor(this->currentPos) || tilt != floor(this->currentTiltPos)) {
-        this->settingMyPos = true;
+        this->motionState.settingMyPos = true;
         if(pos == floor(this->myPos) && tilt == floor(this->myTiltPos))
           this->moveToMyPosition();
         else
@@ -1162,13 +1160,13 @@ void SomfyShade::setMyPosition(int8_t pos, int8_t tilt) {
         // a my command to ensure we are actually at the my position then send the clear
         // command.  There really is no other way to do this.
         if(this->currentPos != this->myPos || this->currentTiltPos != this->myTiltPos) {
-          this->settingMyPos = true;
+          this->motionState.settingMyPos = true;
           this->moveToMyPosition();      
         }
         else {
           SomfyRemote::sendCommand(somfy_commands::My, this->repeats);
-          this->settingPos = false;
-          this->settingMyPos = true;
+          this->motionState.settingPos = false;
+          this->motionState.settingMyPos = true;
         }
       }
       else {
@@ -1181,7 +1179,7 @@ void SomfyShade::setMyPosition(int8_t pos, int8_t tilt) {
   }
   else {
     if(pos != floor(this->currentPos)) {
-      this->settingMyPos = true;
+      this->motionState.settingMyPos = true;
       if(pos == floor(this->myPos))
         this->moveToMyPosition();
       else
@@ -1192,13 +1190,13 @@ void SomfyShade::setMyPosition(int8_t pos, int8_t tilt) {
       // a my command to ensure we are actually at the my position then send the clear
       // command.  There really is no other way to do this.
       if(this->myPos != this->currentPos) {
-        this->settingMyPos = true;
+        this->motionState.settingMyPos = true;
         this->moveToMyPosition();      
       }
       else {
         SomfyRemote::sendCommand(somfy_commands::My, this->repeats);
-        this->settingPos = false;
-        this->settingMyPos = true;
+        this->motionState.settingPos = false;
+        this->motionState.settingMyPos = true;
       }
     }
     else {
@@ -1228,7 +1226,7 @@ void SomfyShade::moveToMyPosition() {
   if(this->myPos == -1 && (this->tiltType == tilt_types::none || this->myTiltPos == -1)) return;
   if(this->tiltType != tilt_types::tiltonly && this->myPos >= 0.0f && this->myPos <= 100.0f) this->p_target(this->myPos);
   if(this->myTiltPos >= 0.0f && this->myTiltPos <= 100.0f) this->p_tiltTarget(this->myTiltPos);
-  this->settingPos = false;
+  this->motionState.settingPos = false;
   if(this->simMy()) {
     ESP_LOGI(TAG, "Moving to simulated favorite position");
     this->moveToTarget(this->myPos, this->myTiltPos);
@@ -1259,7 +1257,7 @@ void SomfyShade::moveToTiltTarget(float target) {
     }
     this->p_tiltTarget(target);
   }
-  if(cmd != somfy_commands::My) this->settingTiltPos = true;
+  if(cmd != somfy_commands::My) this->motionState.settingTiltPos = true;
 }
 
 void SomfyShade::moveToTarget(float pos, float tilt) {
@@ -1296,11 +1294,11 @@ void SomfyShade::moveToTarget(float pos, float tilt) {
     }
     ESP_LOGI(TAG, " using %s", translateSomfyCommand(cmd).c_str());
     SomfyRemote::sendCommand(cmd, this->tiltType == tilt_types::euromode ? TILT_REPEATS : this->repeats);
-    this->settingPos = true;
+    this->motionState.settingPos = true;
     this->p_target(pos);
     if(tilt >= 0) {
       this->p_tiltTarget(tilt);
-      this->settingTiltPos = true;
+      this->motionState.settingTiltPos = true;
     }
   }
 }

@@ -54,6 +54,9 @@ idf_component_register(
 # alongside the firmware image when running `idf.py flash`.
 littlefs_create_partition_image(spiffs ../data FLASH_IN_PROJECT)
 
+# Enable NVS-backed persistence for shade state (position, my-position, rolling codes).
+target_compile_definitions(${COMPONENT_LIB} PRIVATE USE_NVS)
+
 # Suppress deprecation warnings for ArduinoJson v6→v7 API changes.
 # These are deferred to a later migration step; the deprecated APIs are
 # still fully functional in v7.

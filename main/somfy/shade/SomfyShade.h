@@ -9,6 +9,7 @@
 #include "SomfyPersistence.h"
 #include "SomfyCommandTransmitter.h"
 #include "SomfyJSONSerializer.h"
+#include "SomfyMotionState.h"
 
 class SomfyShade : public SomfyRemote {
   protected:
@@ -17,9 +18,7 @@ class SomfyShade : public SomfyRemote {
     uint64_t tiltStart = 0;
     float startPos = 0.0f;
     float startTiltPos = 0.0f;
-    bool settingMyPos = false;
-    bool settingPos = false;
-    bool settingTiltPos = false;
+    MotionState motionState;
     uint32_t awaitMy = 0;
   public:
     SomfyShade() { mqttPublisher.shade = this; persistence.shade = this; commandTransmitter.shade = this; jsonSerializer.shade = this; }

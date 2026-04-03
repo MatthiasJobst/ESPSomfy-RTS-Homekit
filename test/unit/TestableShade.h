@@ -65,18 +65,18 @@ public:
     void setTiltStart(uint64_t t)   { tiltStart = t; }
     void setStartPos(float v)       { startPos = v; }
     void setStartTiltPos(float v)   { startTiltPos = v; }
-    void setSettingPos(bool v)      { settingPos = v; }
-    void setSettingTiltPos(bool v)  { settingTiltPos = v; }
-    void setSettingMyPos(bool v)    { settingMyPos = v; }
+    void setSettingPos(bool v)      { motionState.settingPos = v; }
+    void setSettingTiltPos(bool v)  { motionState.settingTiltPos = v; }
+    void setSettingMyPos(bool v)    { motionState.settingMyPos = v; }
 
     // ── Additional state reads ───────────────────────────────────────────────
     int8_t   getLastMovement()  const { return lastMovement; }
     int8_t   getDirection()     const { return direction; }
     int8_t   getTiltDirection() const { return tiltDirection; }
     uint64_t getMoveStart()     const { return moveStart; }
-    bool     getSettingPos()    const { return settingPos; }
-    bool     getSettingTiltPos()const { return settingTiltPos; }
-    bool     getSettingMyPos()  const { return settingMyPos; }
+    bool     getSettingPos()    const { return motionState.settingPos; }
+    bool     getSettingTiltPos()const { return motionState.settingTiltPos; }
+    bool     getSettingMyPos()  const { return motionState.settingMyPos; }
 
     // ── Real emitCommand (bypasses mock for MQTT side-effect tests) ─────────
     void callRealEmitCommand(somfy_commands cmd, const char *source,
