@@ -24,13 +24,13 @@ FetchContent_MakeAvailable(arduinojson)
 # ── Source files under test ─────────────────────────────────────────────────
 # We compile only the Somfy protocol/shade files; everything else is stubbed.
 set(PRODUCTION_SOURCES
-    ../../main/somfy/SomfyFlagManager.cpp
-    ../../main/somfy/SomfyGPIOControl.cpp
-    ../../main/somfy/SomfyMQTTPublisher.cpp
-    ../../main/somfy/SomfyPersistence.cpp
-    ../../main/somfy/SomfyCommandTransmitter.cpp
-    ../../main/somfy/SomfyJSONSerializer.cpp
-    ../../main/somfy/SomfyShade.cpp
+    ../../main/somfy/shade/SomfyFlagManager.cpp
+    ../../main/somfy/shade/SomfyGPIOControl.cpp
+    ../../main/somfy/shade/SomfyMQTTPublisher.cpp
+    ../../main/somfy/shade/SomfyPersistence.cpp
+    ../../main/somfy/shade/SomfyCommandTransmitter.cpp
+    ../../main/somfy/shade/SomfyJSONSerializer.cpp
+    ../../main/somfy/shade/SomfyShade.cpp
     ../../main/somfy/SomfyRemote.cpp
     ../../main/somfy/SomfyFrame.cpp
 )
@@ -51,12 +51,14 @@ add_executable(shade_tests
 # ── Include path order is critical ─────────────────────────────────────────
 # 1. stubs/        — intercepts Arduino/ESP-IDF/heavy project headers
 # 2. main/         — real project headers not in main/somfy/
-# 3. main/somfy/   — core Somfy headers (SomfyShade.h etc.)
-# 4. ArduinoJson   — real library (header-only, works on Linux)
+# 3. main/somfy/   — core Somfy headers (SomfyController.h, SomfyRemote.h etc.)
+# 4. main/somfy/shade/ — shade-specific headers (SomfyShade.h etc.)
+# 5. ArduinoJson   — real library (header-only, works on Linux)
 target_include_directories(shade_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/stubs
     ${CMAKE_CURRENT_SOURCE_DIR}/../../main
     ${CMAKE_CURRENT_SOURCE_DIR}/../../main/somfy
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../main/somfy/shade
     ${arduinojson_SOURCE_DIR}/src
 )
 

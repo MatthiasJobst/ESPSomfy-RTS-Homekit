@@ -1,5 +1,5 @@
 #pragma once
-#include "../../main/somfy/SomfyShade.h"
+#include "../../main/somfy/shade/SomfyShade.h"
 #include <gmock/gmock.h>
 
 // TestableShade overrides the two virtual seams added to SomfyShade so that

@@ -15,13 +15,13 @@ idf_component_register(
         "somfy/SomfyFrame.cpp"
         "somfy/SomfyTransceiver.cpp"
         "somfy/SomfyRemote.cpp"
-        "somfy/SomfyFlagManager.cpp"
-        "somfy/SomfyGPIOControl.cpp"
-        "somfy/SomfyMQTTPublisher.cpp"
-        "somfy/SomfyPersistence.cpp"
-        "somfy/SomfyCommandTransmitter.cpp"
-        "somfy/SomfyJSONSerializer.cpp"
-        "somfy/SomfyShade.cpp"
+        "somfy/shade/SomfyFlagManager.cpp"
+        "somfy/shade/SomfyGPIOControl.cpp"
+        "somfy/shade/SomfyMQTTPublisher.cpp"
+        "somfy/shade/SomfyPersistence.cpp"
+        "somfy/shade/SomfyCommandTransmitter.cpp"
+        "somfy/shade/SomfyJSONSerializer.cpp"
+        "somfy/shade/SomfyShade.cpp"
         "somfy/SomfyController.cpp"
         "SSDP.cpp"
         "Utils.cpp"
@@ -36,6 +36,7 @@ idf_component_register(
     INCLUDE_DIRS
         "."
         "somfy"
+        "somfy/shade"
         "web"
     REQUIRES
         arduino-esp32
