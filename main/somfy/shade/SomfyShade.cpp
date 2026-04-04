@@ -20,12 +20,12 @@ extern GitUpdater git;
 void SomfyShade::clear() {
   this->setShadeId(255);
   this->setRemoteAddress(0);
-  this->moveStart = 0;
-  this->tiltStart = 0;
+  movementTracker.moveStart    = 0;
+  movementTracker.tiltStart    = 0;
   this->flagManager = SomfyFlagManager{};
-  this->startPos = 0.0f;
-  this->startTiltPos = 0.0f;
-  this->motionState = MotionState{};
+  movementTracker.startPos     = 0.0f;
+  movementTracker.startTiltPos = 0.0f;
+  movementTracker.motionState  = MotionState{};
   this->awaitMy = 0;
   this->flipPosition = false;
   this->flipCommands = false;
@@ -39,8 +39,8 @@ void SomfyShade::clear() {
   this->tiltDirection = 0;  
   this->target = 0.0f;
   this->tiltTarget = 0.0f;
-  this->myPos = -1.0f;
-  this->myTiltPos = -1.0f;
+  targetSequencer.myPos = -1.0f;
+  targetSequencer.myTiltPos = -1.0f;
   this->bitLength = somfy.transceiver.config.type;
   this->proto = somfy.transceiver.config.proto;
   for(uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++)
@@ -200,22 +200,22 @@ float SomfyShade::p_tiltTarget(float target) {
 }
 
 float SomfyShade::p_myPos(float pos) {
-  float old = this->myPos;
+  float old = targetSequencer.myPos;
   if(old != pos) {
     //if(this->transformPosition(pos) == 0) ESP_LOGD(TAG, "MyPos = %.2f", pos);
-    this->myPos = pos;
+    targetSequencer.myPos = pos;
     if(this->transformPosition(old) != this->transformPosition(pos))
-      this->publish("mypos", this->transformPosition(this->myPos), true);
+      this->publish("mypos", this->transformPosition(targetSequencer.myPos), true);
   }
   return old;
 }
 
 float SomfyShade::p_myTiltPos(float pos) {
-  float old = this->myTiltPos;
+  float old = targetSequencer.myTiltPos;
   if(old != pos) {
-    this->myTiltPos = pos;
+    targetSequencer.myTiltPos = pos;
     if(this->transformPosition(old) != this->transformPosition(pos))
-      this->publish("myTiltPos", this->transformPosition(this->myTiltPos), true);
+      this->publish("myTiltPos", this->transformPosition(targetSequencer.myTiltPos), true);
   }
   return old;
 }

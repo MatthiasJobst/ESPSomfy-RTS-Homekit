@@ -37,9 +37,9 @@ void SomfyPersistence::commitMyPosition() {
   if(somfy.useNVS()) {
     char shadeKey[15];
     snprintf(shadeKey, sizeof(shadeKey), "SomfyShade%u", shade->getShadeId());
-    ESP_LOGI(PERSIST_TAG, "Writing my shade position: %d%%", (int)shade->myPos);
+    ESP_LOGI(PERSIST_TAG, "Writing my shade position: %d%%", (int)shade->targetSequencer.myPos);
     pref.begin(shadeKey);
-    pref.putUShort("myPos", shade->myPos);
+    pref.putUShort("myPos", shade->targetSequencer.myPos);
     pref.end();
   }
   #endif
@@ -78,7 +78,7 @@ bool SomfyPersistence::save() {
     pref.putUInt("tiltTime",      shade->tiltTime);
     pref.putFloat("currentPos",    shade->currentPos);
     pref.putFloat("currentTiltPos",shade->currentTiltPos);
-    pref.putUShort("myPos",       shade->myPos);
+    pref.putUShort("myPos",       shade->targetSequencer.myPos);
     uint32_t linkedAddresses[SOMFY_MAX_LINKED_REMOTES];
     memset(linkedAddresses, 0x00, sizeof(linkedAddresses));
     uint8_t j = 0;
@@ -128,7 +128,7 @@ void SomfyPersistence::load() {
   shade->setRemoteAddress(pref.getUInt("remoteAddress", 0));
   shade->currentPos    = pref.getFloat("currentPos", 0);
   shade->target        = floor(shade->currentPos);
-  shade->myPos         = static_cast<float>(pref.getUShort("myPos", shade->myPos));
+  shade->targetSequencer.myPos         = static_cast<float>(pref.getUShort("myPos", shade->targetSequencer.myPos));
   shade->tiltType      = pref.getBool("hasTilt", false) ? tilt_types::none : tilt_types::tiltmotor;
   shade->shadeType     = static_cast<shade_types>(pref.getChar("shadeType", static_cast<uint8_t>(shade->shadeType)));
   shade->currentTiltPos = pref.getFloat("currentTiltPos", 0);
@@ -138,7 +138,7 @@ void SomfyPersistence::load() {
 
   ESP_LOGI(PERSIST_TAG, "shadeId: %u name: %s address: %u position: %.2f myPos: %.2f",
            shade->getShadeId(), shade->name, shade->getRemoteAddress(),
-           shade->currentPos, shade->myPos);
+           shade->currentPos, shade->targetSequencer.myPos);
 
   pref.begin("ShadeCodes");
   shade->lastRollingCode = pref.getUShort(shade->getRemotePrefId(), 0);

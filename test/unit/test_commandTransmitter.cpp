@@ -166,7 +166,7 @@ TEST_F(CommandTransmitterTest, SendCommand_My_Idle_MovesToMyPosition) {
     shade.shadeType = shade_types::roller;
     shade.tiltType  = tilt_types::none;
     shade.target    = shade.currentPos;   // at target
-    shade.myPos     = 25.0f;
+    shade.targetSequencer.myPos     = 25.0f;
     shade.sendCommand(somfy_commands::My);
     // moveToMyPosition() sets target to myPos
     EXPECT_FLOAT_EQ(shade.getTarget(), 25.0f);

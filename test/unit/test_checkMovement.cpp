@@ -46,8 +46,8 @@ protected:
         shade.currentTiltPos = 50.0f;
         shade.target         = 50.0f;   // idle by default
         shade.tiltTarget     = 50.0f;
-        shade.myPos          = -1.0f;
-        shade.myTiltPos      = -1.0f;
+        shade.targetSequencer.myPos          = -1.0f;
+        shade.targetSequencer.myTiltPos      = -1.0f;
 
         // Allow emitState freely — most tests focus on position state, not events.
         EXPECT_CALL(shade, emitState(_)).Times(AnyNumber());
@@ -110,7 +110,7 @@ TEST_F(CheckMovementTest, SunFlag_SunTimeout_FiresAndSetsTarget_MyPos) {
     shade.setSunDone(false);
     shade.setNoWindDone(true);
     shade.setSunStart(1);                        // non-zero = timer running
-    shade.myPos = 75.0f;
+    shade.targetSequencer.myPos = 75.0f;
     test_clock_ms = 1 + SUN_TIMEOUT + 1;
 
     shade.checkMovement();
@@ -124,7 +124,7 @@ TEST_F(CheckMovementTest, SunFlag_SunTimeout_FiresAndSetsTarget_Fallback100) {
     shade.setSunDone(false);
     shade.setNoWindDone(true);
     shade.setSunStart(1);
-    shade.myPos = -1.0f;
+    shade.targetSequencer.myPos = -1.0f;
     test_clock_ms = 1 + SUN_TIMEOUT + 1;
 
     shade.checkMovement();
@@ -138,7 +138,7 @@ TEST_F(CheckMovementTest, SunFlag_NoWindTimeout_FiresAndSetsTarget) {
                    static_cast<uint8_t>(somfy_flags_t::Sunny));
     shade.setNoWindDone(false);
     shade.setNoWindStart(1);
-    shade.myPos = 60.0f;
+    shade.targetSequencer.myPos = 60.0f;
     test_clock_ms = 1 + NO_WIND_TIMEOUT + 1;
 
     shade.checkMovement();
@@ -743,12 +743,12 @@ TEST_F(CheckMovementTest, SettingMyPos_NoTilt_SetsMyPos) {
     shade.tiltType   = tilt_types::none;
     shade.currentPos = 40.0f;
     shade.target     = 40.0f;   // isAtTarget() true
-    shade.myPos      = 99.0f;   // different from currentPos → sets to currentPos
+    shade.targetSequencer.myPos      = 99.0f;   // different from currentPos → sets to currentPos
     shade.setSettingMyPos(true);
 
     EXPECT_CALL(shade, emitState(_)).Times(AtLeast(1));
     shade.checkMovement();
-    EXPECT_FLOAT_EQ(shade.myPos, 40.0f);
+    EXPECT_FLOAT_EQ(shade.targetSequencer.myPos, 40.0f);
     EXPECT_FALSE(shade.getSettingMyPos());
 }
 
@@ -757,11 +757,11 @@ TEST_F(CheckMovementTest, SettingMyPos_NoTilt_ClearsMyPosIfAlreadySet) {
     shade.tiltType   = tilt_types::none;
     shade.currentPos = 40.0f;
     shade.target     = 40.0f;
-    shade.myPos      = 40.0f;   // same as currentPos → clear to -1
+    shade.targetSequencer.myPos      = 40.0f;   // same as currentPos → clear to -1
     shade.setSettingMyPos(true);
 
     shade.checkMovement();
-    EXPECT_FLOAT_EQ(shade.myPos, -1.0f);
+    EXPECT_FLOAT_EQ(shade.targetSequencer.myPos, -1.0f);
     EXPECT_FALSE(shade.getSettingMyPos());
 }
 
@@ -772,13 +772,13 @@ TEST_F(CheckMovementTest, SettingMyPos_WithTilt_BothMatch_ClearsToNegOne) {
     shade.target         = 40.0f;
     shade.currentTiltPos = 30.0f;
     shade.tiltTarget     = 30.0f;
-    shade.myPos          = 40.0f;    // == currentPos
-    shade.myTiltPos      = 30.0f;   // == currentTiltPos → clear both
+    shade.targetSequencer.myPos          = 40.0f;    // == currentPos
+    shade.targetSequencer.myTiltPos      = 30.0f;   // == currentTiltPos → clear both
     shade.setSettingMyPos(true);
 
     shade.checkMovement();
-    EXPECT_FLOAT_EQ(shade.myPos,    -1.0f);
-    EXPECT_FLOAT_EQ(shade.myTiltPos, -1.0f);
+    EXPECT_FLOAT_EQ(shade.targetSequencer.myPos,    -1.0f);
+    EXPECT_FLOAT_EQ(shade.targetSequencer.myTiltPos, -1.0f);
     EXPECT_FALSE(shade.getSettingMyPos());
 }
 
@@ -789,13 +789,13 @@ TEST_F(CheckMovementTest, SettingMyPos_WithTilt_SetsBothPositions) {
     shade.target         = 40.0f;
     shade.currentTiltPos = 30.0f;
     shade.tiltTarget     = 30.0f;
-    shade.myPos          = 99.0f;   // different → update
-    shade.myTiltPos      = 99.0f;
+    shade.targetSequencer.myPos          = 99.0f;   // different → update
+    shade.targetSequencer.myTiltPos      = 99.0f;
     shade.setSettingMyPos(true);
 
     shade.checkMovement();
-    EXPECT_FLOAT_EQ(shade.myPos,     40.0f);
-    EXPECT_FLOAT_EQ(shade.myTiltPos, 30.0f);
+    EXPECT_FLOAT_EQ(shade.targetSequencer.myPos,     40.0f);
+    EXPECT_FLOAT_EQ(shade.targetSequencer.myTiltPos, 30.0f);
     EXPECT_FALSE(shade.getSettingMyPos());
 }
 

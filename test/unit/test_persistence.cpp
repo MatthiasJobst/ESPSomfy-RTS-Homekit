@@ -38,8 +38,8 @@ protected:
         shade.currentTiltPos = 10.0f;
         shade.target         = 42.0f;
         shade.tiltTarget     = 10.0f;
-        shade.myPos          = 25.0f;
-        shade.myTiltPos      = -1.0f;
+        shade.targetSequencer.myPos          = 25.0f;
+        shade.targetSequencer.myTiltPos      = -1.0f;
         shade.direction      = 0;
         shade.upTime         = 10000;
         shade.downTime       = 10000;
@@ -113,7 +113,7 @@ TEST_F(PersistenceTest, CommitMyPosition_UseNVSFalse_SetsDirtyOnly) {
 
 TEST_F(PersistenceTest, CommitMyPosition_UseNVSTrue_WritesMyPos) {
     nvs_stub_use_nvs = true;
-    shade.myPos = 50.0f;
+    shade.targetSequencer.myPos = 50.0f;
     shade.commitMyPosition();
     auto &store = nvs_ns_stores["SomfyShade1"];
     EXPECT_EQ(store.entries.count("myPos"), 1u);
@@ -156,7 +156,7 @@ TEST_F(PersistenceTest, Save_UseNVSTrue_WritesAllCoreFields) {
     strncpy(shade.name, "Living Room", sizeof(shade.name));
     shade.currentPos     = 55.0f;
     shade.currentTiltPos = 20.0f;
-    shade.myPos          = 30.0f;
+    shade.targetSequencer.myPos          = 30.0f;
     shade.upTime         = 8000;
     shade.downTime       = 9000;
     shade.tiltTime       = 6000;
@@ -198,7 +198,7 @@ TEST_F(PersistenceTest, Load_AfterSave_RestoresCoreFields) {
     strncpy(shade.name, "Bedroom", sizeof(shade.name));
     shade.currentPos     = 67.0f;
     shade.currentTiltPos = 15.0f;
-    shade.myPos          = 40.0f;
+    shade.targetSequencer.myPos          = 40.0f;
     shade.upTime         = 12000;
     shade.downTime       = 11000;
     shade.tiltTime       = 5000;

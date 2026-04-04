@@ -45,8 +45,8 @@ protected:
         shade.currentTiltPos = 50.0f;
         shade.target         = 50.0f;
         shade.tiltTarget     = 50.0f;
-        shade.myPos          = -1.0f;
-        shade.myTiltPos      = -1.0f;
+        shade.targetSequencer.myPos          = -1.0f;
+        shade.targetSequencer.myTiltPos      = -1.0f;
         shade.setDirection(0);
 
         EXPECT_CALL(shade, emitState(_, _)).Times(AnyNumber());
@@ -135,7 +135,7 @@ TEST_F(TargetSeqTest, MoveToTarget_TiltOnly_ForcesPos100) {
     shade.tiltType       = tilt_types::tiltonly;
     shade.currentPos     = 100.0f;  // tiltonly: currentPos is always 100
     shade.currentTiltPos = 50.0f;
-    shade.myPos          = -1.0f;
+    shade.targetSequencer.myPos          = -1.0f;
     shade.moveToTarget(100.0f, 20.0f);  // tilt < currentTiltPos → Up
     EXPECT_EQ(lastCmd(), somfy_commands::Up);
     EXPECT_FLOAT_EQ(shade.target, 100.0f);
@@ -146,7 +146,7 @@ TEST_F(TargetSeqTest, MoveToTarget_TiltOnly_TiltHigher_SendsDown) {
     shade.tiltType       = tilt_types::tiltonly;
     shade.currentPos     = 100.0f;
     shade.currentTiltPos = 30.0f;
-    shade.myPos          = -1.0f;
+    shade.targetSequencer.myPos          = -1.0f;
     shade.moveToTarget(100.0f, 80.0f);  // tilt(80) > currentTiltPos(30) → Down
     EXPECT_EQ(lastCmd(), somfy_commands::Down);
 }
@@ -268,7 +268,7 @@ TEST_F(TargetSeqTest, MoveToTiltTarget_OutOfRange_NoUpdate) {
 
 // C1. Not idle → returns immediately, no command
 TEST_F(TargetSeqTest, MoveToMyPos_NotIdle_DoesNothing) {
-    shade.myPos      = 80.0f;
+    shade.targetSequencer.myPos      = 80.0f;
     shade.currentPos = 50.0f;
     shade.target     = 80.0f;
     shade.setDirection(1);  // moving
@@ -280,7 +280,7 @@ TEST_F(TargetSeqTest, MoveToMyPos_NotIdle_DoesNothing) {
 // C2. tiltType::none, currentPos == myPos → returns early, no command
 TEST_F(TargetSeqTest, MoveToMyPos_AlreadyAtMyPos_NoTilt_EarlyReturn) {
     shade.tiltType   = tilt_types::none;
-    shade.myPos      = 50.0f;
+    shade.targetSequencer.myPos      = 50.0f;
     shade.currentPos = 50.0f;
     uint16_t rcBefore = shade.getLastFrame().rollingCode;
     shade.moveToMyPosition();
@@ -290,8 +290,8 @@ TEST_F(TargetSeqTest, MoveToMyPos_AlreadyAtMyPos_NoTilt_EarlyReturn) {
 // C3. tiltType != none, currentPos == myPos AND currentTiltPos == myTiltPos → early return
 TEST_F(TargetSeqTest, MoveToMyPos_AlreadyAtMyPos_WithTilt_EarlyReturn) {
     shade.tiltType       = tilt_types::integrated;
-    shade.myPos          = 50.0f;
-    shade.myTiltPos      = 30.0f;
+    shade.targetSequencer.myPos          = 50.0f;
+    shade.targetSequencer.myTiltPos      = 30.0f;
     shade.currentPos     = 50.0f;
     shade.currentTiltPos = 30.0f;
     shade.tiltTarget     = 30.0f;  // must match currentTiltPos for isAtTarget()/isIdle()
@@ -303,7 +303,7 @@ TEST_F(TargetSeqTest, MoveToMyPos_AlreadyAtMyPos_WithTilt_EarlyReturn) {
 // C4. myPos == -1 AND tiltType == none → early return
 TEST_F(TargetSeqTest, MoveToMyPos_MyPosNotSet_NoTilt_EarlyReturn) {
     shade.tiltType   = tilt_types::none;
-    shade.myPos      = -1.0f;
+    shade.targetSequencer.myPos      = -1.0f;
     shade.currentPos = 50.0f;
     uint16_t rcBefore = shade.getLastFrame().rollingCode;
     shade.moveToMyPosition();
@@ -313,8 +313,8 @@ TEST_F(TargetSeqTest, MoveToMyPos_MyPosNotSet_NoTilt_EarlyReturn) {
 // C5. myPos == -1 AND tiltType != none AND myTiltPos == -1 → early return
 TEST_F(TargetSeqTest, MoveToMyPos_NeitherPosSet_WithTilt_EarlyReturn) {
     shade.tiltType   = tilt_types::integrated;
-    shade.myPos      = -1.0f;
-    shade.myTiltPos  = -1.0f;
+    shade.targetSequencer.myPos      = -1.0f;
+    shade.targetSequencer.myTiltPos  = -1.0f;
     shade.currentPos = 50.0f;
     uint16_t rcBefore = shade.getLastFrame().rollingCode;
     shade.moveToMyPosition();
@@ -324,7 +324,7 @@ TEST_F(TargetSeqTest, MoveToMyPos_NeitherPosSet_WithTilt_EarlyReturn) {
 // C6. simMy = false, valid myPos → sends My command
 TEST_F(TargetSeqTest, MoveToMyPos_NoSimMy_SendsMy) {
     shade.tiltType   = tilt_types::none;
-    shade.myPos      = 80.0f;
+    shade.targetSequencer.myPos      = 80.0f;
     shade.currentPos = 50.0f;
     shade.moveToMyPosition();
     EXPECT_EQ(lastCmd(), somfy_commands::My);
@@ -334,7 +334,7 @@ TEST_F(TargetSeqTest, MoveToMyPos_NoSimMy_SendsMy) {
 TEST_F(TargetSeqTest, MoveToMyPos_SimMy_CallsMoveToTarget) {
     shade.setSimMy(true);
     shade.tiltType   = tilt_types::none;
-    shade.myPos      = 80.0f;
+    shade.targetSequencer.myPos      = 80.0f;
     shade.currentPos = 50.0f;
     shade.moveToMyPosition();
     EXPECT_EQ(lastCmd(), somfy_commands::Down);
@@ -344,7 +344,7 @@ TEST_F(TargetSeqTest, MoveToMyPos_SimMy_CallsMoveToTarget) {
 // C8. target set to myPos before sending
 TEST_F(TargetSeqTest, MoveToMyPos_SetsTargetToMyPos) {
     shade.tiltType   = tilt_types::none;
-    shade.myPos      = 80.0f;
+    shade.targetSequencer.myPos      = 80.0f;
     shade.currentPos = 50.0f;
     shade.moveToMyPosition();
     EXPECT_FLOAT_EQ(shade.target, 80.0f);
@@ -353,8 +353,8 @@ TEST_F(TargetSeqTest, MoveToMyPos_SetsTargetToMyPos) {
 // C9. tiltTarget set to myTiltPos when valid
 TEST_F(TargetSeqTest, MoveToMyPos_SetsTiltTargetToMyTiltPos) {
     shade.tiltType       = tilt_types::integrated;
-    shade.myPos          = 80.0f;
-    shade.myTiltPos      = 40.0f;
+    shade.targetSequencer.myPos          = 80.0f;
+    shade.targetSequencer.myTiltPos      = 40.0f;
     shade.currentPos     = 50.0f;
     shade.currentTiltPos = 50.0f;
     shade.moveToMyPosition();
@@ -365,11 +365,11 @@ TEST_F(TargetSeqTest, MoveToMyPos_SetsTiltTargetToMyTiltPos) {
 TEST_F(TargetSeqTest, MoveToMyPos_TiltOnly_ForcesCurrentPos100) {
     shade.tiltType       = tilt_types::tiltonly;
     shade.currentPos     = 100.0f;
-    shade.myTiltPos      = 30.0f;
+    shade.targetSequencer.myTiltPos      = 30.0f;
     shade.currentTiltPos = 60.0f;
     shade.moveToMyPosition();
     EXPECT_FLOAT_EQ(shade.currentPos, 100.0f);
-    EXPECT_FLOAT_EQ(shade.myPos, -1.0f);
+    EXPECT_FLOAT_EQ(shade.targetSequencer.myPos, -1.0f);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -381,7 +381,7 @@ TEST_F(TargetSeqTest, SetMyPos_None_PosNotCurrent_NotMyPos_MovesToTarget) {
     shade.tiltType   = tilt_types::none;
     shade.currentPos = 50.0f;
     shade.target     = 50.0f;
-    shade.myPos      = 30.0f;
+    shade.targetSequencer.myPos      = 30.0f;
     shade.setMyPosition(80, -1);
     EXPECT_EQ(lastCmd(), somfy_commands::Down);
 }
@@ -391,7 +391,7 @@ TEST_F(TargetSeqTest, SetMyPos_None_PosNotCurrent_IsMyPos_MovesToMyPosition) {
     shade.tiltType   = tilt_types::none;
     shade.currentPos = 50.0f;
     shade.target     = 50.0f;
-    shade.myPos      = 80.0f;
+    shade.targetSequencer.myPos      = 80.0f;
     shade.setMyPosition(80, -1);
     EXPECT_EQ(lastCmd(), somfy_commands::My);
 }
@@ -401,7 +401,7 @@ TEST_F(TargetSeqTest, SetMyPos_None_AtCurrentAndMyPos_SendsMy) {
     shade.tiltType   = tilt_types::none;
     shade.currentPos = 50.0f;
     shade.target     = 50.0f;
-    shade.myPos      = 50.0f;
+    shade.targetSequencer.myPos      = 50.0f;
     shade.setMyPosition(50, -1);
     EXPECT_EQ(lastCmd(), somfy_commands::My);
     EXPECT_TRUE(shade.getSettingMyPos());
@@ -413,11 +413,11 @@ TEST_F(TargetSeqTest, SetMyPos_None_AtCurrentNotMyPos_SendsMyAndStoresMyPos) {
     shade.tiltType   = tilt_types::none;
     shade.currentPos = 50.0f;
     shade.target     = 50.0f;
-    shade.myPos      = 30.0f;
+    shade.targetSequencer.myPos      = 30.0f;
     shade.setMyPosition(50, -1);
     EXPECT_EQ(lastCmd(), somfy_commands::My);
     EXPECT_EQ(shade.getLastFrame().repeats, SETMY_REPEATS);
-    EXPECT_FLOAT_EQ(shade.myPos, 50.0f);
+    EXPECT_FLOAT_EQ(shade.targetSequencer.myPos, 50.0f);
 }
 
 // D5. Not idle → returns immediately
@@ -442,7 +442,7 @@ TEST_F(TargetSeqTest, SetMyPos_TiltOnly_TiltDiffersFromCurrent_Moves) {
     shade.currentPos     = 100.0f;
     shade.target         = 100.0f;
     shade.currentTiltPos = 50.0f;
-    shade.myTiltPos      = -1.0f;
+    shade.targetSequencer.myTiltPos      = -1.0f;
     shade.setMyPosition(100, 20);  // tilt(20) != currentTiltPos(50)
     EXPECT_TRUE(shade.getSettingMyPos());
     EXPECT_EQ(lastCmd(), somfy_commands::Up);  // 20 < 50 → Up
@@ -454,7 +454,7 @@ TEST_F(TargetSeqTest, SetMyPos_TiltOnly_AtMyTiltPos_NotCurrentTilt_MovesToMyPosi
     shade.currentPos     = 100.0f;
     shade.target         = 100.0f;
     shade.currentTiltPos = 50.0f;
-    shade.myTiltPos      = 30.0f;
+    shade.targetSequencer.myTiltPos      = 30.0f;
     shade.setMyPosition(100, 30);  // tilt == myTiltPos but != currentTiltPos
     EXPECT_TRUE(shade.getSettingMyPos());
     EXPECT_EQ(lastCmd(), somfy_commands::My);
@@ -468,11 +468,11 @@ TEST_F(TargetSeqTest, SetMyPos_TiltOnly_AtCurrentNotMyTilt_SendsMyAndStoresToMyT
     shade.target         = 100.0f;
     shade.currentTiltPos = 50.0f;
     shade.tiltTarget     = 50.0f;
-    shade.myTiltPos      = 30.0f;
+    shade.targetSequencer.myTiltPos      = 30.0f;
     shade.setMyPosition(100, 50);  // tilt == currentTiltPos, tilt != myTiltPos
     EXPECT_EQ(lastCmd(), somfy_commands::My);
     EXPECT_EQ(shade.getLastFrame().repeats, SETMY_REPEATS);
-    EXPECT_FLOAT_EQ(shade.myTiltPos, 50.0f);
+    EXPECT_FLOAT_EQ(shade.targetSequencer.myTiltPos, 50.0f);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -496,8 +496,8 @@ TEST_F(TargetSeqTest, SetMyPos_HasTilt_AtMyPos_MovesToMyPosition) {
     shade.currentPos     = 50.0f;
     shade.target         = 50.0f;
     shade.currentTiltPos = 50.0f;
-    shade.myPos          = 80.0f;
-    shade.myTiltPos      = 30.0f;
+    shade.targetSequencer.myPos          = 80.0f;
+    shade.targetSequencer.myTiltPos      = 30.0f;
     shade.setMyPosition(80, 30);  // == myPos, myTiltPos → moveToMyPosition
     EXPECT_TRUE(shade.getSettingMyPos());
     EXPECT_EQ(lastCmd(), somfy_commands::My);
@@ -511,8 +511,8 @@ TEST_F(TargetSeqTest, SetMyPos_HasTilt_AtCurrentAndMyPos_SendsMy) {
     shade.target         = 50.0f;
     shade.currentTiltPos = 30.0f;
     shade.tiltTarget     = 30.0f;  // must match currentTiltPos so isAtTarget() passes
-    shade.myPos          = 50.0f;
-    shade.myTiltPos      = 30.0f;
+    shade.targetSequencer.myPos          = 50.0f;
+    shade.targetSequencer.myTiltPos      = 30.0f;
     shade.setMyPosition(50, 30);
     EXPECT_EQ(lastCmd(), somfy_commands::My);
     EXPECT_TRUE(shade.getSettingMyPos());
@@ -526,13 +526,13 @@ TEST_F(TargetSeqTest, SetMyPos_HasTilt_AtCurrentNotMyPos_SendsMyAndStoresMyPos) 
     shade.target         = 50.0f;
     shade.currentTiltPos = 30.0f;
     shade.tiltTarget     = 30.0f;  // must match currentTiltPos so isAtTarget() passes
-    shade.myPos          = 20.0f;
-    shade.myTiltPos      = 10.0f;
+    shade.targetSequencer.myPos          = 20.0f;
+    shade.targetSequencer.myTiltPos      = 10.0f;
     shade.setMyPosition(50, 30);
     EXPECT_EQ(lastCmd(), somfy_commands::My);
     EXPECT_EQ(shade.getLastFrame().repeats, SETMY_REPEATS);
-    EXPECT_FLOAT_EQ(shade.myPos,     50.0f);
-    EXPECT_FLOAT_EQ(shade.myTiltPos, 30.0f);
+    EXPECT_FLOAT_EQ(shade.targetSequencer.myPos,     50.0f);
+    EXPECT_FLOAT_EQ(shade.targetSequencer.myTiltPos, 30.0f);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -547,7 +547,7 @@ TEST_F(TargetSeqTest, SetMyPos_TiltOnly_AtCurrentAndMyTilt_SendsMy) {
     shade.target         = 100.0f;
     shade.currentTiltPos = 30.0f;
     shade.tiltTarget     = 30.0f;
-    shade.myTiltPos      = 30.0f;  // tilt == currentTiltPos == myTiltPos
+    shade.targetSequencer.myTiltPos      = 30.0f;  // tilt == currentTiltPos == myTiltPos
     shade.setMyPosition(100, 30);
     EXPECT_EQ(lastCmd(), somfy_commands::My);
     EXPECT_TRUE(shade.getSettingMyPos());
@@ -561,8 +561,8 @@ TEST_F(TargetSeqTest, SetMyPos_HasTilt_FloorMatchButExactDiffers_CallsMoveToMyPo
     shade.target         = 50.5f;
     shade.currentTiltPos = 30.0f;
     shade.tiltTarget     = 30.0f;
-    shade.myPos          = 50.8f;  // floor = 50; exact differs from currentPos
-    shade.myTiltPos      = 30.0f;
+    shade.targetSequencer.myPos          = 50.8f;  // floor = 50; exact differs from currentPos
+    shade.targetSequencer.myTiltPos      = 30.0f;
     shade.setMyPosition(50, 30);   // pos=50 == floor(50.5) and == floor(50.8)
     EXPECT_TRUE(shade.getSettingMyPos());
     EXPECT_EQ(lastCmd(), somfy_commands::My);  // moveToMyPosition → My
@@ -574,7 +574,7 @@ TEST_F(TargetSeqTest, SetMyPos_None_FloorMatchButExactDiffers_CallsMoveToMyPos) 
     shade.tiltType   = tilt_types::none;
     shade.currentPos = 50.5f;  // floor = 50
     shade.target     = 50.5f;
-    shade.myPos      = 50.8f;  // floor = 50; exact differs
+    shade.targetSequencer.myPos      = 50.8f;  // floor = 50; exact differs
     shade.setMyPosition(50, -1);
     EXPECT_TRUE(shade.getSettingMyPos());
     EXPECT_EQ(lastCmd(), somfy_commands::My);  // moveToMyPosition → My
@@ -584,8 +584,8 @@ TEST_F(TargetSeqTest, SetMyPos_None_FloorMatchButExactDiffers_CallsMoveToMyPos) 
 //      → does NOT return early; continues to set tilt target and send My
 TEST_F(TargetSeqTest, MoveToMyPos_AtPosNotAtTilt_ContinuesToSetTilt) {
     shade.tiltType       = tilt_types::integrated;
-    shade.myPos          = 80.0f;
-    shade.myTiltPos      = 30.0f;
+    shade.targetSequencer.myPos          = 80.0f;
+    shade.targetSequencer.myTiltPos      = 30.0f;
     shade.currentPos     = 80.0f;  // already at myPos
     shade.target         = 80.0f;
     shade.currentTiltPos = 50.0f;  // NOT at myTiltPos
@@ -603,7 +603,7 @@ TEST_F(TargetSeqTest, SetMyPos_TiltOnly_FloorTiltMatchButExactDiffers_CallsMoveT
     shade.target         = 100.0f;
     shade.currentTiltPos = 30.1f;  // floor = 30
     shade.tiltTarget     = 30.1f;
-    shade.myTiltPos      = 30.8f;  // floor = 30; exact differs
+    shade.targetSequencer.myTiltPos      = 30.8f;  // floor = 30; exact differs
     shade.setMyPosition(100, 30);  // tilt(30)==floor(30.1) → first if false; tilt==floor(30.8) → else if
     EXPECT_TRUE(shade.getSettingMyPos());
     EXPECT_EQ(lastCmd(), somfy_commands::My);  // moveToMyPosition → My

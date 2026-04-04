@@ -53,7 +53,7 @@ TEST_F(ClearTest, Clear_ResetsAllFields) {
     shade.target        = 75.0f;
     shade.currentTiltPos = 50.0f;
     shade.tiltTarget    = 50.0f;
-    shade.myPos         = 42.0f;
+    shade.targetSequencer.myPos         = 42.0f;
     shade.setSettingPos(true);
     shade.setSettingTiltPos(true);
     shade.setSettingMyPos(true);
@@ -64,7 +64,7 @@ TEST_F(ClearTest, Clear_ResetsAllFields) {
     EXPECT_EQ(shade.getRemoteAddress(), 0u);
     EXPECT_FLOAT_EQ(shade.currentPos, 0.0f);
     EXPECT_FLOAT_EQ(shade.target, 0.0f);
-    EXPECT_FLOAT_EQ(shade.myPos, -1.0f);
+    EXPECT_FLOAT_EQ(shade.targetSequencer.myPos, -1.0f);
     EXPECT_FALSE(shade.getSettingPos());
     EXPECT_FALSE(shade.getSettingTiltPos());
     EXPECT_FALSE(shade.getSettingMyPos());
@@ -126,8 +126,8 @@ protected:
         shade.currentTiltPos = 50.0f;
         shade.target         = 50.0f;
         shade.tiltTarget     = 50.0f;
-        shade.myPos          = -1.0f;
-        shade.myTiltPos      = -1.0f;
+        shade.targetSequencer.myPos          = -1.0f;
+        shade.targetSequencer.myTiltPos      = -1.0f;
 
         EXPECT_CALL(shade, emitState(_)).Times(AnyNumber());
         EXPECT_CALL(shade, emitState(_, _)).Times(AnyNumber());
@@ -291,25 +291,25 @@ TEST_F(WaitingFrameTest, EuroMode_Down_LowRepeats_SetsTiltTarget) {
 
 // Lines 586-598: My, SETMY_REPEATS, idle, myPos differs → store myPos
 TEST_F(WaitingFrameTest, My_HighRepeats_Idle_DifferentPos_StoresMyPos) {
-    shade.myPos = -1.0f;
+    shade.targetSequencer.myPos = -1.0f;
     armFrame(somfy_commands::My, /*repeats=*/35);
     EXPECT_CALL(shade, emitState(_)).Times(AnyNumber());
     shade.processWaitingFrame();
-    EXPECT_FLOAT_EQ(shade.myPos, 50.0f);
+    EXPECT_FLOAT_EQ(shade.targetSequencer.myPos, 50.0f);
 }
 
 // Lines 586-591: My, SETMY_REPEATS, idle, floor(myPos)==floor(currentPos) → clear
 TEST_F(WaitingFrameTest, My_HighRepeats_Idle_SamePos_ClearsMyPos) {
-    shade.myPos = 50.0f;   // same floor as currentPos=50
+    shade.targetSequencer.myPos = 50.0f;   // same floor as currentPos=50
     armFrame(somfy_commands::My, /*repeats=*/35);
     EXPECT_CALL(shade, emitState(_)).Times(AnyNumber());
     shade.processWaitingFrame();
-    EXPECT_FLOAT_EQ(shade.myPos, -1.0f);
+    EXPECT_FLOAT_EQ(shade.targetSequencer.myPos, -1.0f);
 }
 
 // Lines 600-609: My, low repeats, idle, no simMy, myPos set → move to my
 TEST_F(WaitingFrameTest, My_LowRepeats_Idle_WithMyPos_SetsTarget) {
-    shade.myPos = 30.0f;
+    shade.targetSequencer.myPos = 30.0f;
     shade.tiltTarget = 50.0f;
     armFrame(somfy_commands::My, /*repeats=*/1);
     EXPECT_CALL(shade, emitCommand(somfy_commands::My, _, _, _)).Times(1);
@@ -329,7 +329,7 @@ TEST_F(WaitingFrameTest, My_LowRepeats_NotIdle_StopsAtCurrentPos) {
 
 // Lines 615-618: My, repeats > SETMY_REPEATS+2 → processed
 TEST_F(WaitingFrameTest, My_VeryHighRepeats_MarksProcessed) {
-    shade.myPos = -1.0f;
+    shade.targetSequencer.myPos = -1.0f;
     armFrame(somfy_commands::My, /*repeats=*/40);
     EXPECT_CALL(shade, emitState(_)).Times(AnyNumber());
     shade.processWaitingFrame();
@@ -412,8 +412,8 @@ protected:
         shade.currentTiltPos = 50.0f;
         shade.target         = 50.0f;
         shade.tiltTarget     = 50.0f;
-        shade.myPos          = -1.0f;
-        shade.myTiltPos      = -1.0f;
+        shade.targetSequencer.myPos          = -1.0f;
+        shade.targetSequencer.myTiltPos      = -1.0f;
 
         EXPECT_CALL(shade, emitState(_)).Times(AnyNumber());
         EXPECT_CALL(shade, emitState(_, _)).Times(AnyNumber());
@@ -504,14 +504,14 @@ TEST_F(InternalCmdTest, Down_WindSuppressed_IgnoresCommand) {
 
 // My idle, no simMy, myPos set → moves to myPos
 TEST_F(InternalCmdTest, My_Idle_WithMyPos_SetsTarget) {
-    shade.myPos = 30.0f;
+    shade.targetSequencer.myPos = 30.0f;
     shade.processInternalCommand(somfy_commands::My, 1);
     EXPECT_FLOAT_EQ(shade.target, 30.0f);
 }
 
 // My idle, no simMy, myPos==-1 → no target change
 TEST_F(InternalCmdTest, My_Idle_NoMyPos_NoChange) {
-    shade.myPos = -1.0f;
+    shade.targetSequencer.myPos = -1.0f;
     shade.processInternalCommand(somfy_commands::My, 1);
     EXPECT_FLOAT_EQ(shade.target, 50.0f);
 }
@@ -785,7 +785,7 @@ TEST_F(InternalCmdTest, SunFlag_SunSensor_Sunny_SunDone_SetsTarget) {
     shade.setFlags(static_cast<uint8_t>(somfy_flags_t::SunSensor) |
                    static_cast<uint8_t>(somfy_flags_t::Sunny));
     shade.setSunDone(true);
-    shade.myPos = 70.0f;
+    shade.targetSequencer.myPos = 70.0f;
     shade.processInternalCommand(somfy_commands::SunFlag, 1);
     EXPECT_FLOAT_EQ(shade.target, 70.0f);
 }
@@ -966,8 +966,8 @@ protected:
         shade.currentTiltPos = 50.0f;
         shade.target         = 50.0f;
         shade.tiltTarget     = 50.0f;
-        shade.myPos          = -1.0f;
-        shade.myTiltPos      = -1.0f;
+        shade.targetSequencer.myPos          = -1.0f;
+        shade.targetSequencer.myTiltPos      = -1.0f;
         EXPECT_CALL(shade, emitState(_)).Times(AnyNumber());
         EXPECT_CALL(shade, emitState(_, _)).Times(AnyNumber());
         EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(AnyNumber());

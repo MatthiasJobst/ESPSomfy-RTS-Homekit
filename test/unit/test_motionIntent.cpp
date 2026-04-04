@@ -43,8 +43,8 @@ protected:
         shade.currentTiltPos = 50.0f;
         shade.target         = 50.0f;
         shade.tiltTarget     = 50.0f;
-        shade.myPos          = -1.0f;
-        shade.myTiltPos      = -1.0f;
+        shade.targetSequencer.myPos          = -1.0f;
+        shade.targetSequencer.myTiltPos      = -1.0f;
 
         EXPECT_CALL(shade, emitState(_, _)).Times(AnyNumber());
         EXPECT_CALL(shade, emitState(_)).Times(AnyNumber());
@@ -194,7 +194,7 @@ TEST_F(MotionIntentTest, SetMyPosition_NoTilt_AtCurrentAndMyPos_SetsSettingMyPos
     shade.tiltType   = tilt_types::none;
     shade.currentPos = 50.0f;
     shade.target     = 50.0f;   // idle
-    shade.myPos      = 50.0f;   // same as currentPos → "clear my" branch
+    shade.targetSequencer.myPos      = 50.0f;   // same as currentPos → "clear my" branch
     shade.setMyPosition(50, -1);
     EXPECT_TRUE(shade.getSettingMyPos());
 }
@@ -204,10 +204,10 @@ TEST_F(MotionIntentTest, SetMyPosition_NoTilt_AtCurrentNotMyPos_DoesNotSetSettin
     shade.tiltType   = tilt_types::none;
     shade.currentPos = 50.0f;
     shade.target     = 50.0f;   // idle
-    shade.myPos      = 30.0f;   // different from current
+    shade.targetSequencer.myPos      = 30.0f;   // different from current
     shade.setMyPosition(50, -1);
     EXPECT_FALSE(shade.getSettingMyPos());
-    EXPECT_FLOAT_EQ(shade.myPos, 50.0f);  // stored
+    EXPECT_FLOAT_EQ(shade.targetSequencer.myPos, 50.0f);  // stored
 }
 
 // Not idle → setMyPosition returns immediately without touching any flag

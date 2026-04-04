@@ -31,8 +31,8 @@ protected:
         shade.currentTiltPos = 50.0f;
         shade.target         = 50.0f;
         shade.tiltTarget     = 50.0f;
-        shade.myPos          = -1.0f;
-        shade.myTiltPos      = -1.0f;
+        shade.targetSequencer.myPos          = -1.0f;
+        shade.targetSequencer.myTiltPos      = -1.0f;
         shade.direction      = 0;
         shade.tiltDirection  = 0;
         shade.flipPosition   = false;
@@ -155,14 +155,14 @@ TEST_F(MQTTPublisherTest, p_target_SameTransform_DoesNotPublish) {
 
 TEST_F(MQTTPublisherTest, p_myPos_ChangedTransform_Publishes) {
     mqtt_connected_flag = true;
-    shade.myPos = 30.0f;
+    shade.targetSequencer.myPos = 30.0f;
     shade.p_myPos(40.0f);
     EXPECT_EQ(mqtt_published.count("shades/1/mypos"), 1u);
 }
 
 TEST_F(MQTTPublisherTest, p_myPos_SameTransform_DoesNotPublish) {
     mqtt_connected_flag = true;
-    shade.myPos = 30.0f;
+    shade.targetSequencer.myPos = 30.0f;
     shade.p_myPos(30.0f);
     EXPECT_EQ(mqtt_published.count("shades/1/mypos"), 0u);
 }
@@ -230,7 +230,7 @@ TEST_F(MQTTPublisherTest, PublishState_Connected_WritesDirectionTargetMypos) {
     mqtt_connected_flag = true;
     shade.direction = 1;
     shade.target    = 80.0f;
-    shade.myPos     = 40.0f;
+    shade.targetSequencer.myPos     = 40.0f;
     shade.publishState();
     EXPECT_EQ(mqtt_published.count("shades/1/direction"), 1u);
     EXPECT_EQ(mqtt_published.count("shades/1/target"),    1u);
@@ -587,14 +587,14 @@ TEST_F(MQTTPublisherTest, p_currentTiltPos_SameFloor_DoesNotPublish) {
 
 TEST_F(MQTTPublisherTest, p_myTiltPos_ChangedTransform_Publishes) {
     mqtt_connected_flag = true;
-    shade.myTiltPos = 30.0f;
+    shade.targetSequencer.myTiltPos = 30.0f;
     shade.p_myTiltPos(60.0f);
     EXPECT_EQ(mqtt_published.count("shades/1/myTiltPos"), 1u);
 }
 
 TEST_F(MQTTPublisherTest, p_myTiltPos_SameTransform_DoesNotPublish) {
     mqtt_connected_flag = true;
-    shade.myTiltPos = 30.0f;
+    shade.targetSequencer.myTiltPos = 30.0f;
     shade.p_myTiltPos(30.0f);
     EXPECT_EQ(mqtt_published.count("shades/1/myTiltPos"), 0u);
 }
@@ -613,6 +613,6 @@ TEST_F(MQTTPublisherTest, EmitState_WithTilt_DoesNotCrash) {
     shade.tiltDirection  = 1;
     shade.currentTiltPos = 60.0f;
     shade.tiltTarget     = 70.0f;
-    shade.myTiltPos      = 40.0f;
+    shade.targetSequencer.myTiltPos      = 40.0f;
     EXPECT_NO_FATAL_FAILURE(shade.callRealEmitState());
 }

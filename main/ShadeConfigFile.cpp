@@ -523,17 +523,17 @@ bool ShadeConfigFile::readShadeRecord(SomfyShade *shade) {
     if(rc < shade->lastRollingCode) pref.putUShort(shade->getRemotePrefId(), shade->lastRollingCode);
   }
   if(this->header.version < 4)
-    shade->myPos = static_cast<float>(this->readUInt8(255));
+    shade->targetSequencer.myPos = static_cast<float>(this->readUInt8(255));
   else {
-    shade->myPos = this->readFloat(-1);
-    shade->myTiltPos = this->readFloat(-1);
+    shade->targetSequencer.myPos = this->readFloat(-1);
+    shade->targetSequencer.myTiltPos = this->readFloat(-1);
   }
-  if(shade->myPos > 100 || shade->myPos < 0) shade->myPos = -1;
-  if(shade->myTiltPos > 100 || shade->myTiltPos < 0) shade->myTiltPos = -1;
+  if(shade->targetSequencer.myPos > 100 || shade->targetSequencer.myPos < 0) shade->targetSequencer.myPos = -1;
+  if(shade->targetSequencer.myTiltPos > 100 || shade->targetSequencer.myTiltPos < 0) shade->targetSequencer.myTiltPos = -1;
   shade->currentPos = this->readFloat(0);
   shade->currentTiltPos = this->readFloat(0);
   if(shade->tiltType == tilt_types::none || shade->shadeType != shade_types::blind) {
-    shade->myTiltPos = -1;
+    shade->targetSequencer.myTiltPos = -1;
     shade->currentTiltPos = 0;
     shade->tiltType = tilt_types::none;
   }
@@ -558,7 +558,7 @@ bool ShadeConfigFile::readShadeRecord(SomfyShade *shade) {
     shade->gpioControl.gpioFlags = this->readUInt8(shade->gpioControl.gpioFlags);
   if(shade->getShadeId() == 255) shade->clear();
   else if(shade->tiltType == tilt_types::tiltonly) {
-    shade->myPos = shade->currentPos = shade->target = 100.0f;
+    shade->targetSequencer.myPos = shade->currentPos = shade->target = 100.0f;
   }
   pref.end();
   if(shade->proto == radio_proto::GP_Relay || shade->proto == radio_proto::GP_Remote) {
@@ -660,7 +660,7 @@ bool ShadeConfigFile::writeRoomRecord(SomfyRoom *room) {
 }
 bool ShadeConfigFile::writeShadeRecord(SomfyShade *shade) {
   if(shade->tiltType == tilt_types::none || shade->shadeType != shade_types::blind) {
-    shade->myTiltPos = -1;
+    shade->targetSequencer.myTiltPos = -1;
     shade->currentTiltPos = 0;
     shade->tiltType = tilt_types::none;
   }
@@ -683,8 +683,8 @@ bool ShadeConfigFile::writeShadeRecord(SomfyShade *shade) {
   this->writeUInt16(shade->lastRollingCode);
   if(shade->getShadeId() != 255) {
     this->writeUInt8(shade->flags & 0xFF);
-    this->writeFloat(shade->myPos, 5);
-    this->writeFloat(shade->myTiltPos, 5);
+    this->writeFloat(shade->targetSequencer.myPos, 5);
+    this->writeFloat(shade->targetSequencer.myTiltPos, 5);
     this->writeFloat(shade->currentPos, 5);
     this->writeFloat(shade->currentTiltPos, 5);
   }

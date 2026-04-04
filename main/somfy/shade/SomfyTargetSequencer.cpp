@@ -42,11 +42,11 @@ void SomfyTargetSequencer::moveToTarget(float pos, float tilt) {
     }
     ESP_LOGI(TAG, " using %s", translateSomfyCommand(cmd).c_str());
     shade->SomfyRemote::sendCommand(cmd, shade->tiltType == tilt_types::euromode ? TILT_REPEATS : shade->repeats);
-    shade->motionState.settingPos = true;
+    shade->movementTracker.motionState.settingPos = true;
     shade->p_target(pos);
     if(tilt >= 0) {
       shade->p_tiltTarget(tilt);
-      shade->motionState.settingTiltPos = true;
+      shade->movementTracker.motionState.settingTiltPos = true;
     }
   }
 }
@@ -71,7 +71,7 @@ void SomfyTargetSequencer::moveToTiltTarget(float target) {
     }
     shade->p_tiltTarget(target);
   }
-  if(cmd != somfy_commands::My) shade->motionState.settingTiltPos = true;
+  if(cmd != somfy_commands::My) shade->movementTracker.motionState.settingTiltPos = true;
 }
 
 // ── moveToMyPosition ─────────────────────────────────────────────────────────
@@ -83,20 +83,20 @@ void SomfyTargetSequencer::moveToMyPosition() {
     shade->p_currentPos(100.0f);
     shade->p_myPos(-1.0f);
   }
-  if(shade->currentPos == shade->myPos) {
+  if(shade->currentPos == myPos) {
     if(shade->tiltType != tilt_types::none) {
-      if(shade->currentTiltPos == shade->myTiltPos) return;
+      if(shade->currentTiltPos == myTiltPos) return;
     }
     else
       return;
   }
-  if(shade->myPos == -1 && (shade->tiltType == tilt_types::none || shade->myTiltPos == -1)) return;
-  if(shade->tiltType != tilt_types::tiltonly && shade->myPos >= 0.0f && shade->myPos <= 100.0f) shade->p_target(shade->myPos);
-  if(shade->myTiltPos >= 0.0f && shade->myTiltPos <= 100.0f) shade->p_tiltTarget(shade->myTiltPos);
-  shade->motionState.settingPos = false;
+  if(myPos == -1 && (shade->tiltType == tilt_types::none || myTiltPos == -1)) return;
+  if(shade->tiltType != tilt_types::tiltonly && myPos >= 0.0f && myPos <= 100.0f) shade->p_target(myPos);
+  if(myTiltPos >= 0.0f && myTiltPos <= 100.0f) shade->p_tiltTarget(myTiltPos);
+  shade->movementTracker.motionState.settingPos = false;
   if(shade->simMy()) {
     ESP_LOGI(TAG, "Moving to simulated favorite position");
-    moveToTarget(shade->myPos, shade->myTiltPos);
+    moveToTarget(myPos, myTiltPos);
   }
   else
     shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
@@ -109,21 +109,21 @@ void SomfyTargetSequencer::setMyPosition(int8_t pos, int8_t tilt) {
   if(shade->tiltType == tilt_types::tiltonly) {
     shade->p_myPos(-1.0f);
     if(tilt != floor(shade->currentTiltPos)) {
-      shade->motionState.settingMyPos = true;
-      if(tilt == floor(shade->myTiltPos))
+      shade->movementTracker.motionState.settingMyPos = true;
+      if(tilt == floor(myTiltPos))
         moveToMyPosition();
       else
         moveToTarget(100, tilt);
     }
-    else if(tilt == floor(shade->myTiltPos)) {
-      if(shade->currentTiltPos != shade->myTiltPos) {
-        shade->motionState.settingMyPos = true;
+    else if(tilt == floor(myTiltPos)) {
+      if(shade->currentTiltPos != myTiltPos) {
+        shade->movementTracker.motionState.settingMyPos = true;
         moveToMyPosition();
       }
       else {
         shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
-        shade->motionState.settingPos = false;
-        shade->motionState.settingMyPos = true;
+        shade->movementTracker.motionState.settingPos = false;
+        shade->movementTracker.motionState.settingMyPos = true;
       }
     }
     else {
@@ -136,21 +136,21 @@ void SomfyTargetSequencer::setMyPosition(int8_t pos, int8_t tilt) {
   else if(shade->tiltType != tilt_types::none) {
     if(tilt < 0) tilt = 0;
     if(pos != floor(shade->currentPos) || tilt != floor(shade->currentTiltPos)) {
-      shade->motionState.settingMyPos = true;
-      if(pos == floor(shade->myPos) && tilt == floor(shade->myTiltPos))
+      shade->movementTracker.motionState.settingMyPos = true;
+      if(pos == floor(myPos) && tilt == floor(myTiltPos))
         moveToMyPosition();
       else
         moveToTarget(pos, tilt);
     }
-    else if(pos == floor(shade->myPos) && tilt == floor(shade->myTiltPos)) {
-      if(shade->currentPos != shade->myPos || shade->currentTiltPos != shade->myTiltPos) {
-        shade->motionState.settingMyPos = true;
+    else if(pos == floor(myPos) && tilt == floor(myTiltPos)) {
+      if(shade->currentPos != myPos || shade->currentTiltPos != myTiltPos) {
+        shade->movementTracker.motionState.settingMyPos = true;
         moveToMyPosition();
       }
       else {
         shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
-        shade->motionState.settingPos = false;
-        shade->motionState.settingMyPos = true;
+        shade->movementTracker.motionState.settingPos = false;
+        shade->movementTracker.motionState.settingMyPos = true;
       }
     }
     else {
@@ -163,21 +163,21 @@ void SomfyTargetSequencer::setMyPosition(int8_t pos, int8_t tilt) {
   }
   else {
     if(pos != floor(shade->currentPos)) {
-      shade->motionState.settingMyPos = true;
-      if(pos == floor(shade->myPos))
+      shade->movementTracker.motionState.settingMyPos = true;
+      if(pos == floor(myPos))
         moveToMyPosition();
       else
         moveToTarget(pos);
     }
-    else if(pos == floor(shade->myPos)) {
-      if(shade->myPos != shade->currentPos) {
-        shade->motionState.settingMyPos = true;
+    else if(pos == floor(myPos)) {
+      if(myPos != shade->currentPos) {
+        shade->movementTracker.motionState.settingMyPos = true;
         moveToMyPosition();
       }
       else {
         shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
-        shade->motionState.settingPos = false;
-        shade->motionState.settingMyPos = true;
+        shade->movementTracker.motionState.settingPos = false;
+        shade->movementTracker.motionState.settingMyPos = true;
       }
     }
     else {

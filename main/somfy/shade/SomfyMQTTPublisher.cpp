@@ -137,8 +137,8 @@ void SomfyMQTTPublisher::publishState() {
     this->publish("direction",     shade->direction, true);
     this->publish("target",        shade->transformPosition(shade->target), true);
     this->publish("lastRollingCode", shade->lastRollingCode);
-    this->publish("mypos",         shade->transformPosition(shade->myPos), true);
-    this->publish("myTiltPos",     shade->transformPosition(shade->myTiltPos), true);
+    this->publish("mypos",         shade->transformPosition(shade->targetSequencer.myPos), true);
+    this->publish("myTiltPos",     shade->transformPosition(shade->targetSequencer.myTiltPos), true);
     if(shade->tiltType != tilt_types::none) {
       this->publish("tiltDirection", shade->tiltDirection, true);
       this->publish("tiltPosition",  shade->transformPosition(shade->currentTiltPos), true);
@@ -301,7 +301,7 @@ void SomfyMQTTPublisher::emitState(uint8_t num, const char *evt) {
   json->addElem("direction",    shade->direction);
   json->addElem("position",     shade->transformPosition(shade->currentPos));
   json->addElem("target",       shade->transformPosition(shade->target));
-  json->addElem("myPos",        shade->transformPosition(shade->myPos));
+  json->addElem("myPos",        shade->transformPosition(shade->targetSequencer.myPos));
   json->addElem("tiltType",     static_cast<uint8_t>(shade->tiltType));
   json->addElem("flipCommands", shade->flipCommands);
   json->addElem("flipPosition", shade->flipPosition);
@@ -313,7 +313,7 @@ void SomfyMQTTPublisher::emitState(uint8_t num, const char *evt) {
     json->addElem("tiltDirection", shade->tiltDirection);
     json->addElem("tiltTarget",    shade->transformPosition(shade->tiltTarget));
     json->addElem("tiltPosition",  shade->transformPosition(shade->currentTiltPos));
-    json->addElem("myTiltPos",     shade->transformPosition(shade->myTiltPos));
+    json->addElem("myTiltPos",     shade->transformPosition(shade->targetSequencer.myTiltPos));
   }
   json->endObject();
   sockEmit.endEmit(num);

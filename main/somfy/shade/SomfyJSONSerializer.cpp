@@ -215,8 +215,8 @@ void SomfyJSONSerializer::toJSON(JsonResponse &json) {
   json.addElem("stepSize", (uint32_t)shade->stepSize);
   json.addElem("tiltTarget", shade->transformPosition(shade->tiltTarget));
   json.addElem("target", shade->transformPosition(shade->target));
-  json.addElem("myPos", shade->transformPosition(shade->myPos));
-  json.addElem("myTiltPos", shade->transformPosition(shade->myTiltPos));
+  json.addElem("myPos", shade->transformPosition(shade->targetSequencer.myPos));
+  json.addElem("myTiltPos", shade->transformPosition(shade->targetSequencer.myTiltPos));
   json.addElem("direction", shade->direction);
   json.addElem("shadeType", static_cast<uint8_t>(shade->shadeType));
   json.addElem("bitLength", shade->bitLength);

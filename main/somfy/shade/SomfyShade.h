@@ -19,12 +19,7 @@ class SomfyShade : public SomfyRemote {
     uint32_t awaitMy = 0;
   public:
     uint8_t shadeId = 255;
-    uint64_t moveStart = 0;
-    uint64_t tiltStart = 0;
-    float startPos = 0.0f;
-    float startTiltPos = 0.0f;
     SomfyShade() { mqttPublisher.shade = this; persistence.shade = this; commandTransmitter.shade = this; jsonSerializer.shade = this; targetSequencer.shade = this; commandProcessor.shade = this; movementTracker.shade = this; }
-    MotionState             motionState;
     SomfyFlagManager        flagManager;
     SomfyGPIOControl        gpioControl;
     SomfyMQTTPublisher      mqttPublisher;
@@ -49,8 +44,6 @@ class SomfyShade : public SomfyRemote {
     int8_t tiltDirection = 0; // 0=stopped, 1=clockwise, -1=counter clockwise
     float target = 0.0f;
     float tiltTarget = 0.0f;
-    float myPos = -1.0f;
-    float myTiltPos = -1.0f;
     SomfyLinkedRemote linkedRemotes[SOMFY_MAX_LINKED_REMOTES];
     bool paired = false;
     int8_t validateJSON(JsonObject &obj);

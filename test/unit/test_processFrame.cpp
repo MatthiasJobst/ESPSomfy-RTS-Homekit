@@ -116,8 +116,8 @@ TEST_F(ProcessFrameTest, Stop_SetsTargetToCurrentPos) {
 // ── My (internal path, idle shade) ───────────────────────────────────────
 
 TEST_F(ProcessFrameTest, My_Internal_Idle_MovesToMyPos) {
-    shade.myPos     = 30.0f;
-    shade.myTiltPos = -1.0f;  // not set
+    shade.targetSequencer.myPos     = 30.0f;
+    shade.targetSequencer.myTiltPos = -1.0f;  // not set
     // Ensure shade is idle (target == currentPos)
     shade.currentPos = shade.target = 50.0f;
     auto f = make_frame(somfy_commands::My);
@@ -127,8 +127,8 @@ TEST_F(ProcessFrameTest, My_Internal_Idle_MovesToMyPos) {
 }
 
 TEST_F(ProcessFrameTest, My_Internal_Idle_MyPoAndTiltPos_BothSet) {
-    shade.myPos     = 30.0f;
-    shade.myTiltPos = 10.0f;
+    shade.targetSequencer.myPos     = 30.0f;
+    shade.targetSequencer.myTiltPos = 10.0f;
     shade.currentPos = shade.target = 50.0f;
     shade.currentTiltPos = shade.tiltTarget = 50.0f;
     auto f = make_frame(somfy_commands::My);
@@ -297,7 +297,7 @@ TEST_F(ProcessFrameTest, SunFlag_SunnyAndNoWind_SunDone_MovesToMyPos) {
     // Sunny + no wind + sunDone → should move to myPos
     shade.setFlags(static_cast<uint8_t>(somfy_flags_t::Sunny));
     shade.setSunDone(true);
-    shade.myPos = 75.0f;
+    shade.targetSequencer.myPos = 75.0f;
     auto f = make_frame(somfy_commands::SunFlag);
     EXPECT_CALL(shade, emitCommand(somfy_commands::SunFlag, _, _, _));
     shade.processFrame(f);
@@ -308,7 +308,7 @@ TEST_F(ProcessFrameTest, SunFlag_SunnyAndNoWind_SunDone_NoMyPos_MovesToHundred) 
     // myPos unset (< 0) → fall back to 100
     shade.setFlags(static_cast<uint8_t>(somfy_flags_t::Sunny));
     shade.setSunDone(true);
-    shade.myPos = -1.0f;
+    shade.targetSequencer.myPos = -1.0f;
     auto f = make_frame(somfy_commands::SunFlag);
     EXPECT_CALL(shade, emitCommand(somfy_commands::SunFlag, _, _, _));
     shade.processFrame(f);
@@ -330,7 +330,7 @@ TEST_F(ProcessFrameTest, SunFlag_WindyActive_DoesNotMoveTarget) {
     shade.setFlags(static_cast<uint8_t>(somfy_flags_t::Sunny) |
                    static_cast<uint8_t>(somfy_flags_t::Windy));
     shade.setSunDone(true);
-    shade.myPos = 75.0f;
+    shade.targetSequencer.myPos = 75.0f;
     shade.target = 50.0f;
     auto f = make_frame(somfy_commands::SunFlag);
     EXPECT_CALL(shade, emitCommand(somfy_commands::SunFlag, _, _, _));
@@ -567,8 +567,8 @@ TEST_F(ProcessFrameTest, StepDown_TiltOnly_IncreasesTiltTarget) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 TEST_F(ProcessFrameTest, Favorite_MovesToMyPos) {
-    shade.myPos     = 40.0f;
-    shade.myTiltPos = -1.0f;
+    shade.targetSequencer.myPos     = 40.0f;
+    shade.targetSequencer.myTiltPos = -1.0f;
     auto f = make_frame(somfy_commands::Favorite);
     EXPECT_CALL(shade, emitCommand(somfy_commands::Favorite, _, _, _));
     shade.processFrame(f);
@@ -576,8 +576,8 @@ TEST_F(ProcessFrameTest, Favorite_MovesToMyPos) {
 }
 
 TEST_F(ProcessFrameTest, Favorite_MyPosAndTiltPos_BothSet) {
-    shade.myPos     = 40.0f;
-    shade.myTiltPos = 20.0f;
+    shade.targetSequencer.myPos     = 40.0f;
+    shade.targetSequencer.myTiltPos = 20.0f;
     auto f = make_frame(somfy_commands::Favorite);
     EXPECT_CALL(shade, emitCommand(somfy_commands::Favorite, _, _, _));
     shade.processFrame(f);
@@ -586,7 +586,7 @@ TEST_F(ProcessFrameTest, Favorite_MyPosAndTiltPos_BothSet) {
 }
 
 TEST_F(ProcessFrameTest, Favorite_Repeat_Ignored) {
-    shade.myPos = 40.0f;
+    shade.targetSequencer.myPos = 40.0f;
     auto f = make_frame(somfy_commands::Favorite);
     EXPECT_CALL(shade, emitCommand(somfy_commands::Favorite, _, _, _)).Times(1);
     shade.processFrame(f);
@@ -674,7 +674,7 @@ TEST_F(ProcessFrameTest, SunFlag_TiltOnly_Sunny_SunDone_SetsTiltTarget) {
     shade.tiltType = tilt_types::tiltonly;
     shade.setFlags(static_cast<uint8_t>(somfy_flags_t::Sunny));
     shade.setSunDone(true);
-    shade.myTiltPos = 60.0f;
+    shade.targetSequencer.myTiltPos = 60.0f;
     auto f = make_frame(somfy_commands::SunFlag);
     EXPECT_CALL(shade, emitCommand(somfy_commands::SunFlag, _, _, _));
     shade.processFrame(f);
@@ -913,7 +913,7 @@ TEST_F(ProcessFrameTest, Toggle_MidPos_LastMovementDown_GoesUp) {
 TEST_F(ProcessFrameTest, Favorite_SimMy_CallsMoveToMyPosition) {
     // simMy() returns true when the SimMy flag is set
     shade.setFlags(shade.getFlags() | static_cast<uint8_t>(somfy_flags_t::SimMy));
-    shade.myPos = 35.0f;
+    shade.targetSequencer.myPos = 35.0f;
     // moveToMyPosition() calls p_target(myPos) internally when idle
     auto f = make_frame(somfy_commands::Favorite);
     // emitCommand is NOT called — moveToMyPosition sends its own RF frame
