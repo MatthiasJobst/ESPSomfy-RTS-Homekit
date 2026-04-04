@@ -22,6 +22,7 @@ idf_component_register(
         "somfy/shade/SomfyCommandTransmitter.cpp"
         "somfy/shade/SomfyTargetSequencer.cpp"
         "somfy/shade/SomfyCommandProcessor.cpp"
+        "somfy/shade/SomfyMovementTracker.cpp"
         "somfy/shade/SomfyJSONSerializer.cpp"
         "somfy/shade/SomfyShade.cpp"
         "somfy/SomfyController.cpp"

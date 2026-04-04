@@ -12,6 +12,7 @@
 #include "SomfyMotionState.h"
 #include "SomfyTargetSequencer.h"
 #include "SomfyCommandProcessor.h"
+#include "SomfyMovementTracker.h"
 
 class SomfyShade : public SomfyRemote {
   protected:
@@ -22,7 +23,7 @@ class SomfyShade : public SomfyRemote {
     uint64_t tiltStart = 0;
     float startPos = 0.0f;
     float startTiltPos = 0.0f;
-    SomfyShade() { mqttPublisher.shade = this; persistence.shade = this; commandTransmitter.shade = this; jsonSerializer.shade = this; targetSequencer.shade = this; commandProcessor.shade = this; }
+    SomfyShade() { mqttPublisher.shade = this; persistence.shade = this; commandTransmitter.shade = this; jsonSerializer.shade = this; targetSequencer.shade = this; commandProcessor.shade = this; movementTracker.shade = this; }
     MotionState             motionState;
     SomfyFlagManager        flagManager;
     SomfyGPIOControl        gpioControl;
@@ -32,6 +33,7 @@ class SomfyShade : public SomfyRemote {
     SomfyJSONSerializer     jsonSerializer;
     SomfyTargetSequencer    targetSequencer;
     SomfyCommandProcessor   commandProcessor;
+    SomfyMovementTracker    movementTracker;
     uint8_t roomId = 0;
     int8_t sortOrder = 0;
     bool flipPosition = false;
