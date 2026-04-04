@@ -11,8 +11,6 @@
 #include "SomfyController.h"
 #include "ConfigFile.h"
 
-static const char *TAG = "SomfyShade";
-
 extern SomfyShadeController somfy;
 extern ConfigSettings settings;
 extern GitUpdater git;
@@ -202,7 +200,6 @@ float SomfyShade::p_tiltTarget(float target) {
 float SomfyShade::p_myPos(float pos) {
   float old = targetSequencer.myPos;
   if(old != pos) {
-    //if(this->transformPosition(pos) == 0) ESP_LOGD(TAG, "MyPos = %.2f", pos);
     targetSequencer.myPos = pos;
     if(this->transformPosition(old) != this->transformPosition(pos))
       this->publish("mypos", this->transformPosition(targetSequencer.myPos), true);
@@ -252,6 +249,20 @@ void SomfyShade::setMovement(int8_t dir)     { movementTracker.setMovement(dir);
 
 void SomfyShade::setMyPosition(int8_t pos, int8_t tilt) { targetSequencer.setMyPosition(pos, tilt); }
 void SomfyShade::moveToMyPosition()                     { targetSequencer.moveToMyPosition(); }
+
+float SomfyShade::getMyPos()     const { return targetSequencer.myPos; }
+float SomfyShade::getMyTiltPos() const { return targetSequencer.myTiltPos; }
+
+void SomfyShade::setSettingPos(bool v)     { movementTracker.motionState.settingPos = v; }
+void SomfyShade::setSettingTiltPos(bool v) { movementTracker.motionState.settingTiltPos = v; }
+void SomfyShade::setSettingMyPos(bool v)   { movementTracker.motionState.settingMyPos = v; }
+void SomfyShade::clearMotionState()        { movementTracker.motionState.clear(); }
+
+void SomfyShade::resetMovement(uint64_t t) {
+  movementTracker.moveStart    = movementTracker.tiltStart = t;
+  movementTracker.startPos     = currentPos;
+  movementTracker.startTiltPos = currentTiltPos;
+}
 
 void SomfyShade::sendCommand(somfy_commands cmd) { commandTransmitter.sendCommand(cmd); }
 void SomfyShade::sendCommand(somfy_commands cmd, uint8_t repeat, uint8_t stepSize) { commandTransmitter.sendCommand(cmd, repeat, stepSize); }

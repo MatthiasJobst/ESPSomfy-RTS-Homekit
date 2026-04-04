@@ -33,7 +33,7 @@ void SomfyMovementTracker::checkMovement() {
   {
     auto tick = shade->flagManager.tickTimers(shade->flags, curTime, shade->shadeId);
     if(tick.setSunTarget)
-      shade->p_target(shade->targetSequencer.myPos >= 0 ? shade->targetSequencer.myPos : 100.0f);
+      shade->p_target(shade->getMyPos() >= 0 ? shade->getMyPos() : 100.0f);
     if(tick.setNoSunTarget) {
       if(shade->tiltType == tilt_types::tiltonly) shade->p_tiltTarget(0.0f);
       shade->p_target(0.0f);
@@ -198,8 +198,9 @@ void SomfyMovementTracker::checkMovement() {
   if(motionState.settingMyPos && shade->isAtTarget()) {
     delay(200);
     if(shade->tiltType != tilt_types::none) {
-      if(shade->targetSequencer.myTiltPos == shade->currentTiltPos && shade->targetSequencer.myPos == shade->currentPos)
-        shade->targetSequencer.myPos = shade->targetSequencer.myTiltPos = -1;
+      if(shade->getMyTiltPos() == shade->currentTiltPos && shade->getMyPos() == shade->currentPos) {
+        shade->p_myPos(-1); shade->p_myTiltPos(-1);
+      }
       else {
         shade->p_myPos(shade->currentPos);
         shade->p_myTiltPos(shade->currentTiltPos);
@@ -207,7 +208,7 @@ void SomfyMovementTracker::checkMovement() {
     }
     else {
       shade->p_myTiltPos(-1);
-      if(shade->targetSequencer.myPos == shade->currentPos) shade->p_myPos(-1);
+      if(shade->getMyPos() == shade->currentPos) shade->p_myPos(-1);
       else shade->p_myPos(shade->currentPos);
     }
     shade->SomfyRemote::sendCommand(somfy_commands::My, SETMY_REPEATS);

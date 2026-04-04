@@ -86,7 +86,7 @@ void SomfyCommandProcessor::processWaitingFrame() {
         break;
       case somfy_commands::My:
         if(shade->lastFrame.repeats >= SETMY_REPEATS && shade->isIdle()) {
-          if(floor(shade->targetSequencer.myPos) == floor(shade->currentPos)) {
+          if(floor(shade->getMyPos()) == floor(shade->currentPos)) {
             // We are clearing it.
             shade->p_myPos(-1);
             shade->p_myTiltPos(-1);
@@ -103,8 +103,8 @@ void SomfyCommandProcessor::processWaitingFrame() {
           if(shade->simMy())
             shade->moveToMyPosition(); // Call out like this (instead of move to target) so that we don't get some of the goofy tilt only problems.
           else {
-            if(shade->targetSequencer.myPos >= 0.0f && shade->targetSequencer.myPos <= 100.0f) shade->p_target(shade->targetSequencer.myPos);
-            if(shade->targetSequencer.myTiltPos >= 0.0f && shade->targetSequencer.myTiltPos <= 100.0f) shade->p_tiltTarget(shade->targetSequencer.myTiltPos);
+            if(shade->getMyPos() >= 0.0f && shade->getMyPos() <= 100.0f) shade->p_target(shade->getMyPos());
+            if(shade->getMyTiltPos() >= 0.0f && shade->getMyTiltPos() <= 100.0f) shade->p_tiltTarget(shade->getMyTiltPos());
           }
           shade->setMovement(0);
           shade->lastFrame.processed = true;
@@ -155,9 +155,9 @@ void SomfyCommandProcessor::processSunFlagCommand(bool internal, somfy_frame_t &
     const bool isSunny = shade->flags & static_cast<uint8_t>(somfy_flags_t::Sunny);
     if(isSunny && shade->flagManager.sunDone) {
       if(shade->tiltType == tilt_types::tiltonly)
-        shade->p_tiltTarget(shade->targetSequencer.myTiltPos >= 0 ? shade->targetSequencer.myTiltPos : 100.0f);
+        shade->p_tiltTarget(shade->getMyTiltPos() >= 0 ? shade->getMyTiltPos() : 100.0f);
       else
-        shade->p_target(shade->targetSequencer.myPos >= 0 ? shade->targetSequencer.myPos : 100.0f);
+        shade->p_target(shade->getMyPos() >= 0 ? shade->getMyPos() : 100.0f);
     }
     else if(!isSunny && shade->flagManager.noSunDone) {
       if(shade->tiltType == tilt_types::tiltonly)
@@ -201,8 +201,8 @@ void SomfyCommandProcessor::processMyCommand(bool internal, somfy_frame_t &frame
       if(shade->lastFrame.processed) return;
       ESP_LOGI(TAG, "Moving to My target");
       shade->lastFrame.processed = true;
-      if(shade->targetSequencer.myTiltPos >= 0.0f && shade->targetSequencer.myTiltPos <= 100.0f) shade->p_tiltTarget(shade->targetSequencer.myTiltPos);
-      if(shade->targetSequencer.myPos >= 0.0f && shade->targetSequencer.myPos <= 100.0f && shade->tiltType != tilt_types::tiltonly) shade->p_target(shade->targetSequencer.myPos);
+      if(shade->getMyTiltPos() >= 0.0f && shade->getMyTiltPos() <= 100.0f) shade->p_tiltTarget(shade->getMyTiltPos());
+      if(shade->getMyPos() >= 0.0f && shade->getMyPos() <= 100.0f && shade->tiltType != tilt_types::tiltonly) shade->p_target(shade->getMyPos());
       shade->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
     }
   }
@@ -320,10 +320,8 @@ void SomfyCommandProcessor::processFrame(somfy_frame_t &frame, bool internal) {
   const uint64_t curTime = millis();
   shade->lastFrame.copy(frame);
   int8_t dir = 0;
-  shade->movementTracker.moveStart = shade->movementTracker.tiltStart = curTime;
-  shade->movementTracker.startPos = shade->currentPos;
-  shade->movementTracker.startTiltPos = shade->currentTiltPos;
-  if(!internal) shade->movementTracker.motionState.clear();
+  shade->resetMovement(curTime);
+  if(!internal) shade->clearMotionState();
   somfy_commands cmd = shade->transformCommand(frame.cmd);
   switch(cmd) {
     case somfy_commands::Sensor:
@@ -390,8 +388,8 @@ void SomfyCommandProcessor::processFrame(somfy_frame_t &frame, bool internal) {
         shade->moveToMyPosition();
       }
       else {
-        if(shade->targetSequencer.myTiltPos >= 0.0f && shade->targetSequencer.myTiltPos <= 100.0f) shade->p_tiltTarget(shade->targetSequencer.myTiltPos);
-        if(shade->targetSequencer.myPos >= 0.0f && shade->targetSequencer.myPos <= 100.0f && shade->tiltType != tilt_types::tiltonly) shade->p_target(shade->targetSequencer.myPos);
+        if(shade->getMyTiltPos() >= 0.0f && shade->getMyTiltPos() <= 100.0f) shade->p_tiltTarget(shade->getMyTiltPos());
+        if(shade->getMyPos() >= 0.0f && shade->getMyPos() <= 100.0f && shade->tiltType != tilt_types::tiltonly) shade->p_target(shade->getMyPos());
         shade->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
       }
       break;
@@ -406,9 +404,7 @@ void SomfyCommandProcessor::processInternalCommand(somfy_commands cmd, uint8_t r
   if(shade->shadeId == 255) return;
   const uint64_t curTime = millis();
   int8_t dir = 0;
-  shade->movementTracker.moveStart = shade->movementTracker.tiltStart = curTime;
-  shade->movementTracker.startPos = shade->currentPos;
-  shade->movementTracker.startTiltPos = shade->currentTiltPos;
+  shade->resetMovement(curTime);
   switch(cmd) {
     case somfy_commands::Up:
       if(shade->tiltType == tilt_types::tiltmotor) {
@@ -453,8 +449,8 @@ void SomfyCommandProcessor::processInternalCommand(somfy_commands cmd, uint8_t r
           shade->moveToMyPosition();
         }
         else {
-          if(shade->targetSequencer.myTiltPos >= 0.0f && shade->targetSequencer.myTiltPos <= 100.0f) shade->p_tiltTarget(shade->targetSequencer.myTiltPos);
-          if(shade->targetSequencer.myPos >= 0.0f && shade->targetSequencer.myPos <= 100.0f && shade->tiltType != tilt_types::tiltonly) shade->p_target(shade->targetSequencer.myPos);
+          if(shade->getMyTiltPos() >= 0.0f && shade->getMyTiltPos() <= 100.0f) shade->p_tiltTarget(shade->getMyTiltPos());
+          if(shade->getMyPos() >= 0.0f && shade->getMyPos() <= 100.0f && shade->tiltType != tilt_types::tiltonly) shade->p_target(shade->getMyPos());
         }
       }
       else {
@@ -531,7 +527,7 @@ void SomfyCommandProcessor::processInternalCommand(somfy_commands cmd, uint8_t r
         {
           const bool isSunny = shade->flags & static_cast<uint8_t>(somfy_flags_t::Sunny);
           if (isSunny && shade->flagManager.sunDone)
-            shade->p_target(shade->targetSequencer.myPos >= 0 ? shade->targetSequencer.myPos : 100.0f);
+            shade->p_target(shade->getMyPos() >= 0 ? shade->getMyPos() : 100.0f);
           else if (!isSunny && shade->flagManager.noSunDone)
             shade->p_target(0.0f);
         }

@@ -65,9 +65,6 @@ public:
     void setTiltStart(uint64_t t)   { movementTracker.tiltStart = t; }
     void setStartPos(float v)       { movementTracker.startPos = v; }
     void setStartTiltPos(float v)   { movementTracker.startTiltPos = v; }
-    void setSettingPos(bool v)      { movementTracker.motionState.settingPos = v; }
-    void setSettingTiltPos(bool v)  { movementTracker.motionState.settingTiltPos = v; }
-    void setSettingMyPos(bool v)    { movementTracker.motionState.settingMyPos = v; }
 
     // ── Additional state reads ───────────────────────────────────────────────
     int8_t   getLastMovement()  const { return lastMovement; }
@@ -77,6 +74,7 @@ public:
     bool     getSettingPos()    const { return movementTracker.motionState.settingPos; }
     bool     getSettingTiltPos()const { return movementTracker.motionState.settingTiltPos; }
     bool     getSettingMyPos()  const { return movementTracker.motionState.settingMyPos; }
+    // setSettingPos/TiltPos/MyPos are now inherited from SomfyShade
 
     // ── Real emitCommand (bypasses mock for MQTT side-effect tests) ─────────
     void callRealEmitCommand(somfy_commands cmd, const char *source,

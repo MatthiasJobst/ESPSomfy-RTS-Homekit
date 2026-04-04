@@ -82,6 +82,16 @@ class SomfyShade : public SomfyRemote {
     virtual void emitCommand(uint8_t num, somfy_commands cmd, const char *source, uint32_t sourceAddress, const char *evt = "shadeCommand");
     void setMyPosition(int8_t pos, int8_t tilt = -1);
     void moveToMyPosition();
+    // Favorite-position getters (owned by SomfyTargetSequencer)
+    float getMyPos()     const;
+    float getMyTiltPos() const;
+    // Motion-state flag setters (owned by SomfyMovementTracker)
+    void setSettingPos(bool v);
+    void setSettingTiltPos(bool v);
+    void setSettingMyPos(bool v);
+    void clearMotionState();
+    // Movement interpolation reset — called at the start of every command frame
+    void resetMovement(uint64_t t);
     void processWaitingFrame();
     void processStepCommand(somfy_commands cmd, int8_t stepDir, bool internal, somfy_frame_t &frame);
     void processSensorCommand(somfy_frame_t &frame, uint64_t curTime);
