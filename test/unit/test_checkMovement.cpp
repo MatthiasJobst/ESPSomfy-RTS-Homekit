@@ -38,10 +38,10 @@ protected:
         shade.setRemoteAddress(0xABCDEF);
         shade.shadeType      = shade_types::roller;
         shade.tiltType       = tilt_types::none;
-        shade.upTime         = 10000;
-        shade.downTime       = 10000;
-        shade.tiltTime       = 7000;
-        shade.stepSize       = 100;
+        shade.setUpTime(10000);
+        shade.setDownTime(10000);
+        shade.setTiltTime(7000);
+        shade.setStepSize(100);
         shade.currentPos     = 50.0f;
         shade.currentTiltPos = 50.0f;
         shade.target         = 50.0f;   // idle by default
@@ -223,7 +223,7 @@ TEST_F(CheckMovementTest, Wind_Timeout_TiltOnly_SetsTargetAndTiltTargetZero) {
 
 // Line 398–401: downTime == 0 → jump to 100
 TEST_F(CheckMovementTest, Down_DownTimeZero_JumpsToHundred) {
-    shade.downTime   = 0;
+    shade.setDownTime(0);
     shade.currentPos = 10.0f;
     shade.target     = 100.0f;
     shade.setMoveStart(0);
@@ -270,7 +270,7 @@ TEST_F(CheckMovementTest, Down_FposClampedTo100) {
     // msFrom0 = floor(99/100 * 10000) + elapsed = 9900 + 99 = 9999 < 10000
     // ratio = 9999/10000 * 100 = 99.99 < 100, but let's push elapsed further
     // Actually needs ratio >= 100.  downTime=1 makes it easy:
-    shade.downTime = 1;
+    shade.setDownTime(1);
     test_clock_ms = 10;
 
     shade.checkMovement();
@@ -343,7 +343,7 @@ TEST_F(CheckMovementTest, Down_SettingPos_TargetIsHundred_NoMy) {
 
 // Line 456–458: upTime == 0 → jump to 0
 TEST_F(CheckMovementTest, Up_UpTimeZero_JumpsToZero) {
-    shade.upTime     = 0;
+    shade.setUpTime(0);
     shade.currentPos = 80.0f;
     shade.target     = 0.0f;
     shade.setMoveStart(0);
@@ -383,7 +383,7 @@ TEST_F(CheckMovementTest, Up_FposClampedToZero) {
     shade.target     = 0.0f;
     shade.setStartPos(1.0f);
     shade.setMoveStart(0);
-    shade.upTime = 1;
+    shade.setUpTime(1);
     test_clock_ms = 10;
 
     shade.checkMovement();
@@ -482,7 +482,7 @@ TEST_F(CheckMovementTest, TiltUp_ElapsedExceedsTiltTime_JumpsToHundred) {
 // fpos > 100 branch (line 519–522) — start near end, push tiltTime to 1
 TEST_F(CheckMovementTest, TiltUp_FposOverHundred_ClampsToHundred) {
     shade.tiltType       = tilt_types::tiltmotor;
-    shade.tiltTime       = 1;
+    shade.setTiltTime(1);
     shade.currentTiltPos = 99.0f;
     shade.tiltTarget     = 100.0f;
     shade.setStartTiltPos(99.0f);
@@ -608,7 +608,7 @@ TEST_F(CheckMovementTest, TiltFirst_Up_TiltReachesZero_StartsMovePhase) {
 // tiltTime == 0 → immediately snap to 0 and stop (line 557–560)
 TEST_F(CheckMovementTest, TiltDown_TiltTimeZero_SnapsToZero) {
     shade.tiltType       = tilt_types::tiltmotor;
-    shade.tiltTime       = 0;
+    shade.setTiltTime(0);
     shade.currentTiltPos = 80.0f;
     shade.tiltTarget     = 0.0f;
     shade.setStartTiltPos(80.0f);
@@ -649,7 +649,7 @@ TEST_F(CheckMovementTest, TiltDown_ElapsedExceedsTiltTime_JumpsToZero) {
 // fpos <= 0 inside else (line 571–573)
 TEST_F(CheckMovementTest, TiltDown_FposClampedToZero) {
     shade.tiltType       = tilt_types::tiltmotor;
-    shade.tiltTime       = 1;
+    shade.setTiltTime(1);
     shade.currentTiltPos = 1.0f;
     shade.tiltTarget     = 0.0f;
     shade.setStartTiltPos(1.0f);

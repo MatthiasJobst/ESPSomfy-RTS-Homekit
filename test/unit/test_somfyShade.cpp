@@ -118,10 +118,10 @@ protected:
         shade.setRemoteAddress(0xABCDEF);
         shade.shadeType      = shade_types::roller;
         shade.tiltType       = tilt_types::none;
-        shade.upTime         = 10000;
-        shade.downTime       = 10000;
-        shade.tiltTime       = 7000;
-        shade.stepSize       = 100;
+        shade.setUpTime(10000);
+        shade.setDownTime(10000);
+        shade.setTiltTime(7000);
+        shade.setStepSize(100);
         shade.currentPos     = 50.0f;
         shade.currentTiltPos = 50.0f;
         shade.target         = 50.0f;
@@ -404,10 +404,10 @@ protected:
         shade.setRemoteAddress(0xABCDEF);
         shade.shadeType      = shade_types::roller;
         shade.tiltType       = tilt_types::none;
-        shade.upTime         = 10000;
-        shade.downTime       = 10000;
-        shade.tiltTime       = 7000;
-        shade.stepSize       = 100;
+        shade.setUpTime(10000);
+        shade.setDownTime(10000);
+        shade.setTiltTime(7000);
+        shade.setStepSize(100);
         shade.currentPos     = 50.0f;
         shade.currentTiltPos = 50.0f;
         shade.target         = 50.0f;
@@ -556,7 +556,7 @@ TEST_F(InternalCmdTest, StepUp_Roller_AtZero_NoChange) {
 
 // StepUp stepSize==0 → return immediately
 TEST_F(InternalCmdTest, StepUp_StepSizeZero_ReturnsEarly) {
-    shade.stepSize = 0;
+    shade.setStepSize(0);
     shade.processInternalCommand(somfy_commands::StepUp, 1);
     EXPECT_FLOAT_EQ(shade.target, 50.0f);
 }
@@ -593,7 +593,7 @@ TEST_F(InternalCmdTest, StepUp_Integrated_BothAtZero_NoChange) {
 // StepUp integrated, tiltTime==0 → return to avoid divide by zero
 TEST_F(InternalCmdTest, StepUp_Integrated_TiltTimeZero_ReturnsEarly) {
     shade.tiltType       = tilt_types::integrated;
-    shade.tiltTime       = 0;
+    shade.setTiltTime(0);
     shade.currentTiltPos = 50.0f;
     shade.tiltTarget     = 50.0f;
     shade.processInternalCommand(somfy_commands::StepUp, 1);
@@ -603,7 +603,7 @@ TEST_F(InternalCmdTest, StepUp_Integrated_TiltTimeZero_ReturnsEarly) {
 // StepUp integrated, upTime==0 → return
 TEST_F(InternalCmdTest, StepUp_Integrated_UpTimeZero_ReturnsEarly) {
     shade.tiltType       = tilt_types::integrated;
-    shade.upTime         = 0;
+    shade.setUpTime(0);
     shade.currentTiltPos = 0.0f;
     shade.tiltTarget     = 0.0f;
     shade.processInternalCommand(somfy_commands::StepUp, 1);
@@ -631,7 +631,7 @@ TEST_F(InternalCmdTest, StepUp_TiltOnly_AtZero_NoChange) {
 // StepUp tiltonly, tiltTime==0 → no change
 TEST_F(InternalCmdTest, StepUp_TiltOnly_TiltTimeZero_NoChange) {
     shade.tiltType       = tilt_types::tiltonly;
-    shade.tiltTime       = 0;
+    shade.setTiltTime(0);
     shade.currentTiltPos = 50.0f;
     shade.tiltTarget     = 50.0f;
     shade.processInternalCommand(somfy_commands::StepUp, 1);
@@ -640,7 +640,7 @@ TEST_F(InternalCmdTest, StepUp_TiltOnly_TiltTimeZero_NoChange) {
 
 // StepUp roller, upTime==0 → no change
 TEST_F(InternalCmdTest, StepUp_Roller_UpTimeZero_NoChange) {
-    shade.upTime = 0;
+    shade.setUpTime(0);
     shade.processInternalCommand(somfy_commands::StepUp, 1);
     EXPECT_FLOAT_EQ(shade.target, 50.0f);
 }
@@ -661,7 +661,7 @@ TEST_F(InternalCmdTest, StepDown_Roller_AtHundred_NoChange) {
 
 // StepDown stepSize==0 → return
 TEST_F(InternalCmdTest, StepDown_StepSizeZero_ReturnsEarly) {
-    shade.stepSize = 0;
+    shade.setStepSize(0);
     shade.processInternalCommand(somfy_commands::StepDown, 1);
     EXPECT_FLOAT_EQ(shade.target, 50.0f);
 }
@@ -698,7 +698,7 @@ TEST_F(InternalCmdTest, StepDown_Integrated_BothAtHundred_NoChange) {
 // StepDown integrated, tiltTime==0 → return
 TEST_F(InternalCmdTest, StepDown_Integrated_TiltTimeZero_ReturnsEarly) {
     shade.tiltType       = tilt_types::integrated;
-    shade.tiltTime       = 0;
+    shade.setTiltTime(0);
     shade.currentTiltPos = 50.0f;
     shade.tiltTarget     = 50.0f;
     shade.processInternalCommand(somfy_commands::StepDown, 1);
@@ -708,7 +708,7 @@ TEST_F(InternalCmdTest, StepDown_Integrated_TiltTimeZero_ReturnsEarly) {
 // StepDown integrated, downTime==0, tilt at 100 → return
 TEST_F(InternalCmdTest, StepDown_Integrated_DownTimeZero_ReturnsEarly) {
     shade.tiltType       = tilt_types::integrated;
-    shade.downTime       = 0;
+    shade.setDownTime(0);
     shade.currentTiltPos = 100.0f;
     shade.tiltTarget     = 100.0f;
     shade.processInternalCommand(somfy_commands::StepDown, 1);
@@ -736,7 +736,7 @@ TEST_F(InternalCmdTest, StepDown_TiltOnly_AtHundred_NoChange) {
 // StepDown tiltonly, tiltTime==0 → no change
 TEST_F(InternalCmdTest, StepDown_TiltOnly_TiltTimeZero_NoChange) {
     shade.tiltType       = tilt_types::tiltonly;
-    shade.tiltTime       = 0;
+    shade.setTiltTime(0);
     shade.currentTiltPos = 50.0f;
     shade.tiltTarget     = 50.0f;
     shade.processInternalCommand(somfy_commands::StepDown, 1);
@@ -745,7 +745,7 @@ TEST_F(InternalCmdTest, StepDown_TiltOnly_TiltTimeZero_NoChange) {
 
 // StepDown roller, downTime==0 → no change
 TEST_F(InternalCmdTest, StepDown_Roller_DownTimeZero_NoChange) {
-    shade.downTime = 0;
+    shade.setDownTime(0);
     shade.processInternalCommand(somfy_commands::StepDown, 1);
     EXPECT_FLOAT_EQ(shade.target, 50.0f);
 }
@@ -958,10 +958,10 @@ protected:
         shade.setRemoteAddress(0xABCDEF);
         shade.shadeType      = shade_types::roller;
         shade.tiltType       = tilt_types::none;
-        shade.upTime         = 10000;
-        shade.downTime       = 10000;
-        shade.tiltTime       = 7000;
-        shade.stepSize       = 100;
+        shade.setUpTime(10000);
+        shade.setDownTime(10000);
+        shade.setTiltTime(7000);
+        shade.setStepSize(100);
         shade.currentPos     = 50.0f;
         shade.currentTiltPos = 50.0f;
         shade.target         = 50.0f;

@@ -27,10 +27,10 @@ protected:
         shade.setRemoteAddress(0xABCDEF);
         shade.shadeType  = shade_types::roller;
         shade.tiltType   = tilt_types::none;
-        shade.upTime     = 10000;
-        shade.downTime   = 10000;
-        shade.tiltTime   = 7000;
-        shade.stepSize   = 100;
+        shade.setUpTime(10000);
+        shade.setDownTime(10000);
+        shade.setTiltTime(7000);
+        shade.setStepSize(100);
         shade.currentPos = 50.0f;
         shade.currentTiltPos = 50.0f;
         shade.target     = 50.0f;
@@ -753,7 +753,7 @@ TEST_F(ProcessFrameTest, My_Toggle_MidPosition_UsesLastMovement) {
     shade.shadeType   = shade_types::garage1;
     shade.currentPos  = 50.0f;
     shade.target      = 50.0f;
-    shade.lastMovement = -1;  // was going up → should now go to 100
+    shade.setLastMovement(-1);  // was going up → should now go to 100
     auto f = make_frame(somfy_commands::My);
     EXPECT_CALL(shade, emitCommand(somfy_commands::My, _, _, _));
     shade.processFrame(f);
@@ -770,7 +770,7 @@ TEST_F(ProcessFrameTest, My_DryContact_MidPos_LastMovementNeg1_GoesTo100) {
     shade.shadeType    = shade_types::drycontact;
     shade.currentPos   = 50.0f;
     shade.target       = 50.0f;
-    shade.lastMovement = -1;
+    shade.setLastMovement(-1);
     auto f = make_frame(somfy_commands::My);
     EXPECT_CALL(shade, emitCommand(somfy_commands::My, _, _, _));
     shade.processFrame(f);
@@ -783,7 +783,7 @@ TEST_F(ProcessFrameTest, My_DryContact_MidPos_LastMovementPos1_GoesTo0) {
     shade.shadeType    = shade_types::drycontact;
     shade.currentPos   = 50.0f;
     shade.target       = 50.0f;
-    shade.lastMovement = 1;
+    shade.setLastMovement(1);
     auto f = make_frame(somfy_commands::My);
     EXPECT_CALL(shade, emitCommand(somfy_commands::My, _, _, _));
     shade.processFrame(f);
@@ -889,7 +889,7 @@ TEST_F(ProcessFrameTest, StepDown_Integrated_TiltAtBottom_MovesLift) {
 TEST_F(ProcessFrameTest, Toggle_MidPos_LastMovementUp_GoesDown) {
     shade.currentPos   = 50.0f;
     shade.target       = 50.0f;   // idle
-    shade.lastMovement = -1;      // was going up → go to 100
+    shade.setLastMovement(-1);      // was going up → go to 100
     auto f = make_frame(somfy_commands::Toggle);
     EXPECT_CALL(shade, emitCommand(somfy_commands::Toggle, _, _, _));
     shade.processFrame(f);
@@ -899,7 +899,7 @@ TEST_F(ProcessFrameTest, Toggle_MidPos_LastMovementUp_GoesDown) {
 TEST_F(ProcessFrameTest, Toggle_MidPos_LastMovementDown_GoesUp) {
     shade.currentPos   = 50.0f;
     shade.target       = 50.0f;
-    shade.lastMovement = 1;  // was going down → go to 0
+    shade.setLastMovement(1);  // was going down → go to 0
     auto f = make_frame(somfy_commands::Toggle);
     EXPECT_CALL(shade, emitCommand(somfy_commands::Toggle, _, _, _));
     shade.processFrame(f);

@@ -31,8 +31,8 @@ protected:
         shade.setRemoteAddress(0xABCDEF);
         shade.shadeType      = shade_types::roller;
         shade.tiltType       = tilt_types::none;
-        shade.upTime         = 10000;
-        shade.downTime       = 10000;
+        shade.setUpTime(10000);
+        shade.setDownTime(10000);
         shade.currentPos     = 50.0f;
         shade.currentTiltPos = 50.0f;
         shade.target         = 50.0f;

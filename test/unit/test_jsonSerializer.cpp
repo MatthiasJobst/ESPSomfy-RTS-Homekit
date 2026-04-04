@@ -41,11 +41,11 @@ protected:
         shade.target           = 50.0f;
         shade.tiltTarget       = 0.0f;
         shade.direction        = 0;
-        shade.flipPosition     = false;
+        shade.setFlipPosition(false);
         shade.setProto(radio_proto::RTS);
-        shade.upTime           = 10000;
-        shade.downTime         = 10000;
-        shade.tiltTime         = 7000;
+        shade.setUpTime(10000);
+        shade.setDownTime(10000);
+        shade.setTiltTime(7000);
         shade.setGpioUp(5);
         shade.setGpioDown(6);
         shade.setGpioMy(7);
@@ -299,11 +299,11 @@ TEST_F(JsonSerializerTest, FromJSON_BasicFields_Applied) {
     EXPECT_EQ(shade.fromJSON(obj), 0);
     EXPECT_STREQ(shade.name, "Living Room");
     EXPECT_EQ(shade.roomId,   3);
-    EXPECT_EQ(shade.upTime,   8000u);
-    EXPECT_EQ(shade.downTime, 9000u);
+    EXPECT_EQ(shade.getUpTime(),   8000u);
+    EXPECT_EQ(shade.getDownTime(), 9000u);
     EXPECT_EQ(shade.getRemoteAddress(), 0xAABBCCu);
-    EXPECT_EQ(shade.tiltTime, 5000u);
-    EXPECT_EQ(shade.stepSize, 50u);
+    EXPECT_EQ(shade.getTiltTime(), 5000u);
+    EXPECT_EQ(shade.getStepSize(), 50u);
 }
 
 // hasTilt=true sets tiltType=none; hasTilt=false sets tiltType=tiltmotor.
@@ -408,7 +408,7 @@ TEST_F(JsonSerializerTest, FromJSON_FlipAndRepeats_Applied) {
     obj["repeats"]      = (uint8_t)4;
     EXPECT_EQ(shade.fromJSON(obj), 0);
     EXPECT_TRUE(shade.flipCommands);
-    EXPECT_TRUE(shade.flipPosition);
+    EXPECT_TRUE(shade.getFlipPosition());
     EXPECT_EQ(shade.repeats, 4);
 }
 
@@ -455,8 +455,8 @@ TEST_F(JsonSerializerTest, FromJSON_LinkedAddresses_Applied) {
     arr.add((uint32_t)0x111111);
     arr.add((uint32_t)0x222222);
     EXPECT_EQ(shade.fromJSON(obj), 0);
-    EXPECT_EQ(shade.linkedRemotes[0].getRemoteAddress(), 0x111111u);
-    EXPECT_EQ(shade.linkedRemotes[1].getRemoteAddress(), 0x222222u);
+    EXPECT_EQ(shade.getLinkedRemote(0).getRemoteAddress(), 0x111111u);
+    EXPECT_EQ(shade.getLinkedRemote(1).getRemoteAddress(), 0x222222u);
 }
 
 // flags field applied.
@@ -529,12 +529,12 @@ TEST_F(JsonSerializerTest, ToJSON_NoLinkedRemotes_ExecutesWithoutCrash) {
 
 // With a linked remote present the loop body (beginObject / toJSON / endObject) runs.
 TEST_F(JsonSerializerTest, ToJSON_WithLinkedRemote_LoopBodyExecuted) {
-    shade.linkedRemotes[0].setRemoteAddress(0xDEADBEEF);
-    shade.linkedRemotes[0].setRollingCode(42);
+    shade.getLinkedRemote(0).setRemoteAddress(0xDEADBEEF);
+    shade.getLinkedRemote(0).setRollingCode(42);
     JsonResponse json;
     shade.toJSON(json);
     // Clean up
-    shade.linkedRemotes[0].setRemoteAddress(0);
+    shade.getLinkedRemote(0).setRemoteAddress(0);
 }
 
 // gpioLLTrigger flag set → the true branch of the ternary in toJSON is taken.

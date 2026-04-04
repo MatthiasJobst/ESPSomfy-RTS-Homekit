@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include "SomfyFrame.h"
 
 class SomfyShade;
@@ -6,6 +7,11 @@ class SomfyShade;
 class SomfyCommandProcessor {
 public:
     SomfyShade *shade = nullptr;
+    // Timing and step config (owned here; exposed via SomfyShade getters/setters)
+    uint32_t upTime   = 10000;
+    uint32_t downTime = 10000;
+    uint32_t tiltTime = 7000;
+    uint16_t stepSize = 100;
     void processFrame(somfy_frame_t &frame, bool internal = false);
     void processInternalCommand(somfy_commands cmd, uint8_t repeat = 1);
     void processWaitingFrame();

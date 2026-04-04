@@ -100,7 +100,7 @@ static void saveLinkedAddresses(SomfyShade *shade) {
   memset(linkedAddresses, 0x00, sizeof(linkedAddresses));
   uint8_t j = 0;
   for(uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++) {
-    SomfyLinkedRemote lremote = shade->linkedRemotes[i];
+    SomfyLinkedRemote lremote = shade->getLinkedRemote(i);
     if(lremote.getRemoteAddress() != 0) linkedAddresses[j++] = lremote.getRemoteAddress();
   }
   char shadeKey[15];
@@ -113,15 +113,15 @@ static void saveLinkedAddresses(SomfyShade *shade) {
 
 bool SomfyCommandTransmitter::linkRemote(uint32_t address, uint16_t rollingCode) {
   for(uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++) {
-    if(shade->linkedRemotes[i].getRemoteAddress() == address) {
-      shade->linkedRemotes[i].setRollingCode(rollingCode);
+    if(linkedRemotes[i].getRemoteAddress() == address) {
+      linkedRemotes[i].setRollingCode(rollingCode);
       return true;
     }
   }
   for(uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++) {
-    if(shade->linkedRemotes[i].getRemoteAddress() == 0) {
-      shade->linkedRemotes[i].setRemoteAddress(address);
-      shade->linkedRemotes[i].setRollingCode(rollingCode);
+    if(linkedRemotes[i].getRemoteAddress() == 0) {
+      linkedRemotes[i].setRemoteAddress(address);
+      linkedRemotes[i].setRollingCode(rollingCode);
       #ifdef USE_NVS
       if(somfy.useNVS()) saveLinkedAddresses(shade);
       #endif
@@ -134,8 +134,8 @@ bool SomfyCommandTransmitter::linkRemote(uint32_t address, uint16_t rollingCode)
 
 bool SomfyCommandTransmitter::unlinkRemote(uint32_t address) {
   for(uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++) {
-    if(shade->linkedRemotes[i].getRemoteAddress() == address) {
-      shade->linkedRemotes[i].setRemoteAddress(0);
+    if(linkedRemotes[i].getRemoteAddress() == address) {
+      linkedRemotes[i].setRemoteAddress(0);
       #ifdef USE_NVS
       if(somfy.useNVS()) saveLinkedAddresses(shade);
       #endif

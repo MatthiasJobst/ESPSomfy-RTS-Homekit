@@ -41,9 +41,9 @@ protected:
         shade.targetSequencer.myPos          = 25.0f;
         shade.targetSequencer.myTiltPos      = -1.0f;
         shade.direction      = 0;
-        shade.upTime         = 10000;
-        shade.downTime       = 10000;
-        shade.tiltTime       = 7000;
+        shade.setUpTime(10000);
+        shade.setDownTime(10000);
+        shade.setTiltTime(7000);
         shade.paired         = false;
 
         EXPECT_CALL(shade, emitState(_, _)).Times(AnyNumber());
@@ -157,9 +157,9 @@ TEST_F(PersistenceTest, Save_UseNVSTrue_WritesAllCoreFields) {
     shade.currentPos     = 55.0f;
     shade.currentTiltPos = 20.0f;
     shade.targetSequencer.myPos          = 30.0f;
-    shade.upTime         = 8000;
-    shade.downTime       = 9000;
-    shade.tiltTime       = 6000;
+    shade.setUpTime(8000);
+    shade.setDownTime(9000);
+    shade.setTiltTime(6000);
     shade.paired         = true;
 
     EXPECT_TRUE(shade.save());
@@ -180,8 +180,8 @@ TEST_F(PersistenceTest, Save_UseNVSTrue_WritesAllCoreFields) {
 
 TEST_F(PersistenceTest, Save_UseNVSTrue_WritesLinkedAddresses) {
     nvs_stub_use_nvs = true;
-    shade.linkedRemotes[0].setRemoteAddress(0xABCDEF);
-    shade.linkedRemotes[1].setRemoteAddress(0x123456);
+    shade.getLinkedRemote(0).setRemoteAddress(0xABCDEF);
+    shade.getLinkedRemote(1).setRemoteAddress(0x123456);
 
     shade.save();
 
@@ -199,9 +199,9 @@ TEST_F(PersistenceTest, Load_AfterSave_RestoresCoreFields) {
     shade.currentPos     = 67.0f;
     shade.currentTiltPos = 15.0f;
     shade.targetSequencer.myPos          = 40.0f;
-    shade.upTime         = 12000;
-    shade.downTime       = 11000;
-    shade.tiltTime       = 5000;
+    shade.setUpTime(12000);
+    shade.setDownTime(11000);
+    shade.setTiltTime(5000);
     shade.paired         = true;
     shade.shadeType      = shade_types::blind;
     shade.save();
@@ -220,9 +220,9 @@ TEST_F(PersistenceTest, Load_AfterSave_RestoresCoreFields) {
     EXPECT_FLOAT_EQ(loaded.currentPos, 67.0f);
     EXPECT_FLOAT_EQ(loaded.currentTiltPos, 15.0f);
     EXPECT_EQ(loaded.getRemoteAddress(), 0x112233u);
-    EXPECT_EQ(loaded.upTime,   12000u);
-    EXPECT_EQ(loaded.downTime, 11000u);
-    EXPECT_EQ(loaded.tiltTime,  5000u);
+    EXPECT_EQ(loaded.getUpTime(),   12000u);
+    EXPECT_EQ(loaded.getDownTime(), 11000u);
+    EXPECT_EQ(loaded.getTiltTime(),  5000u);
     EXPECT_TRUE(loaded.paired);
 }
 
@@ -245,7 +245,7 @@ TEST_F(PersistenceTest, Load_AfterSave_TargetEqualsFloorOfCurrentPos) {
 
 TEST_F(PersistenceTest, Load_AfterSave_RestoresLinkedRemote) {
     nvs_stub_use_nvs = true;
-    shade.linkedRemotes[0].setRemoteAddress(0xCAFE01);
+    shade.getLinkedRemote(0).setRemoteAddress(0xCAFE01);
     shade.save();
 
     TestableShade loaded;
@@ -256,7 +256,7 @@ TEST_F(PersistenceTest, Load_AfterSave_RestoresLinkedRemote) {
     loaded.setShadeId(1);
     loaded.load();
 
-    EXPECT_EQ(loaded.linkedRemotes[0].getRemoteAddress(), 0xCAFE01u);
+    EXPECT_EQ(loaded.getLinkedRemote(0).getRemoteAddress(), 0xCAFE01u);
 }
 
 TEST_F(PersistenceTest, Load_AfterSave_RestoresRollingCode) {
@@ -306,9 +306,9 @@ TEST_F(PersistenceTest, Load_LegacyU16Times_MigratesAndReadsCorrectValues) {
     loaded.load();
 
     // Migration converts u16 → u32 and rewrites keys; values must be preserved
-    EXPECT_EQ(loaded.upTime,   3000u);
-    EXPECT_EQ(loaded.downTime, 4000u);
-    EXPECT_EQ(loaded.tiltTime, 2000u);
+    EXPECT_EQ(loaded.getUpTime(),   3000u);
+    EXPECT_EQ(loaded.getDownTime(), 4000u);
+    EXPECT_EQ(loaded.getTiltTime(), 2000u);
 
     // After migration the NVS keys are now PT_U32
     auto &store = nvs_ns_stores["SomfyShade1"];
@@ -334,9 +334,9 @@ TEST_F(PersistenceTest, Load_LegacyU16Times_UseNVSFalse_MigratesWithoutRewrite) 
     loaded.setShadeId(1);
     loaded.load();
 
-    EXPECT_EQ(loaded.upTime,   1500u);
-    EXPECT_EQ(loaded.downTime, 2500u);
-    EXPECT_EQ(loaded.tiltTime, 1200u);
+    EXPECT_EQ(loaded.getUpTime(),   1500u);
+    EXPECT_EQ(loaded.getDownTime(), 2500u);
+    EXPECT_EQ(loaded.getTiltTime(), 1200u);
 
     // Key type must still be U16 — no rewrite happened
     auto &store = nvs_ns_stores["SomfyShade1"];

@@ -10,9 +10,9 @@ static const char *TAG = "SomfyMovementTracker";
 
 void SomfyMovementTracker::checkMovement() {
   const uint64_t curTime = millis();
-  int32_t downTime = (int32_t)shade->downTime;
-  int32_t upTime   = (int32_t)shade->upTime;
-  int32_t tiltTime = (int32_t)shade->tiltTime;
+  int32_t downTime = (int32_t)shade->getDownTime();
+  int32_t upTime   = (int32_t)shade->getUpTime();
+  int32_t tiltTime = (int32_t)shade->getTiltTime();
   if(shade->shadeType == shade_types::drycontact || shade->shadeType == shade_types::drycontact2)
     downTime = upTime = tiltTime = 1;
 
@@ -29,7 +29,7 @@ void SomfyMovementTracker::checkMovement() {
 
   uint8_t currPos     = floor(shade->currentPos);
   uint8_t currTiltPos = floor(shade->currentTiltPos);
-  if(shade->direction != 0) shade->lastMovement = shade->direction;
+  if(shade->direction != 0) shade->setLastMovement(shade->direction);
   {
     auto tick = shade->flagManager.tickTimers(shade->flags, curTime, shade->shadeId);
     if(tick.setSunTarget)

@@ -43,7 +43,7 @@ protected:
         shade.tiltTarget     = 50.0f;
         shade.direction      = 0;
         shade.tiltDirection  = 0;
-        shade.flipPosition   = false;
+        shade.setFlipPosition(false);
         shade.setProto(radio_proto::RTS);
         // repeats = 1; bitLength set by SomfyRemote default
 
@@ -278,7 +278,7 @@ TEST_F(CommandTransmitterTest, SendTiltCommand_My_TiltMotor_UsesTiltRepeats) {
 TEST_F(CommandTransmitterTest, LinkRemote_NewSlot_ReturnsTrueAndStoresAddress) {
     bool result = shade.linkRemote(0xABCD01, 10);
     EXPECT_TRUE(result);
-    EXPECT_EQ(shade.linkedRemotes[0].getRemoteAddress(), 0xABCD01u);
+    EXPECT_EQ(shade.getLinkedRemote(0).getRemoteAddress(), 0xABCD01u);
 }
 
 TEST_F(CommandTransmitterTest, LinkRemote_AlreadyLinked_UpdatesRollingCodeAndReturnsTrue) {
@@ -286,12 +286,12 @@ TEST_F(CommandTransmitterTest, LinkRemote_AlreadyLinked_UpdatesRollingCodeAndRet
     bool result = shade.linkRemote(0xABCD01, 99);
     EXPECT_TRUE(result);
     // Rolling code is stored inside the remote — just confirm it didn't claim a second slot
-    EXPECT_EQ(shade.linkedRemotes[1].getRemoteAddress(), 0u);
+    EXPECT_EQ(shade.getLinkedRemote(1).getRemoteAddress(), 0u);
 }
 
 TEST_F(CommandTransmitterTest, LinkRemote_AllSlotsFull_ReturnsFalse) {
     for(uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++)
-        shade.linkedRemotes[i].setRemoteAddress(0x100000 + i);
+        shade.getLinkedRemote(i).setRemoteAddress(0x100000 + i);
     bool result = shade.linkRemote(0xDEADBE, 0);
     EXPECT_FALSE(result);
 }
@@ -319,16 +319,16 @@ TEST_F(CommandTransmitterTest, UnlinkRemote_NotFound_ReturnsFalse) {
 }
 
 TEST_F(CommandTransmitterTest, UnlinkRemote_Found_ClearsSlotAndReturnsTrue) {
-    shade.linkedRemotes[0].setRemoteAddress(0xBEEF01);
+    shade.getLinkedRemote(0).setRemoteAddress(0xBEEF01);
     bool result = shade.unlinkRemote(0xBEEF01);
     EXPECT_TRUE(result);
-    EXPECT_EQ(shade.linkedRemotes[0].getRemoteAddress(), 0u);
+    EXPECT_EQ(shade.getLinkedRemote(0).getRemoteAddress(), 0u);
 }
 
 TEST_F(CommandTransmitterTest, UnlinkRemote_UseNVSTrue_WritesLinkedAddrToNVS) {
     nvs_stub_use_nvs = true;
-    shade.linkedRemotes[0].setRemoteAddress(0xBEEF02);
-    shade.linkedRemotes[1].setRemoteAddress(0xBEEF03);
+    shade.getLinkedRemote(0).setRemoteAddress(0xBEEF02);
+    shade.getLinkedRemote(1).setRemoteAddress(0xBEEF03);
     shade.unlinkRemote(0xBEEF02);
     auto &store = nvs_ns_stores["SomfyShade1"];
     EXPECT_EQ(store.entries.count("linkedAddr"), 1u);
@@ -336,7 +336,7 @@ TEST_F(CommandTransmitterTest, UnlinkRemote_UseNVSTrue_WritesLinkedAddrToNVS) {
 
 TEST_F(CommandTransmitterTest, UnlinkRemote_UseNVSFalse_DoesNotWriteNVS) {
     nvs_stub_use_nvs = false;
-    shade.linkedRemotes[0].setRemoteAddress(0xBEEF04);
+    shade.getLinkedRemote(0).setRemoteAddress(0xBEEF04);
     shade.unlinkRemote(0xBEEF04);
     EXPECT_TRUE(nvs_ns_stores.empty());
 }

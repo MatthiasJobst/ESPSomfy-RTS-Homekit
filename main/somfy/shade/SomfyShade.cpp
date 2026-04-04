@@ -25,16 +25,15 @@ void SomfyShade::clear() {
   movementTracker.startTiltPos = 0.0f;
   movementTracker.motionState  = MotionState{};
   this->awaitMy = 0;
-  this->flipPosition = false;
+  mqttPublisher.flipPosition = false;
   this->flipCommands = false;
   this->lastRollingCode = 0;
   this->shadeType = shade_types::roller;
   this->tiltType = tilt_types::none;
-  //this->txQueue.clear();
   this->currentPos = 0.0f;
   this->currentTiltPos = 0.0f;
   this->direction = 0;
-  this->tiltDirection = 0;  
+  this->tiltDirection = 0;
   this->target = 0.0f;
   this->tiltTarget = 0.0f;
   targetSequencer.myPos = -1.0f;
@@ -42,13 +41,14 @@ void SomfyShade::clear() {
   this->bitLength = somfy.transceiver.config.type;
   this->proto = somfy.transceiver.config.proto;
   for(uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++)
-    this->linkedRemotes[i].setRemoteAddress(0);
+    commandTransmitter.linkedRemotes[i].setRemoteAddress(0);
   this->paired = false;
   this->name[0] = 0x00;
-  this->upTime = 10000;
-  this->downTime = 10000;
-  this->tiltTime = 7000;
-  this->stepSize = 100;
+  commandProcessor.upTime   = 10000;
+  commandProcessor.downTime = 10000;
+  commandProcessor.tiltTime = 7000;
+  commandProcessor.stepSize = 100;
+  movementTracker.lastMovement = 0;
   this->repeats = 1;
   this->sortOrder = 255;
 }
@@ -224,9 +224,9 @@ void SomfyShade::emitState(uint8_t num, const char *evt) { mqttPublisher.emitSta
 void SomfyShade::emitCommand(somfy_commands cmd, const char *source, uint32_t sourceAddress, const char *evt) { this->emitCommand(255, cmd, source, sourceAddress, evt); }
 void SomfyShade::emitCommand(uint8_t num, somfy_commands cmd, const char *source, uint32_t sourceAddress, const char *evt) { mqttPublisher.emitCommand(num, cmd, source, sourceAddress, evt); }
 
-int8_t SomfyShade::transformPosition(float fpos) { 
+int8_t SomfyShade::transformPosition(float fpos) {
   if(fpos < 0) return -1;
-  return static_cast<int8_t>(this->flipPosition && fpos >= 0.00f ? floor(100.0f - fpos) : floor(fpos)); 
+  return static_cast<int8_t>(mqttPublisher.flipPosition && fpos >= 0.00f ? floor(100.0f - fpos) : floor(fpos));
 }
 
 bool SomfyShade::isIdle() { 
@@ -263,6 +263,23 @@ void SomfyShade::resetMovement(uint64_t t) {
   movementTracker.startPos     = currentPos;
   movementTracker.startTiltPos = currentTiltPos;
 }
+
+uint32_t SomfyShade::getUpTime()   const { return commandProcessor.upTime; }
+uint32_t SomfyShade::getDownTime() const { return commandProcessor.downTime; }
+uint32_t SomfyShade::getTiltTime() const { return commandProcessor.tiltTime; }
+uint16_t SomfyShade::getStepSize() const { return commandProcessor.stepSize; }
+void SomfyShade::setUpTime(uint32_t v)   { commandProcessor.upTime   = v; }
+void SomfyShade::setDownTime(uint32_t v) { commandProcessor.downTime = v; }
+void SomfyShade::setTiltTime(uint32_t v) { commandProcessor.tiltTime = v; }
+void SomfyShade::setStepSize(uint16_t v) { commandProcessor.stepSize = v; }
+
+int8_t SomfyShade::getLastMovement() const { return movementTracker.lastMovement; }
+void   SomfyShade::setLastMovement(int8_t v) { movementTracker.lastMovement = v; }
+
+SomfyLinkedRemote& SomfyShade::getLinkedRemote(uint8_t i) { return commandTransmitter.linkedRemotes[i]; }
+
+bool SomfyShade::getFlipPosition() const { return mqttPublisher.flipPosition; }
+void SomfyShade::setFlipPosition(bool v) { mqttPublisher.flipPosition = v; }
 
 void SomfyShade::sendCommand(somfy_commands cmd) { commandTransmitter.sendCommand(cmd); }
 void SomfyShade::sendCommand(somfy_commands cmd, uint8_t repeat, uint8_t stepSize) { commandTransmitter.sendCommand(cmd, repeat, stepSize); }

@@ -35,7 +35,7 @@ protected:
         shade.targetSequencer.myTiltPos      = -1.0f;
         shade.direction      = 0;
         shade.tiltDirection  = 0;
-        shade.flipPosition   = false;
+        shade.setFlipPosition(false);
         shade.lastRollingCode = 0;
 
         EXPECT_CALL(shade, emitState(_, _)).Times(AnyNumber());
@@ -133,7 +133,7 @@ TEST_F(MQTTPublisherTest, p_currentPos_SameFloor_DoesNotPublish) {
 
 TEST_F(MQTTPublisherTest, p_currentPos_FlipPosition_PublishesTransformed) {
     mqtt_connected_flag = true;
-    shade.flipPosition = true;
+    shade.setFlipPosition(true);
     shade.currentPos = 30.0f;
     shade.p_currentPos(40.0f);   // transformPosition(40) = 100-40 = 60
     EXPECT_EQ(mqtt_published["shades/1/position"], "60");

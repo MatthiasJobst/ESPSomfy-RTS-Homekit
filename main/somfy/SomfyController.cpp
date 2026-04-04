@@ -40,7 +40,7 @@ SomfyShade *SomfyShadeController::findShadeByRemoteAddress(uint32_t address) {
     if(shade.getRemoteAddress() == address) return &shade;
     else {
       for(uint8_t j = 0; j < SOMFY_MAX_LINKED_REMOTES; j++) {
-        if(shade.linkedRemotes[j].getRemoteAddress() == address) return &shade;
+        if(shade.getLinkedRemote(j).getRemoteAddress() == address) return &shade;
       }
     }
   }

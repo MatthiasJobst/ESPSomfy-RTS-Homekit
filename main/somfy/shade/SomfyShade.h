@@ -31,7 +31,6 @@ class SomfyShade : public SomfyRemote {
     SomfyMovementTracker    movementTracker;
     uint8_t roomId = 0;
     int8_t sortOrder = 0;
-    bool flipPosition = false;
     shade_types shadeType = shade_types::roller;
     tilt_types tiltType = tilt_types::none;
     #ifdef USE_NVS
@@ -39,25 +38,19 @@ class SomfyShade : public SomfyRemote {
     #endif
     float currentPos = 0.0f;
     float currentTiltPos = 0.0f;
-    int8_t lastMovement = 0;
     int8_t direction = 0; // 0 = stopped, 1=down, -1=up.
     int8_t tiltDirection = 0; // 0=stopped, 1=clockwise, -1=counter clockwise
     float target = 0.0f;
     float tiltTarget = 0.0f;
-    SomfyLinkedRemote linkedRemotes[SOMFY_MAX_LINKED_REMOTES];
     bool paired = false;
     int8_t validateJSON(JsonObject &obj);
     void toJSONRef(JsonResponse &json);
     int8_t fromJSON(JsonObject &obj);
     void toJSON(JsonResponse &json) override;
-    
+
     char name[21] = "";
     void setShadeId(uint8_t id) { shadeId = id; }
     uint8_t getShadeId() { return shadeId; }
-    uint32_t upTime = 10000;
-    uint32_t downTime = 10000;
-    uint32_t tiltTime = 7000;
-    uint16_t stepSize = 100;
     bool save();
     bool isIdle();
     bool isInGroup();
@@ -92,6 +85,23 @@ class SomfyShade : public SomfyRemote {
     void clearMotionState();
     // Movement interpolation reset — called at the start of every command frame
     void resetMovement(uint64_t t);
+    // Timing and step config (owned by SomfyCommandProcessor)
+    uint32_t getUpTime()   const;
+    uint32_t getDownTime() const;
+    uint32_t getTiltTime() const;
+    uint16_t getStepSize() const;
+    void setUpTime(uint32_t v);
+    void setDownTime(uint32_t v);
+    void setTiltTime(uint32_t v);
+    void setStepSize(uint16_t v);
+    // Last movement direction (owned by SomfyMovementTracker)
+    int8_t getLastMovement() const;
+    void   setLastMovement(int8_t v);
+    // Linked remotes (owned by SomfyCommandTransmitter)
+    SomfyLinkedRemote& getLinkedRemote(uint8_t i);
+    // Position display inversion (owned by SomfyMQTTPublisher)
+    bool getFlipPosition() const;
+    void setFlipPosition(bool v);
     void processWaitingFrame();
     void processStepCommand(somfy_commands cmd, int8_t stepDir, bool internal, somfy_frame_t &frame);
     void processSensorCommand(somfy_frame_t &frame, uint64_t curTime);
@@ -136,4 +146,5 @@ class SomfyShade : public SomfyRemote {
     void publishDisco();
     void unpublishDisco();
 };
+
 

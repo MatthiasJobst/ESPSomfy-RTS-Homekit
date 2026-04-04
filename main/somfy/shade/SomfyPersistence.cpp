@@ -73,9 +73,9 @@ bool SomfyPersistence::save() {
     pref.putString("name",        shade->name);
     pref.putBool("hasTilt",       shade->tiltType != tilt_types::none);
     pref.putBool("paired",        shade->paired);
-    pref.putUInt("upTime",        shade->upTime);
-    pref.putUInt("downTime",      shade->downTime);
-    pref.putUInt("tiltTime",      shade->tiltTime);
+    pref.putUInt("upTime",        shade->getUpTime());
+    pref.putUInt("downTime",      shade->getDownTime());
+    pref.putUInt("tiltTime",      shade->getTiltTime());
     pref.putFloat("currentPos",    shade->currentPos);
     pref.putFloat("currentTiltPos",shade->currentTiltPos);
     pref.putUShort("myPos",       shade->getMyPos());
@@ -83,7 +83,7 @@ bool SomfyPersistence::save() {
     memset(linkedAddresses, 0x00, sizeof(linkedAddresses));
     uint8_t j = 0;
     for(uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++) {
-      SomfyLinkedRemote lremote = shade->linkedRemotes[i];
+      SomfyLinkedRemote lremote = shade->getLinkedRemote(i);
       if(lremote.getRemoteAddress() != 0) linkedAddresses[j++] = lremote.getRemoteAddress();
     }
     pref.remove("linkedAddr");
@@ -111,19 +111,19 @@ void SomfyPersistence::load() {
   shade->paired = pref.getBool("paired", false);
   if(pref.isKey("upTime") && pref.getType("upTime") != PreferenceType::PT_U32) {
     // Convert legacy u16 timing fields to u32.
-    shade->upTime   = static_cast<uint32_t>(pref.getUShort("upTime",   1000));
-    shade->downTime = static_cast<uint32_t>(pref.getUShort("downTime", 1000));
-    shade->tiltTime = static_cast<uint32_t>(pref.getUShort("tiltTime", 7000));
+    shade->setUpTime(static_cast<uint32_t>(pref.getUShort("upTime", 1000)));
+    shade->setDownTime(static_cast<uint32_t>(pref.getUShort("downTime", 1000)));
+    shade->setTiltTime(static_cast<uint32_t>(pref.getUShort("tiltTime", 7000)));
     if(somfy.useNVS()) {
-      pref.remove("upTime");   pref.putUInt("upTime",   shade->upTime);
-      pref.remove("downTime"); pref.putUInt("downTime", shade->downTime);
-      pref.remove("tiltTime"); pref.putUInt("tiltTime", shade->tiltTime);
+      pref.remove("upTime");   pref.putUInt("upTime",   shade->getUpTime());
+      pref.remove("downTime"); pref.putUInt("downTime", shade->getDownTime());
+      pref.remove("tiltTime"); pref.putUInt("tiltTime", shade->getTiltTime());
     }
   }
   else {
-    shade->upTime   = pref.getUInt("upTime",   shade->upTime);
-    shade->downTime = pref.getUInt("downTime",  shade->downTime);
-    shade->tiltTime = pref.getUInt("tiltTime",  shade->tiltTime);
+    shade->setUpTime(pref.getUInt("upTime", shade->getUpTime()));
+    shade->setDownTime(pref.getUInt("downTime", shade->getDownTime()));
+    shade->setTiltTime(pref.getUInt("tiltTime", shade->getTiltTime()));
   }
   shade->setRemoteAddress(pref.getUInt("remoteAddress", 0));
   shade->currentPos    = pref.getFloat("currentPos", 0);
@@ -143,7 +143,7 @@ void SomfyPersistence::load() {
   pref.begin("ShadeCodes");
   shade->lastRollingCode = pref.getUShort(shade->getRemotePrefId(), 0);
   for(uint8_t j = 0; j < SOMFY_MAX_LINKED_REMOTES; j++) {
-    SomfyLinkedRemote &lremote = shade->linkedRemotes[j];
+    SomfyLinkedRemote &lremote = shade->getLinkedRemote(j);
     lremote.setRemoteAddress(linkedAddresses[j]);
     lremote.lastRollingCode = pref.getUShort(lremote.getRemotePrefId(), 0);
   }

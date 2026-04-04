@@ -3,12 +3,14 @@
 // Reads/writes shade state through the back-pointer set by SomfyShade().
 #pragma once
 #include "SomfyFrame.h"
+#include "SomfyRemote.h"
 
 class SomfyShade; // forward declaration
 
 class SomfyCommandTransmitter {
 public:
     SomfyShade *shade = nullptr; // set by SomfyShade() constructor
+    SomfyLinkedRemote linkedRemotes[SOMFY_MAX_LINKED_REMOTES];
 
     // High-level outbound commands (called by the web/MQTT layer).
     void sendCommand(somfy_commands cmd);

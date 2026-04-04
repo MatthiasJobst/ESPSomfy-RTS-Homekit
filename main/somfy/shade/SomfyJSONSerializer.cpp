@@ -88,11 +88,11 @@ int8_t SomfyJSONSerializer::fromJSON(JsonObject &obj) {
   if(err == 0) {
     if(obj.containsKey("name")) strlcpy(shade->name, obj["name"], sizeof(shade->name));
     if(obj.containsKey("roomId")) shade->roomId = obj["roomId"];
-    if(obj.containsKey("upTime")) shade->upTime = obj["upTime"];
-    if(obj.containsKey("downTime")) shade->downTime = obj["downTime"];
+    if(obj.containsKey("upTime")) shade->setUpTime(obj["upTime"]);
+    if(obj.containsKey("downTime")) shade->setDownTime(obj["downTime"]);
     if(obj.containsKey("remoteAddress")) shade->setRemoteAddress(obj["remoteAddress"]);
-    if(obj.containsKey("tiltTime")) shade->tiltTime = obj["tiltTime"];
-    if(obj.containsKey("stepSize")) shade->stepSize = obj["stepSize"];
+    if(obj.containsKey("tiltTime")) shade->setTiltTime(obj["tiltTime"]);
+    if(obj.containsKey("stepSize")) shade->setStepSize(obj["stepSize"]);
     if(obj.containsKey("hasTilt")) shade->tiltType = static_cast<bool>(obj["hasTilt"]) ? tilt_types::none : tilt_types::tiltmotor;
     if(obj.containsKey("bitLength")) shade->bitLength = obj["bitLength"];
     if(obj.containsKey("proto")) shade->proto = static_cast<radio_proto>(obj["proto"].as<uint8_t>());
@@ -137,7 +137,7 @@ int8_t SomfyJSONSerializer::fromJSON(JsonObject &obj) {
       }
     }
     if(obj.containsKey("flipCommands")) shade->flipCommands = obj["flipCommands"].as<bool>();
-    if(obj.containsKey("flipPosition")) shade->flipPosition = obj["flipPosition"].as<bool>();
+    if(obj.containsKey("flipPosition")) shade->setFlipPosition(obj["flipPosition"].as<bool>());
     if(obj.containsKey("repeats")) shade->repeats = obj["repeats"];
     if(obj.containsKey("tiltType")) {
       if(obj["tiltType"].is<const char *>()) {
@@ -163,7 +163,7 @@ int8_t SomfyJSONSerializer::fromJSON(JsonObject &obj) {
         linkedAddresses[i++] = addr;
       }
       for(uint8_t j = 0; j < SOMFY_MAX_LINKED_REMOTES; j++) {
-        shade->linkedRemotes[j].setRemoteAddress(linkedAddresses[j]);
+        shade->getLinkedRemote(j).setRemoteAddress(linkedAddresses[j]);
       }
     }
     if(obj.containsKey("flags")) shade->flags = obj["flags"];
@@ -203,16 +203,16 @@ void SomfyJSONSerializer::toJSON(JsonResponse &json) {
   json.addElem("roomId", shade->roomId);
   json.addElem("name", shade->name);
   json.addElem("remoteAddress", (uint32_t)shade->getRemoteAddress());
-  json.addElem("upTime", (uint32_t)shade->upTime);
-  json.addElem("downTime", (uint32_t)shade->downTime);
+  json.addElem("upTime", (uint32_t)shade->getUpTime());
+  json.addElem("downTime", (uint32_t)shade->getDownTime());
   json.addElem("paired", shade->paired);
   json.addElem("lastRollingCode", (uint32_t)shade->lastRollingCode);
   json.addElem("position", shade->transformPosition(shade->currentPos));
   json.addElem("tiltType", static_cast<uint8_t>(shade->tiltType));
   json.addElem("tiltPosition", shade->transformPosition(shade->currentTiltPos));
   json.addElem("tiltDirection", shade->tiltDirection);
-  json.addElem("tiltTime", (uint32_t)shade->tiltTime);
-  json.addElem("stepSize", (uint32_t)shade->stepSize);
+  json.addElem("tiltTime", (uint32_t)shade->getTiltTime());
+  json.addElem("stepSize", (uint32_t)shade->getStepSize());
   json.addElem("tiltTarget", shade->transformPosition(shade->tiltTarget));
   json.addElem("target", shade->transformPosition(shade->target));
   json.addElem("myPos", shade->transformPosition(shade->getMyPos()));
@@ -223,7 +223,7 @@ void SomfyJSONSerializer::toJSON(JsonResponse &json) {
   json.addElem("proto", static_cast<uint8_t>(shade->proto));
   json.addElem("flags", shade->flags);
   json.addElem("flipCommands", shade->flipCommands);
-  json.addElem("flipPosition", shade->flipPosition);
+  json.addElem("flipPosition", shade->getFlipPosition());
   json.addElem("inGroup", shade->isInGroup());
   json.addElem("sunSensor", shade->hasSunSensor());
   json.addElem("light", shade->hasLight());
@@ -236,7 +236,7 @@ void SomfyJSONSerializer::toJSON(JsonResponse &json) {
   json.addElem("simMy", shade->simMy());
   json.beginArray("linkedRemotes");
   for(uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++) {
-    SomfyLinkedRemote &lremote = shade->linkedRemotes[i];
+    SomfyLinkedRemote &lremote = shade->getLinkedRemote(i);
     if(lremote.getRemoteAddress() != 0) {
       json.beginObject();
       lremote.toJSON(json);

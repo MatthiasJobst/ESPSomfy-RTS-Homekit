@@ -503,12 +503,12 @@ bool ShadeConfigFile::readShadeRecord(SomfyShade *shade) {
     shade->tiltType = static_cast<tilt_types>(this->readUInt8(0));
   if(this->header.version > 6) shade->proto = static_cast<radio_proto>(this->readUInt8(0));
   if(this->header.version > 1) shade->bitLength = this->readUInt8(56);
-  shade->upTime = this->readUInt32(shade->upTime);
-  shade->downTime = this->readUInt32(shade->downTime);
-  shade->tiltTime = this->readUInt32(shade->tiltTime);
-  if(this->header.version > 5) shade->stepSize = this->readUInt16(100);
+  shade->setUpTime(this->readUInt32(shade->getUpTime()));
+  shade->setDownTime(this->readUInt32(shade->getDownTime()));
+  shade->setTiltTime(this->readUInt32(shade->getTiltTime()));
+  if(this->header.version > 5) shade->setStepSize(this->readUInt16(100));
   for(uint8_t j = 0; j < SOMFY_MAX_LINKED_REMOTES; j++) {
-    SomfyLinkedRemote *rem = &shade->linkedRemotes[j];
+    SomfyLinkedRemote *rem = &shade->getLinkedRemote(j);
     rem->setRemoteAddress(this->readUInt32(0));
     if(rem->getRemoteAddress() != 0) rem->lastRollingCode = pref.getUShort(rem->getRemotePrefId(), 0);
     if(this->header.version < 5 && j == 4) break; // Prior to version 5 we only supported 5 linked remotes.
@@ -544,7 +544,7 @@ bool ShadeConfigFile::readShadeRecord(SomfyShade *shade) {
   shade->target = floor(shade->currentPos);
   shade->tiltTarget = floor(shade->currentTiltPos);
   if(this->header.version >= 9) shade->flipCommands = this->readBool(false);
-  if(this->header.version >= 10) shade->flipPosition = this->readBool(false);
+  if(this->header.version >= 10) shade->setFlipPosition(this->readBool(false));
   if(this->header.version >= 12) shade->repeats = this->readUInt8(1);
   if(this->header.version >= 13) shade->sortOrder = this->readUInt8(shade->getShadeId() - 1);
   else shade->sortOrder = shade->getShadeId() - 1;
@@ -672,12 +672,12 @@ bool ShadeConfigFile::writeShadeRecord(SomfyShade *shade) {
   this->writeUInt8(static_cast<uint8_t>(shade->tiltType));
   this->writeUInt8(static_cast<uint8_t>(shade->proto));
   this->writeUInt8(shade->bitLength);
-  this->writeUInt32(shade->upTime);
-  this->writeUInt32(shade->downTime);
-  this->writeUInt32(shade->tiltTime);
-  this->writeUInt16(shade->stepSize);
+  this->writeUInt32(shade->getUpTime());
+  this->writeUInt32(shade->getDownTime());
+  this->writeUInt32(shade->getTiltTime());
+  this->writeUInt16(shade->getStepSize());
   for(uint8_t j = 0; j < SOMFY_MAX_LINKED_REMOTES; j++) {
-    SomfyLinkedRemote *rem = &shade->linkedRemotes[j];
+    SomfyLinkedRemote *rem = &shade->getLinkedRemote(j);
     this->writeUInt32(rem->getRemoteAddress());
   }
   this->writeUInt16(shade->lastRollingCode);
@@ -697,7 +697,7 @@ bool ShadeConfigFile::writeShadeRecord(SomfyShade *shade) {
     this->writeFloat(0.0f, 5); // currentTiltPos
   }
   this->writeBool(shade->flipCommands);
-  this->writeBool(shade->flipPosition);
+  this->writeBool(shade->getFlipPosition());
   this->writeUInt8(shade->repeats);
   this->writeUInt8(shade->sortOrder);
   this->writeUInt8(shade->gpioUp);

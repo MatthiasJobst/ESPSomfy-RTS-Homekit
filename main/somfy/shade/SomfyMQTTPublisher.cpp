@@ -81,7 +81,7 @@ void SomfyMQTTPublisher::publish() {
     this->publish("tiltType",      static_cast<uint8_t>(shade->tiltType), true);
     this->publish("flags",         shade->flags, true);
     this->publish("flipCommands",  shade->flipCommands, true);
-    this->publish("flipPosition",  shade->flipPosition, true);
+    this->publish("flipPosition",  shade->getFlipPosition(), true);
     shade->publishState();
     shade->publishDisco();
     sockEmit.loop();
@@ -181,12 +181,12 @@ void SomfyMQTTPublisher::publishDisco() {
   switch(shade->shadeType) {
     case shade_types::blind:
       obj["device_class"] = "blind";
-      obj["payload_close"] = shade->flipPosition ? "-1" : "1";
-      obj["payload_open"]  = shade->flipPosition ? "1"  : "-1";
-      obj["position_open"]   = shade->flipPosition ? 100 : 0;
-      obj["position_closed"] = shade->flipPosition ? 0   : 100;
-      obj["state_closing"]   = shade->flipPosition ? "-1" : "1";
-      obj["state_opening"]   = shade->flipPosition ? "1"  : "-1";
+      obj["payload_close"] = shade->getFlipPosition() ? "-1" : "1";
+      obj["payload_open"]  = shade->getFlipPosition() ? "1"  : "-1";
+      obj["position_open"]   = shade->getFlipPosition() ? 100 : 0;
+      obj["position_closed"] = shade->getFlipPosition() ? 0   : 100;
+      obj["state_closing"]   = shade->getFlipPosition() ? "-1" : "1";
+      obj["state_opening"]   = shade->getFlipPosition() ? "1"  : "-1";
       break;
     case shade_types::lgate:
     case shade_types::cgate:
@@ -198,52 +198,52 @@ void SomfyMQTTPublisher::publishDisco() {
     case shade_types::rdrapery:
     case shade_types::cdrapery:
       obj["device_class"] = "curtain";
-      obj["payload_close"] = shade->flipPosition ? "-1" : "1";
-      obj["payload_open"]  = shade->flipPosition ? "1"  : "-1";
-      obj["position_open"]   = shade->flipPosition ? 100 : 0;
-      obj["position_closed"] = shade->flipPosition ? 0   : 100;
-      obj["state_closing"]   = shade->flipPosition ? "-1" : "1";
-      obj["state_opening"]   = shade->flipPosition ? "1"  : "-1";
+      obj["payload_close"] = shade->getFlipPosition() ? "-1" : "1";
+      obj["payload_open"]  = shade->getFlipPosition() ? "1"  : "-1";
+      obj["position_open"]   = shade->getFlipPosition() ? 100 : 0;
+      obj["position_closed"] = shade->getFlipPosition() ? 0   : 100;
+      obj["state_closing"]   = shade->getFlipPosition() ? "-1" : "1";
+      obj["state_opening"]   = shade->getFlipPosition() ? "1"  : "-1";
       break;
     case shade_types::garage1:
     case shade_types::garage3:
       obj["device_class"] = "garage";
-      obj["payload_close"] = shade->flipPosition ? "-1" : "1";
-      obj["payload_open"]  = shade->flipPosition ? "1"  : "-1";
-      obj["position_open"]   = shade->flipPosition ? 100 : 0;
-      obj["position_closed"] = shade->flipPosition ? 0   : 100;
-      obj["state_closing"]   = shade->flipPosition ? "-1" : "1";
-      obj["state_opening"]   = shade->flipPosition ? "1"  : "-1";
+      obj["payload_close"] = shade->getFlipPosition() ? "-1" : "1";
+      obj["payload_open"]  = shade->getFlipPosition() ? "1"  : "-1";
+      obj["position_open"]   = shade->getFlipPosition() ? 100 : 0;
+      obj["position_closed"] = shade->getFlipPosition() ? 0   : 100;
+      obj["state_closing"]   = shade->getFlipPosition() ? "-1" : "1";
+      obj["state_opening"]   = shade->getFlipPosition() ? "1"  : "-1";
       break;
     case shade_types::awning:
       obj["device_class"] = "awning";
-      obj["payload_close"] = shade->flipPosition ? "1"  : "-1";
-      obj["payload_open"]  = shade->flipPosition ? "-1" : "1";
-      obj["position_open"]   = shade->flipPosition ? 0   : 100;
-      obj["position_closed"] = shade->flipPosition ? 100 : 0;
-      obj["state_closing"]   = shade->flipPosition ? "1"  : "-1";
-      obj["state_opening"]   = shade->flipPosition ? "-1" : "1";
+      obj["payload_close"] = shade->getFlipPosition() ? "1"  : "-1";
+      obj["payload_open"]  = shade->getFlipPosition() ? "-1" : "1";
+      obj["position_open"]   = shade->getFlipPosition() ? 0   : 100;
+      obj["position_closed"] = shade->getFlipPosition() ? 100 : 0;
+      obj["state_closing"]   = shade->getFlipPosition() ? "1"  : "-1";
+      obj["state_opening"]   = shade->getFlipPosition() ? "-1" : "1";
       break;
     case shade_types::shutter:
       obj["device_class"] = "shutter";
-      obj["payload_close"] = shade->flipPosition ? "-1" : "1";
-      obj["payload_open"]  = shade->flipPosition ? "1"  : "-1";
-      obj["position_open"]   = shade->flipPosition ? 100 : 0;
-      obj["position_closed"] = shade->flipPosition ? 0   : 100;
-      obj["state_closing"]   = shade->flipPosition ? "-1" : "1";
-      obj["state_opening"]   = shade->flipPosition ? "1"  : "-1";
+      obj["payload_close"] = shade->getFlipPosition() ? "-1" : "1";
+      obj["payload_open"]  = shade->getFlipPosition() ? "1"  : "-1";
+      obj["position_open"]   = shade->getFlipPosition() ? 100 : 0;
+      obj["position_closed"] = shade->getFlipPosition() ? 0   : 100;
+      obj["state_closing"]   = shade->getFlipPosition() ? "-1" : "1";
+      obj["state_opening"]   = shade->getFlipPosition() ? "1"  : "-1";
       break;
     case shade_types::drycontact2:
     case shade_types::drycontact:
       break;
     default:
       obj["device_class"] = "shade";
-      obj["payload_close"] = shade->flipPosition ? "-1" : "1";
-      obj["payload_open"]  = shade->flipPosition ? "1"  : "-1";
-      obj["position_open"]   = shade->flipPosition ? 100 : 0;
-      obj["position_closed"] = shade->flipPosition ? 0   : 100;
-      obj["state_closing"]   = shade->flipPosition ? "-1" : "1";
-      obj["state_opening"]   = shade->flipPosition ? "1"  : "-1";
+      obj["payload_close"] = shade->getFlipPosition() ? "-1" : "1";
+      obj["payload_open"]  = shade->getFlipPosition() ? "1"  : "-1";
+      obj["position_open"]   = shade->getFlipPosition() ? 100 : 0;
+      obj["position_closed"] = shade->getFlipPosition() ? 0   : 100;
+      obj["state_closing"]   = shade->getFlipPosition() ? "-1" : "1";
+      obj["state_opening"]   = shade->getFlipPosition() ? "1"  : "-1";
       break;
   }
   if(shade->shadeType != shade_types::drycontact && shade->shadeType != shade_types::drycontact2) {
@@ -304,7 +304,7 @@ void SomfyMQTTPublisher::emitState(uint8_t num, const char *evt) {
   json->addElem("myPos",        shade->transformPosition(shade->getMyPos()));
   json->addElem("tiltType",     static_cast<uint8_t>(shade->tiltType));
   json->addElem("flipCommands", shade->flipCommands);
-  json->addElem("flipPosition", shade->flipPosition);
+  json->addElem("flipPosition", shade->getFlipPosition());
   json->addElem("flags",        shade->flags);
   json->addElem("sunSensor",    shade->hasSunSensor());
   json->addElem("light",        shade->hasLight());

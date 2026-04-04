@@ -67,7 +67,7 @@ public:
     void setStartTiltPos(float v)   { movementTracker.startTiltPos = v; }
 
     // ── Additional state reads ───────────────────────────────────────────────
-    int8_t   getLastMovement()  const { return lastMovement; }
+    // getLastMovement() is now inherited from SomfyShade
     int8_t   getDirection()     const { return direction; }
     int8_t   getTiltDirection() const { return tiltDirection; }
     uint64_t getMoveStart()     const { return movementTracker.moveStart; }

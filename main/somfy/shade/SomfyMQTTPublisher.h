@@ -10,6 +10,8 @@ class SomfyShade; // forward declaration — full definition in SomfyMQTTPublish
 class SomfyMQTTPublisher {
 public:
     SomfyShade *shade = nullptr; // set by SomfyShade() constructor
+    // Position display inversion (owned here; exposed via SomfyShade getters/setters)
+    bool flipPosition = false;
 
     // ── Low-level topic builders ───────────────────────────────────────────────
     bool publish(const char *topic, const char *val,  bool retain = false);
