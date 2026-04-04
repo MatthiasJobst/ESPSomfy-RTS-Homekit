@@ -30,6 +30,7 @@ set(PRODUCTION_SOURCES
     ../../main/somfy/shade/SomfyPersistence.cpp
     ../../main/somfy/shade/SomfyCommandTransmitter.cpp
     ../../main/somfy/shade/SomfyTargetSequencer.cpp
+    ../../main/somfy/shade/SomfyCommandProcessor.cpp
     ../../main/somfy/shade/SomfyJSONSerializer.cpp
     ../../main/somfy/shade/SomfyShade.cpp
     ../../main/somfy/SomfyRemote.cpp

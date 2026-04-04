@@ -11,17 +11,18 @@
 #include "SomfyJSONSerializer.h"
 #include "SomfyMotionState.h"
 #include "SomfyTargetSequencer.h"
+#include "SomfyCommandProcessor.h"
 
 class SomfyShade : public SomfyRemote {
   protected:
+    uint32_t awaitMy = 0;
+  public:
     uint8_t shadeId = 255;
     uint64_t moveStart = 0;
     uint64_t tiltStart = 0;
     float startPos = 0.0f;
     float startTiltPos = 0.0f;
-    uint32_t awaitMy = 0;
-  public:
-    SomfyShade() { mqttPublisher.shade = this; persistence.shade = this; commandTransmitter.shade = this; jsonSerializer.shade = this; targetSequencer.shade = this; }
+    SomfyShade() { mqttPublisher.shade = this; persistence.shade = this; commandTransmitter.shade = this; jsonSerializer.shade = this; targetSequencer.shade = this; commandProcessor.shade = this; }
     MotionState             motionState;
     SomfyFlagManager        flagManager;
     SomfyGPIOControl        gpioControl;
@@ -30,6 +31,7 @@ class SomfyShade : public SomfyRemote {
     SomfyCommandTransmitter commandTransmitter;
     SomfyJSONSerializer     jsonSerializer;
     SomfyTargetSequencer    targetSequencer;
+    SomfyCommandProcessor   commandProcessor;
     uint8_t roomId = 0;
     int8_t sortOrder = 0;
     bool flipPosition = false;

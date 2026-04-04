@@ -943,3 +943,70 @@ TEST_F(SendCmdTest, SendCommand_3arg_NoCrash) {
 TEST_F(SendCmdTest, SendTiltCommand_NoCrash) {
     shade.sendTiltCommand(somfy_commands::Down);
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// I  SomfyShade delegation stubs for process* helpers
+//    These thin wrappers route to commandProcessor; calling them directly
+//    covers the stub lines in SomfyShade.cpp.
+// ════════════════════════════════════════════════════════════════════════════
+
+class ProcessDelegateTest : public ::testing::Test {
+protected:
+    TestableShade shade;
+    void SetUp() override {
+        shade.setShadeId(1);
+        shade.setRemoteAddress(0xABCDEF);
+        shade.shadeType      = shade_types::roller;
+        shade.tiltType       = tilt_types::none;
+        shade.upTime         = 10000;
+        shade.downTime       = 10000;
+        shade.tiltTime       = 7000;
+        shade.stepSize       = 100;
+        shade.currentPos     = 50.0f;
+        shade.currentTiltPos = 50.0f;
+        shade.target         = 50.0f;
+        shade.tiltTarget     = 50.0f;
+        shade.myPos          = -1.0f;
+        shade.myTiltPos      = -1.0f;
+        EXPECT_CALL(shade, emitState(_)).Times(AnyNumber());
+        EXPECT_CALL(shade, emitState(_, _)).Times(AnyNumber());
+        EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(AnyNumber());
+        EXPECT_CALL(shade, emitCommand(_, _, _, _, _)).Times(AnyNumber());
+        test_clock_ms = 0;
+    }
+    somfy_frame_t make_f(somfy_commands cmd, uint32_t addr = 0xABCDEF) {
+        somfy_frame_t f{};
+        f.cmd = cmd; f.remoteAddress = addr; f.valid = true;
+        return f;
+    }
+};
+
+TEST_F(ProcessDelegateTest, ProcessSensorCommand_NoCrash) {
+    auto f = make_f(somfy_commands::Sensor);
+    shade.processSensorCommand(f, 0);
+}
+
+TEST_F(ProcessDelegateTest, ProcessFlagCommand_NoCrash) {
+    auto f = make_f(somfy_commands::Flag);
+    shade.processFlagCommand(false, f);
+}
+
+TEST_F(ProcessDelegateTest, ProcessSunFlagCommand_NoCrash) {
+    auto f = make_f(somfy_commands::SunFlag);
+    shade.processSunFlagCommand(false, f);
+}
+
+TEST_F(ProcessDelegateTest, ProcessMyCommand_NoCrash) {
+    auto f = make_f(somfy_commands::My);
+    shade.processMyCommand(false, f, 0);
+}
+
+TEST_F(ProcessDelegateTest, ProcessUpDownCommand_NoCrash) {
+    auto f = make_f(somfy_commands::Down);
+    shade.processUpDownCommand(somfy_commands::Down, 1, false, f, 0);
+}
+
+TEST_F(ProcessDelegateTest, ProcessStepCommand_NoCrash) {
+    auto f = make_f(somfy_commands::StepDown);
+    shade.processStepCommand(somfy_commands::StepDown, 1, false, f);
+}
