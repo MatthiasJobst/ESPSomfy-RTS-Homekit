@@ -1,4 +1,6 @@
-// test_gpio.cpp — coverage for SomfyShade::setGPIOs(), triggerGPIOs(), usesPin()
+// test_gpioControl.cpp — tests for SomfyGPIOControl
+//
+// Covers: setGPIOs(), triggerGPIOs(), usesPin()
 //
 // Pin assignments used throughout:
 //   gpioUp   = 4
@@ -22,7 +24,7 @@ static constexpr uint8_t PIN_MY   = 6;
 
 // ── fixture ───────────────────────────────────────────────────────────────
 
-class GPIOTest : public ::testing::Test {
+class GPIOControlTest : public ::testing::Test {
 protected:
     TestableShade shade;
 
@@ -68,7 +70,7 @@ protected:
 // setGPIOs — proto != GP_Relay/GP_Remote → no pin writes
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST_F(GPIOTest, SetGPIOs_RTSProto_WritesNoPins) {
+TEST_F(GPIOControlTest, SetGPIOs_RTSProto_WritesNoPins) {
     shade.setProto(radio_proto::RTS);
     shade.setDirection(1);
     shade.setGPIOs();
@@ -79,7 +81,7 @@ TEST_F(GPIOTest, SetGPIOs_RTSProto_WritesNoPins) {
 // setGPIOs — GP_Relay, roller, direction branches
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST_F(GPIOTest, SetGPIOs_Relay_DirectionUp_UpHighDownLow) {
+TEST_F(GPIOControlTest, SetGPIOs_Relay_DirectionUp_UpHighDownLow) {
     shade.setProto(radio_proto::GP_Relay);
     shade.setDirection(-1);  // up
     shade.setGPIOs();
@@ -88,7 +90,7 @@ TEST_F(GPIOTest, SetGPIOs_Relay_DirectionUp_UpHighDownLow) {
     EXPECT_EQ(shade.getGpioDir(), -1);
 }
 
-TEST_F(GPIOTest, SetGPIOs_Relay_DirectionDown_UpLowDownHigh) {
+TEST_F(GPIOControlTest, SetGPIOs_Relay_DirectionDown_UpLowDownHigh) {
     shade.setProto(radio_proto::GP_Relay);
     shade.setDirection(1);   // down
     shade.setGPIOs();
@@ -97,7 +99,7 @@ TEST_F(GPIOTest, SetGPIOs_Relay_DirectionDown_UpLowDownHigh) {
     EXPECT_EQ(shade.getGpioDir(), 1);
 }
 
-TEST_F(GPIOTest, SetGPIOs_Relay_DirectionIdle_BothLow) {
+TEST_F(GPIOControlTest, SetGPIOs_Relay_DirectionIdle_BothLow) {
     shade.setProto(radio_proto::GP_Relay);
     shade.setDirection(0);
     shade.setGPIOs();
@@ -108,7 +110,7 @@ TEST_F(GPIOTest, SetGPIOs_Relay_DirectionIdle_BothLow) {
 
 // ── LowLevelTrigger polarity inversion ────────────────────────────────────
 
-TEST_F(GPIOTest, SetGPIOs_Relay_LowLevelTrigger_DirectionUp_UpLowDownHigh) {
+TEST_F(GPIOControlTest, SetGPIOs_Relay_LowLevelTrigger_DirectionUp_UpLowDownHigh) {
     shade.setProto(radio_proto::GP_Relay);
     shade.setGpioFlags(static_cast<uint8_t>(gpio_flags_t::LowLevelTrigger));
     shade.setDirection(-1);
@@ -117,7 +119,7 @@ TEST_F(GPIOTest, SetGPIOs_Relay_LowLevelTrigger_DirectionUp_UpLowDownHigh) {
     EXPECT_EQ(gpio_pin_levels[PIN_DOWN], 1u);  // p_off=HIGH when LLT set
 }
 
-TEST_F(GPIOTest, SetGPIOs_Relay_LowLevelTrigger_DirectionIdle_BothHigh) {
+TEST_F(GPIOControlTest, SetGPIOs_Relay_LowLevelTrigger_DirectionIdle_BothHigh) {
     shade.setProto(radio_proto::GP_Relay);
     shade.setGpioFlags(static_cast<uint8_t>(gpio_flags_t::LowLevelTrigger));
     shade.setDirection(0);
@@ -128,7 +130,7 @@ TEST_F(GPIOTest, SetGPIOs_Relay_LowLevelTrigger_DirectionIdle_BothHigh) {
 
 // ── drycontact: only DOWN pin, level based on currentPos ──────────────────
 
-TEST_F(GPIOTest, SetGPIOs_Relay_DryContact_AtHundred_DownHigh) {
+TEST_F(GPIOControlTest, SetGPIOs_Relay_DryContact_AtHundred_DownHigh) {
     shade.setProto(radio_proto::GP_Relay);
     shade.shadeType  = shade_types::drycontact;
     shade.currentPos = 100.0f;
@@ -137,7 +139,7 @@ TEST_F(GPIOTest, SetGPIOs_Relay_DryContact_AtHundred_DownHigh) {
     EXPECT_EQ(shade.getGpioDir(), 1);
 }
 
-TEST_F(GPIOTest, SetGPIOs_Relay_DryContact_NotAtHundred_DownLow) {
+TEST_F(GPIOControlTest, SetGPIOs_Relay_DryContact_NotAtHundred_DownLow) {
     shade.setProto(radio_proto::GP_Relay);
     shade.shadeType  = shade_types::drycontact;
     shade.currentPos = 50.0f;
@@ -148,7 +150,7 @@ TEST_F(GPIOTest, SetGPIOs_Relay_DryContact_NotAtHundred_DownLow) {
 
 // ── drycontact2: both pins, opposing levels ────────────────────────────────
 
-TEST_F(GPIOTest, SetGPIOs_Relay_DryContact2_AtHundred_DownOffUpOn) {
+TEST_F(GPIOControlTest, SetGPIOs_Relay_DryContact2_AtHundred_DownOffUpOn) {
     shade.setProto(radio_proto::GP_Relay);
     shade.shadeType  = shade_types::drycontact2;
     shade.currentPos = 100.0f;
@@ -158,7 +160,7 @@ TEST_F(GPIOTest, SetGPIOs_Relay_DryContact2_AtHundred_DownOffUpOn) {
     EXPECT_EQ(shade.getGpioDir(), 1);
 }
 
-TEST_F(GPIOTest, SetGPIOs_Relay_DryContact2_NotAtHundred_UpOffDownOn) {
+TEST_F(GPIOControlTest, SetGPIOs_Relay_DryContact2_NotAtHundred_UpOffDownOn) {
     shade.setProto(radio_proto::GP_Relay);
     shade.shadeType  = shade_types::drycontact2;
     shade.currentPos = 0.0f;
@@ -170,7 +172,7 @@ TEST_F(GPIOTest, SetGPIOs_Relay_DryContact2_NotAtHundred_UpOffDownOn) {
 
 // ── integrated tilt: direction=0 falls back to tiltDirection ─────────────
 
-TEST_F(GPIOTest, SetGPIOs_Relay_Integrated_DirZero_UsesTiltDirection) {
+TEST_F(GPIOControlTest, SetGPIOs_Relay_Integrated_DirZero_UsesTiltDirection) {
     shade.setProto(radio_proto::GP_Relay);
     shade.tiltType = tilt_types::integrated;
     shade.setDirection(0);
@@ -187,7 +189,7 @@ TEST_F(GPIOTest, SetGPIOs_Relay_Integrated_DirZero_UsesTiltDirection) {
 // setGPIOs — GP_Remote: release timer
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST_F(GPIOTest, SetGPIOs_Remote_PastRelease_AllPinsOff_ReleaseCleared) {
+TEST_F(GPIOControlTest, SetGPIOs_Remote_PastRelease_AllPinsOff_ReleaseCleared) {
     shade.setProto(radio_proto::GP_Remote);
     shade.setGpioRelease(100);
     test_clock_ms = 200;  // millis() > gpioRelease
@@ -198,7 +200,7 @@ TEST_F(GPIOTest, SetGPIOs_Remote_PastRelease_AllPinsOff_ReleaseCleared) {
     EXPECT_EQ(shade.getGpioRelease(), 0u);
 }
 
-TEST_F(GPIOTest, SetGPIOs_Remote_BeforeRelease_WritesNoPins) {
+TEST_F(GPIOControlTest, SetGPIOs_Remote_BeforeRelease_WritesNoPins) {
     shade.setProto(radio_proto::GP_Remote);
     shade.setGpioRelease(500);
     test_clock_ms = 100;  // millis() < gpioRelease
@@ -210,7 +212,7 @@ TEST_F(GPIOTest, SetGPIOs_Remote_BeforeRelease_WritesNoPins) {
 // triggerGPIOs — GP_Remote command → pin states
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST_F(GPIOTest, TriggerGPIOs_Remote_Up_UpHighOthersLow) {
+TEST_F(GPIOControlTest, TriggerGPIOs_Remote_Up_UpHighOthersLow) {
     shade.setProto(radio_proto::GP_Remote);
     auto f = make_frame(somfy_commands::Up, 2);
     shade.triggerGPIOs(f);
@@ -220,7 +222,7 @@ TEST_F(GPIOTest, TriggerGPIOs_Remote_Up_UpHighOthersLow) {
     EXPECT_EQ(shade.getGpioDir(), -1);
 }
 
-TEST_F(GPIOTest, TriggerGPIOs_Remote_Down_DownHighOthersLow) {
+TEST_F(GPIOControlTest, TriggerGPIOs_Remote_Down_DownHighOthersLow) {
     shade.setProto(radio_proto::GP_Remote);
     auto f = make_frame(somfy_commands::Down, 2);
     shade.triggerGPIOs(f);
@@ -230,7 +232,7 @@ TEST_F(GPIOTest, TriggerGPIOs_Remote_Down_DownHighOthersLow) {
     EXPECT_EQ(shade.getGpioDir(), 1);
 }
 
-TEST_F(GPIOTest, TriggerGPIOs_Remote_My_Roller_MyHighOthersLow) {
+TEST_F(GPIOControlTest, TriggerGPIOs_Remote_My_Roller_MyHighOthersLow) {
     shade.setProto(radio_proto::GP_Remote);
     shade.shadeType = shade_types::roller;
     auto f = make_frame(somfy_commands::My, 1);
@@ -240,7 +242,7 @@ TEST_F(GPIOTest, TriggerGPIOs_Remote_My_Roller_MyHighOthersLow) {
     EXPECT_EQ(gpio_pin_levels[PIN_MY],   1u);
 }
 
-TEST_F(GPIOTest, TriggerGPIOs_Remote_My_DryContact_NoMyPin) {
+TEST_F(GPIOControlTest, TriggerGPIOs_Remote_My_DryContact_NoMyPin) {
     // drycontact hits the early return in the My case — MY pin not written
     shade.setProto(radio_proto::GP_Remote);
     shade.shadeType = shade_types::drycontact;
@@ -249,7 +251,7 @@ TEST_F(GPIOTest, TriggerGPIOs_Remote_My_DryContact_NoMyPin) {
     EXPECT_EQ(gpio_pin_levels.count(PIN_MY), 0u);
 }
 
-TEST_F(GPIOTest, TriggerGPIOs_Remote_My_Toggle_NoMyPin) {
+TEST_F(GPIOControlTest, TriggerGPIOs_Remote_My_Toggle_NoMyPin) {
     // isToggle() shades also skip the My pin write
     shade.setProto(radio_proto::GP_Remote);
     shade.shadeType = shade_types::garage1;
@@ -258,7 +260,7 @@ TEST_F(GPIOTest, TriggerGPIOs_Remote_My_Toggle_NoMyPin) {
     EXPECT_EQ(gpio_pin_levels.count(PIN_MY), 0u);
 }
 
-TEST_F(GPIOTest, TriggerGPIOs_Remote_MyUp_MyAndUpHigh_DownLow) {
+TEST_F(GPIOControlTest, TriggerGPIOs_Remote_MyUp_MyAndUpHigh_DownLow) {
     shade.setProto(radio_proto::GP_Remote);
     auto f = make_frame(somfy_commands::MyUp, 1);
     shade.triggerGPIOs(f);
@@ -267,7 +269,7 @@ TEST_F(GPIOTest, TriggerGPIOs_Remote_MyUp_MyAndUpHigh_DownLow) {
     EXPECT_EQ(gpio_pin_levels[PIN_DOWN], 0u);
 }
 
-TEST_F(GPIOTest, TriggerGPIOs_Remote_MyDown_MyAndDownHigh_UpLow) {
+TEST_F(GPIOControlTest, TriggerGPIOs_Remote_MyDown_MyAndDownHigh_UpLow) {
     shade.setProto(radio_proto::GP_Remote);
     auto f = make_frame(somfy_commands::MyDown, 1);
     shade.triggerGPIOs(f);
@@ -276,7 +278,7 @@ TEST_F(GPIOTest, TriggerGPIOs_Remote_MyDown_MyAndDownHigh_UpLow) {
     EXPECT_EQ(gpio_pin_levels[PIN_UP],   0u);
 }
 
-TEST_F(GPIOTest, TriggerGPIOs_Remote_SetsGpioRelease) {
+TEST_F(GPIOControlTest, TriggerGPIOs_Remote_SetsGpioRelease) {
     shade.setProto(radio_proto::GP_Remote);
     test_clock_ms = 1000;
     auto f = make_frame(somfy_commands::Up, 3);
@@ -285,7 +287,7 @@ TEST_F(GPIOTest, TriggerGPIOs_Remote_SetsGpioRelease) {
     EXPECT_EQ(shade.getGpioRelease(), 1600u);
 }
 
-TEST_F(GPIOTest, TriggerGPIOs_RTSProto_WritesNoPins) {
+TEST_F(GPIOControlTest, TriggerGPIOs_RTSProto_WritesNoPins) {
     shade.setProto(radio_proto::RTS);
     auto f = make_frame(somfy_commands::Up, 1);
     shade.triggerGPIOs(f);
@@ -296,46 +298,46 @@ TEST_F(GPIOTest, TriggerGPIOs_RTSProto_WritesNoPins) {
 // usesPin
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST_F(GPIOTest, UsesPin_RTSProto_ReturnsFalse) {
+TEST_F(GPIOControlTest, UsesPin_RTSProto_ReturnsFalse) {
     shade.setProto(radio_proto::RTS);
     EXPECT_FALSE(shade.usesPin(PIN_DOWN));
     EXPECT_FALSE(shade.usesPin(PIN_UP));
 }
 
-TEST_F(GPIOTest, UsesPin_Relay_Roller_DownPin_ReturnsTrue) {
+TEST_F(GPIOControlTest, UsesPin_Relay_Roller_DownPin_ReturnsTrue) {
     shade.setProto(radio_proto::GP_Relay);
     EXPECT_TRUE(shade.usesPin(PIN_DOWN));
 }
 
-TEST_F(GPIOTest, UsesPin_Relay_Roller_UpPin_ReturnsTrue) {
+TEST_F(GPIOControlTest, UsesPin_Relay_Roller_UpPin_ReturnsTrue) {
     shade.setProto(radio_proto::GP_Relay);
     EXPECT_TRUE(shade.usesPin(PIN_UP));
 }
 
-TEST_F(GPIOTest, UsesPin_Relay_Roller_UnrelatedPin_ReturnsFalse) {
+TEST_F(GPIOControlTest, UsesPin_Relay_Roller_UnrelatedPin_ReturnsFalse) {
     shade.setProto(radio_proto::GP_Relay);
     EXPECT_FALSE(shade.usesPin(99));
 }
 
-TEST_F(GPIOTest, UsesPin_Remote_Roller_MyPin_ReturnsTrue) {
+TEST_F(GPIOControlTest, UsesPin_Remote_Roller_MyPin_ReturnsTrue) {
     shade.setProto(radio_proto::GP_Remote);
     EXPECT_TRUE(shade.usesPin(PIN_MY));
 }
 
-TEST_F(GPIOTest, UsesPin_Relay_Toggle_MyPin_ReturnsFalse) {
+TEST_F(GPIOControlTest, UsesPin_Relay_Toggle_MyPin_ReturnsFalse) {
     // isToggle() → My pin is not used by GP_Relay
     shade.setProto(radio_proto::GP_Relay);
     shade.shadeType = shade_types::garage1;
     EXPECT_FALSE(shade.usesPin(PIN_MY));
 }
 
-TEST_F(GPIOTest, UsesPin_Relay_DryContact_DownPin_ReturnsTrue) {
+TEST_F(GPIOControlTest, UsesPin_Relay_DryContact_DownPin_ReturnsTrue) {
     shade.setProto(radio_proto::GP_Relay);
     shade.shadeType = shade_types::drycontact;
     EXPECT_TRUE(shade.usesPin(PIN_DOWN));
 }
 
-TEST_F(GPIOTest, UsesPin_Relay_DryContact2_UpPin_ReturnsTrue) {
+TEST_F(GPIOControlTest, UsesPin_Relay_DryContact2_UpPin_ReturnsTrue) {
     shade.setProto(radio_proto::GP_Relay);
     shade.shadeType = shade_types::drycontact2;
     EXPECT_TRUE(shade.usesPin(PIN_UP));

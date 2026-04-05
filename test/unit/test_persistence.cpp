@@ -1,6 +1,7 @@
-// test_persistence.cpp — 100% line coverage for SomfyShade persistence layer:
-//   commit(), commitShadePosition(), commitMyPosition(), commitTiltPosition(),
-//   save(), load() (including legacy u16 migration branch)
+// test_persistence.cpp — tests for SomfyPersistence
+//
+// Covers: commit(), commitShadePosition(), commitMyPosition(), commitTiltPosition(),
+//         save(), load() (including legacy u16 migration branch)
 //
 // NVS is provided by the namespace-keyed in-memory stub in stubs/nvs.h.
 // nvs_stub_use_nvs controls whether somfy.useNVS() returns true.
@@ -25,7 +26,7 @@ using ::testing::_;
 
 // ── fixture ───────────────────────────────────────────────────────────────
 
-class PersistenceTest : public ::testing::Test {
+class SomfyPersistenceTest : public ::testing::Test {
 protected:
     TestableShade shade;
 
@@ -67,7 +68,7 @@ protected:
 // A. commit() — delegates to somfy.commit() which sets isDirty
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST_F(PersistenceTest, Commit_SetsSomfyIsDirty) {
+TEST_F(SomfyPersistenceTest, Commit_SetsSomfyIsDirty) {
     extern SomfyShadeController somfy;
     somfy.isDirty = false;
     // somfy.commit() is stubbed to no-op, but commitShadePosition sets isDirty directly
@@ -79,7 +80,7 @@ TEST_F(PersistenceTest, Commit_SetsSomfyIsDirty) {
 // B. commitShadePosition() — sets isDirty; writes currentPos to NVS when useNVS
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST_F(PersistenceTest, CommitShadePosition_UseNVSFalse_SetsDirtyOnly) {
+TEST_F(SomfyPersistenceTest, CommitShadePosition_UseNVSFalse_SetsDirtyOnly) {
     extern SomfyShadeController somfy;
     nvs_stub_use_nvs = false;
     somfy.isDirty = false;
@@ -89,7 +90,7 @@ TEST_F(PersistenceTest, CommitShadePosition_UseNVSFalse_SetsDirtyOnly) {
     EXPECT_TRUE(nvs_ns_stores.empty());
 }
 
-TEST_F(PersistenceTest, CommitShadePosition_UseNVSTrue_WritesCurrentPos) {
+TEST_F(SomfyPersistenceTest, CommitShadePosition_UseNVSTrue_WritesCurrentPos) {
     nvs_stub_use_nvs = true;
     shade.currentPos = 73.5f;
     shade.commitShadePosition();
@@ -102,7 +103,7 @@ TEST_F(PersistenceTest, CommitShadePosition_UseNVSTrue_WritesCurrentPos) {
 // C. commitMyPosition() — sets isDirty; writes myPos to NVS when useNVS
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST_F(PersistenceTest, CommitMyPosition_UseNVSFalse_SetsDirtyOnly) {
+TEST_F(SomfyPersistenceTest, CommitMyPosition_UseNVSFalse_SetsDirtyOnly) {
     extern SomfyShadeController somfy;
     nvs_stub_use_nvs = false;
     somfy.isDirty = false;
@@ -111,7 +112,7 @@ TEST_F(PersistenceTest, CommitMyPosition_UseNVSFalse_SetsDirtyOnly) {
     EXPECT_TRUE(nvs_ns_stores.empty());
 }
 
-TEST_F(PersistenceTest, CommitMyPosition_UseNVSTrue_WritesMyPos) {
+TEST_F(SomfyPersistenceTest, CommitMyPosition_UseNVSTrue_WritesMyPos) {
     nvs_stub_use_nvs = true;
     shade.targetSequencer.myPos = 50.0f;
     shade.commitMyPosition();
@@ -123,7 +124,7 @@ TEST_F(PersistenceTest, CommitMyPosition_UseNVSTrue_WritesMyPos) {
 // D. commitTiltPosition() — sets isDirty; writes currentTiltPos when useNVS
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST_F(PersistenceTest, CommitTiltPosition_UseNVSFalse_SetsDirtyOnly) {
+TEST_F(SomfyPersistenceTest, CommitTiltPosition_UseNVSFalse_SetsDirtyOnly) {
     extern SomfyShadeController somfy;
     nvs_stub_use_nvs = false;
     somfy.isDirty = false;
@@ -132,7 +133,7 @@ TEST_F(PersistenceTest, CommitTiltPosition_UseNVSFalse_SetsDirtyOnly) {
     EXPECT_TRUE(nvs_ns_stores.empty());
 }
 
-TEST_F(PersistenceTest, CommitTiltPosition_UseNVSTrue_WritesCurrentTiltPos) {
+TEST_F(SomfyPersistenceTest, CommitTiltPosition_UseNVSTrue_WritesCurrentTiltPos) {
     nvs_stub_use_nvs = true;
     shade.currentTiltPos = 33.0f;
     shade.commitTiltPosition();
@@ -144,14 +145,14 @@ TEST_F(PersistenceTest, CommitTiltPosition_UseNVSTrue_WritesCurrentTiltPos) {
 // E. save() — always commits and publishes; writes full record when useNVS
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST_F(PersistenceTest, Save_UseNVSFalse_ReturnsTrue) {
+TEST_F(SomfyPersistenceTest, Save_UseNVSFalse_ReturnsTrue) {
     nvs_stub_use_nvs = false;
     EXPECT_TRUE(shade.save());
     // No NVS writes, but commit() and publish() ran (no crash)
     EXPECT_TRUE(nvs_ns_stores.empty());
 }
 
-TEST_F(PersistenceTest, Save_UseNVSTrue_WritesAllCoreFields) {
+TEST_F(SomfyPersistenceTest, Save_UseNVSTrue_WritesAllCoreFields) {
     nvs_stub_use_nvs = true;
     strncpy(shade.name, "Living Room", sizeof(shade.name));
     shade.currentPos     = 55.0f;
@@ -178,7 +179,7 @@ TEST_F(PersistenceTest, Save_UseNVSTrue_WritesAllCoreFields) {
     EXPECT_EQ(store.entries.count("hasTilt"),       1u);
 }
 
-TEST_F(PersistenceTest, Save_UseNVSTrue_WritesLinkedAddresses) {
+TEST_F(SomfyPersistenceTest, Save_UseNVSTrue_WritesLinkedAddresses) {
     nvs_stub_use_nvs = true;
     shade.getLinkedRemote(0).setRemoteAddress(0xABCDEF);
     shade.getLinkedRemote(1).setRemoteAddress(0x123456);
@@ -193,7 +194,7 @@ TEST_F(PersistenceTest, Save_UseNVSTrue_WritesLinkedAddresses) {
 // F. load() — reads all fields back; round-trip consistency
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST_F(PersistenceTest, Load_AfterSave_RestoresCoreFields) {
+TEST_F(SomfyPersistenceTest, Load_AfterSave_RestoresCoreFields) {
     nvs_stub_use_nvs = true;
     strncpy(shade.name, "Bedroom", sizeof(shade.name));
     shade.currentPos     = 67.0f;
@@ -226,7 +227,7 @@ TEST_F(PersistenceTest, Load_AfterSave_RestoresCoreFields) {
     EXPECT_TRUE(loaded.paired);
 }
 
-TEST_F(PersistenceTest, Load_AfterSave_TargetEqualsFloorOfCurrentPos) {
+TEST_F(SomfyPersistenceTest, Load_AfterSave_TargetEqualsFloorOfCurrentPos) {
     nvs_stub_use_nvs = true;
     shade.currentPos = 73.9f;
     shade.save();
@@ -243,7 +244,7 @@ TEST_F(PersistenceTest, Load_AfterSave_TargetEqualsFloorOfCurrentPos) {
     EXPECT_FLOAT_EQ(loaded.tiltTarget, floorf(shade.currentTiltPos));
 }
 
-TEST_F(PersistenceTest, Load_AfterSave_RestoresLinkedRemote) {
+TEST_F(SomfyPersistenceTest, Load_AfterSave_RestoresLinkedRemote) {
     nvs_stub_use_nvs = true;
     shade.getLinkedRemote(0).setRemoteAddress(0xCAFE01);
     shade.save();
@@ -259,7 +260,7 @@ TEST_F(PersistenceTest, Load_AfterSave_RestoresLinkedRemote) {
     EXPECT_EQ(loaded.getLinkedRemote(0).getRemoteAddress(), 0xCAFE01u);
 }
 
-TEST_F(PersistenceTest, Load_AfterSave_RestoresRollingCode) {
+TEST_F(SomfyPersistenceTest, Load_AfterSave_RestoresRollingCode) {
     nvs_stub_use_nvs = true;
     // Seed the ShadeCodes namespace directly (save() writes rolling code via p_lastRollingCode)
     shade.setRemoteAddress(0x112233);
@@ -288,7 +289,7 @@ TEST_F(PersistenceTest, Load_AfterSave_RestoresRollingCode) {
 // G. load() — legacy u16 migration branch (upTime key exists as PT_U16, not PT_U32)
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST_F(PersistenceTest, Load_LegacyU16Times_MigratesAndReadsCorrectValues) {
+TEST_F(SomfyPersistenceTest, Load_LegacyU16Times_MigratesAndReadsCorrectValues) {
     nvs_stub_use_nvs = true;
     // Write legacy u16 keys directly into NVS (NVS_TYPE_U16, not NVS_TYPE_U32)
     pref.begin("SomfyShade1");
@@ -315,7 +316,7 @@ TEST_F(PersistenceTest, Load_LegacyU16Times_MigratesAndReadsCorrectValues) {
     EXPECT_EQ(store.entries["upTime"].type, NVS_TYPE_U32);
 }
 
-TEST_F(PersistenceTest, Load_LegacyU16Times_UseNVSFalse_MigratesWithoutRewrite) {
+TEST_F(SomfyPersistenceTest, Load_LegacyU16Times_UseNVSFalse_MigratesWithoutRewrite) {
     // When useNVS() is false, migration reads the values but does NOT rewrite them
     // (the inner if(somfy.useNVS()) block is skipped).
     nvs_stub_use_nvs = false;

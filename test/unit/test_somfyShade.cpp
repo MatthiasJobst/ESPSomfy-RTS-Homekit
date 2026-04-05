@@ -1,4 +1,4 @@
-// test_somfyShade.cpp — 100% line coverage for the SomfyShade methods that are
+// test_somfyShade.cpp — tests for the SomfyShade methods that are
 // NOT covered by the more-focused test suites:
 //
 //  • clear()                         (line 20)

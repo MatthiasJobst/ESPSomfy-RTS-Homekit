@@ -1,4 +1,4 @@
-// test_commandTransmitter.cpp — 100% line coverage for the CommandTransmitter
+// test_commandTransmitter.cpp — tests for the CommandTransmitter
 // methods of SomfyShade:
 //   sendCommand()  — all cmd branches: Up/Down (normal + euromode + tiltonly +
 //                    integrated), My (toggle/drycontact/drycontact2/idle/moving),

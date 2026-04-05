@@ -1,4 +1,4 @@
-// test_jsonSerializer.cpp — 100% line coverage for SomfyShade JSON methods:
+// test_jsonSerializer.cpp — tests for SomfyShade JSON methods:
 //   validateJSON() — shadeType string/uint8 parsing, GPIO pin-conflict checks
 //                    (-10 transceiver, -11 ethernet, -12 other shade)
 //   fromJSON()     — applies every field; early-return on validation error;

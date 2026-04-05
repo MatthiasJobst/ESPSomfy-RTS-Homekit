@@ -1,21 +1,12 @@
-// test_targetSequencer.cpp — coverage for the four TargetSequencer methods:
-//   moveToTarget()      — direction selection, target/tiltTarget set, guards
-//                         (toggle, tiltonly, euromode, simMy not-applicable here)
-//   moveToTiltTarget()  — direction selection, tiltTarget set, send-gate conditions
-//   moveToMyPosition()  — idle guard, early-return guards, simMy and My paths
-//   setMyPosition()     — all three tiltType branches and their sub-cases
+// test_targetSequencer.cpp — tests for SomfyTargetSequencer
 //
-// motionState flag-setting is already covered in test_motionIntent.cpp.
-// This suite focuses on: which command is sent, what target values are set,
-// and which guard conditions abort early.
+// Covers: moveToTarget(), moveToTiltTarget(), moveToMyPosition(), setMyPosition()
+//  moveToTarget:      direction selection, target/tiltTarget set, guards (toggle, tiltonly, euromode)
+//  moveToTiltTarget:  direction selection, tiltTarget set, send-gate conditions
+//  moveToMyPosition:  idle guard, early-return guards, simMy and My paths
+//  setMyPosition:     all three tiltType branches and their sub-cases
 //
-// Line reference groups (pre-extraction):
-//   A. moveToTarget       1263–1304
-//   B. moveToTiltTarget   1242–1261
-//   C. moveToMyPosition   1212–1236
-//   D. setMyPosition      1117–1210  (tiltType::none lines 1180–1211)
-//   E. setMyPosition      1117–1148  (tiltType::tiltonly)
-//   F. setMyPosition      1149–1179  (tiltType has-tilt, not tiltonly)
+// motionState flag-setting is covered in test_commandProcessor.cpp.
 
 #include "TestableShade.h"
 #include <gtest/gtest.h>
@@ -29,7 +20,7 @@ using ::testing::_;
 
 // ── fixture ───────────────────────────────────────────────────────────────────
 
-class TargetSeqTest : public ::testing::Test {
+class TargetSequencerTest : public ::testing::Test {
 protected:
     TestableShade shade;
 
@@ -66,21 +57,21 @@ protected:
 // ══════════════════════════════════════════════════════════════════════════════
 
 // A1. pos > currentPos → Down command
-TEST_F(TargetSeqTest, MoveToTarget_PosHigher_SendsDown) {
+TEST_F(TargetSequencerTest, MoveToTarget_PosHigher_SendsDown) {
     shade.currentPos = 30.0f;
     shade.moveToTarget(80.0f);
     EXPECT_EQ(lastCmd(), somfy_commands::Down);
 }
 
 // A2. pos < currentPos → Up command
-TEST_F(TargetSeqTest, MoveToTarget_PosLower_SendsUp) {
+TEST_F(TargetSequencerTest, MoveToTarget_PosLower_SendsUp) {
     shade.currentPos = 70.0f;
     shade.moveToTarget(20.0f);
     EXPECT_EQ(lastCmd(), somfy_commands::Up);
 }
 
 // A3. pos == currentPos, no tilt → no command sent (lastFrame.cmd still My from no-send)
-TEST_F(TargetSeqTest, MoveToTarget_SamePos_NoTilt_NoCommand) {
+TEST_F(TargetSequencerTest, MoveToTarget_SamePos_NoTilt_NoCommand) {
     shade.currentPos = 50.0f;
     // Reset rolling code so we can detect if sendCommand was called
     uint16_t rcBefore = shade.getLastFrame().rollingCode;
@@ -90,14 +81,14 @@ TEST_F(TargetSeqTest, MoveToTarget_SamePos_NoTilt_NoCommand) {
 }
 
 // A4. target set to requested pos
-TEST_F(TargetSeqTest, MoveToTarget_SetsTarget) {
+TEST_F(TargetSequencerTest, MoveToTarget_SetsTarget) {
     shade.currentPos = 20.0f;
     shade.moveToTarget(75.0f);
     EXPECT_FLOAT_EQ(shade.target, 75.0f);
 }
 
 // A5. tilt >= 0 → tiltTarget set
-TEST_F(TargetSeqTest, MoveToTarget_WithTilt_SetsTiltTarget) {
+TEST_F(TargetSequencerTest, MoveToTarget_WithTilt_SetsTiltTarget) {
     shade.tiltType       = tilt_types::integrated;
     shade.currentPos     = 20.0f;
     shade.currentTiltPos = 50.0f;
@@ -106,7 +97,7 @@ TEST_F(TargetSeqTest, MoveToTarget_WithTilt_SetsTiltTarget) {
 }
 
 // A6. tilt not supplied (default -1) → tiltTarget NOT updated
-TEST_F(TargetSeqTest, MoveToTarget_NoTiltArg_TiltTargetUnchanged) {
+TEST_F(TargetSequencerTest, MoveToTarget_NoTiltArg_TiltTargetUnchanged) {
     shade.tiltTarget     = 40.0f;
     shade.currentPos     = 20.0f;
     shade.moveToTarget(80.0f);
@@ -114,7 +105,7 @@ TEST_F(TargetSeqTest, MoveToTarget_NoTiltArg_TiltTargetUnchanged) {
 }
 
 // A7. pos == currentPos but tilt differs → Up or Down for tilt, settingPos set
-TEST_F(TargetSeqTest, MoveToTarget_SamePosLowerTilt_SendsUp) {
+TEST_F(TargetSequencerTest, MoveToTarget_SamePosLowerTilt_SendsUp) {
     shade.tiltType       = tilt_types::integrated;
     shade.currentPos     = 50.0f;
     shade.currentTiltPos = 50.0f;
@@ -122,7 +113,7 @@ TEST_F(TargetSeqTest, MoveToTarget_SamePosLowerTilt_SendsUp) {
     EXPECT_EQ(lastCmd(), somfy_commands::Up);
 }
 
-TEST_F(TargetSeqTest, MoveToTarget_SamePosHigherTilt_SendsDown) {
+TEST_F(TargetSequencerTest, MoveToTarget_SamePosHigherTilt_SendsDown) {
     shade.tiltType       = tilt_types::integrated;
     shade.currentPos     = 50.0f;
     shade.currentTiltPos = 50.0f;
@@ -131,7 +122,7 @@ TEST_F(TargetSeqTest, MoveToTarget_SamePosHigherTilt_SendsDown) {
 }
 
 // A8. tiltType::tiltonly → forces pos=100, currentPos set to 100
-TEST_F(TargetSeqTest, MoveToTarget_TiltOnly_ForcesPos100) {
+TEST_F(TargetSequencerTest, MoveToTarget_TiltOnly_ForcesPos100) {
     shade.tiltType       = tilt_types::tiltonly;
     shade.currentPos     = 100.0f;  // tiltonly: currentPos is always 100
     shade.currentTiltPos = 50.0f;
@@ -142,7 +133,7 @@ TEST_F(TargetSeqTest, MoveToTarget_TiltOnly_ForcesPos100) {
 }
 
 // A8b. tiltType::tiltonly, tilt > currentTiltPos → Down command
-TEST_F(TargetSeqTest, MoveToTarget_TiltOnly_TiltHigher_SendsDown) {
+TEST_F(TargetSequencerTest, MoveToTarget_TiltOnly_TiltHigher_SendsDown) {
     shade.tiltType       = tilt_types::tiltonly;
     shade.currentPos     = 100.0f;
     shade.currentTiltPos = 30.0f;
@@ -152,7 +143,7 @@ TEST_F(TargetSeqTest, MoveToTarget_TiltOnly_TiltHigher_SendsDown) {
 }
 
 // A9. Toggle shade (garage1) → sets target+currentPos directly, no RF command
-TEST_F(TargetSeqTest, MoveToTarget_ToggleShade_SetsPositionDirectly) {
+TEST_F(TargetSequencerTest, MoveToTarget_ToggleShade_SetsPositionDirectly) {
     shade.shadeType  = shade_types::garage1;
     shade.currentPos = 0.0f;
     uint16_t rcBefore = shade.getLastFrame().rollingCode;
@@ -163,7 +154,7 @@ TEST_F(TargetSeqTest, MoveToTarget_ToggleShade_SetsPositionDirectly) {
 }
 
 // A10. euromode tiltType → uses TILT_REPEATS repeats
-TEST_F(TargetSeqTest, MoveToTarget_Euromode_UsesTiltRepeats) {
+TEST_F(TargetSequencerTest, MoveToTarget_Euromode_UsesTiltRepeats) {
     shade.tiltType   = tilt_types::euromode;
     shade.currentPos = 20.0f;
     shade.moveToTarget(80.0f);
@@ -171,7 +162,7 @@ TEST_F(TargetSeqTest, MoveToTarget_Euromode_UsesTiltRepeats) {
 }
 
 // A11. Non-euromode roller → uses shade.repeats (default 1)
-TEST_F(TargetSeqTest, MoveToTarget_Roller_UsesDefaultRepeats) {
+TEST_F(TargetSequencerTest, MoveToTarget_Roller_UsesDefaultRepeats) {
     shade.tiltType   = tilt_types::none;
     shade.currentPos = 20.0f;
     shade.moveToTarget(80.0f);
@@ -183,7 +174,7 @@ TEST_F(TargetSeqTest, MoveToTarget_Roller_UsesDefaultRepeats) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 // B1. target < currentTiltPos → Up command
-TEST_F(TargetSeqTest, MoveToTiltTarget_LowerTarget_SendsUp) {
+TEST_F(TargetSequencerTest, MoveToTiltTarget_LowerTarget_SendsUp) {
     shade.tiltType       = tilt_types::integrated;
     shade.currentTiltPos = 60.0f;
     shade.currentPos     = shade.target;  // lift at rest → send allowed
@@ -192,7 +183,7 @@ TEST_F(TargetSeqTest, MoveToTiltTarget_LowerTarget_SendsUp) {
 }
 
 // B2. target > currentTiltPos → Down command
-TEST_F(TargetSeqTest, MoveToTiltTarget_HigherTarget_SendsDown) {
+TEST_F(TargetSequencerTest, MoveToTiltTarget_HigherTarget_SendsDown) {
     shade.tiltType       = tilt_types::integrated;
     shade.currentTiltPos = 30.0f;
     shade.currentPos     = shade.target;
@@ -201,7 +192,7 @@ TEST_F(TargetSeqTest, MoveToTiltTarget_HigherTarget_SendsDown) {
 }
 
 // B3. target == currentTiltPos → no command (My is a no-send)
-TEST_F(TargetSeqTest, MoveToTiltTarget_SameTarget_NoCommand) {
+TEST_F(TargetSequencerTest, MoveToTiltTarget_SameTarget_NoCommand) {
     shade.tiltType       = tilt_types::integrated;
     shade.currentTiltPos = 50.0f;
     shade.currentPos     = shade.target;
@@ -211,7 +202,7 @@ TEST_F(TargetSeqTest, MoveToTiltTarget_SameTarget_NoCommand) {
 }
 
 // B4. tiltTarget set to requested value
-TEST_F(TargetSeqTest, MoveToTiltTarget_SetsTiltTarget) {
+TEST_F(TargetSequencerTest, MoveToTiltTarget_SetsTiltTarget) {
     shade.tiltType       = tilt_types::integrated;
     shade.currentTiltPos = 30.0f;
     shade.currentPos     = shade.target;
@@ -220,7 +211,7 @@ TEST_F(TargetSeqTest, MoveToTiltTarget_SetsTiltTarget) {
 }
 
 // B5. Lift not yet at target AND not tiltmotor → command suppressed, tiltTarget still set
-TEST_F(TargetSeqTest, MoveToTiltTarget_LiftMoving_SuppressesCommand) {
+TEST_F(TargetSequencerTest, MoveToTiltTarget_LiftMoving_SuppressesCommand) {
     shade.tiltType       = tilt_types::integrated;
     shade.currentTiltPos = 30.0f;
     shade.currentPos     = 40.0f;
@@ -232,7 +223,7 @@ TEST_F(TargetSeqTest, MoveToTiltTarget_LiftMoving_SuppressesCommand) {
 }
 
 // B6. tiltmotor → sends even when lift is not at rest
-TEST_F(TargetSeqTest, MoveToTiltTarget_TiltMotor_SendsEvenWhileLiftMoving) {
+TEST_F(TargetSequencerTest, MoveToTiltTarget_TiltMotor_SendsEvenWhileLiftMoving) {
     shade.tiltType       = tilt_types::tiltmotor;
     shade.currentTiltPos = 30.0f;
     shade.currentPos     = 40.0f;
@@ -242,7 +233,7 @@ TEST_F(TargetSeqTest, MoveToTiltTarget_TiltMotor_SendsEvenWhileLiftMoving) {
 }
 
 // B7. tiltmotor → uses TILT_REPEATS
-TEST_F(TargetSeqTest, MoveToTiltTarget_TiltMotor_UsesTiltRepeats) {
+TEST_F(TargetSequencerTest, MoveToTiltTarget_TiltMotor_UsesTiltRepeats) {
     shade.tiltType       = tilt_types::tiltmotor;
     shade.currentTiltPos = 30.0f;
     shade.currentPos     = shade.target;
@@ -251,7 +242,7 @@ TEST_F(TargetSeqTest, MoveToTiltTarget_TiltMotor_UsesTiltRepeats) {
 }
 
 // B8. target out of valid range (> 100) → tiltTarget not updated, no command
-TEST_F(TargetSeqTest, MoveToTiltTarget_OutOfRange_NoUpdate) {
+TEST_F(TargetSequencerTest, MoveToTiltTarget_OutOfRange_NoUpdate) {
     shade.tiltType       = tilt_types::integrated;
     shade.currentTiltPos = 50.0f;
     shade.tiltTarget     = 50.0f;
@@ -267,7 +258,7 @@ TEST_F(TargetSeqTest, MoveToTiltTarget_OutOfRange_NoUpdate) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 // C1. Not idle → returns immediately, no command
-TEST_F(TargetSeqTest, MoveToMyPos_NotIdle_DoesNothing) {
+TEST_F(TargetSequencerTest, MoveToMyPos_NotIdle_DoesNothing) {
     shade.targetSequencer.myPos      = 80.0f;
     shade.currentPos = 50.0f;
     shade.target     = 80.0f;
@@ -278,7 +269,7 @@ TEST_F(TargetSeqTest, MoveToMyPos_NotIdle_DoesNothing) {
 }
 
 // C2. tiltType::none, currentPos == myPos → returns early, no command
-TEST_F(TargetSeqTest, MoveToMyPos_AlreadyAtMyPos_NoTilt_EarlyReturn) {
+TEST_F(TargetSequencerTest, MoveToMyPos_AlreadyAtMyPos_NoTilt_EarlyReturn) {
     shade.tiltType   = tilt_types::none;
     shade.targetSequencer.myPos      = 50.0f;
     shade.currentPos = 50.0f;
@@ -288,7 +279,7 @@ TEST_F(TargetSeqTest, MoveToMyPos_AlreadyAtMyPos_NoTilt_EarlyReturn) {
 }
 
 // C3. tiltType != none, currentPos == myPos AND currentTiltPos == myTiltPos → early return
-TEST_F(TargetSeqTest, MoveToMyPos_AlreadyAtMyPos_WithTilt_EarlyReturn) {
+TEST_F(TargetSequencerTest, MoveToMyPos_AlreadyAtMyPos_WithTilt_EarlyReturn) {
     shade.tiltType       = tilt_types::integrated;
     shade.targetSequencer.myPos          = 50.0f;
     shade.targetSequencer.myTiltPos      = 30.0f;
@@ -301,7 +292,7 @@ TEST_F(TargetSeqTest, MoveToMyPos_AlreadyAtMyPos_WithTilt_EarlyReturn) {
 }
 
 // C4. myPos == -1 AND tiltType == none → early return
-TEST_F(TargetSeqTest, MoveToMyPos_MyPosNotSet_NoTilt_EarlyReturn) {
+TEST_F(TargetSequencerTest, MoveToMyPos_MyPosNotSet_NoTilt_EarlyReturn) {
     shade.tiltType   = tilt_types::none;
     shade.targetSequencer.myPos      = -1.0f;
     shade.currentPos = 50.0f;
@@ -311,7 +302,7 @@ TEST_F(TargetSeqTest, MoveToMyPos_MyPosNotSet_NoTilt_EarlyReturn) {
 }
 
 // C5. myPos == -1 AND tiltType != none AND myTiltPos == -1 → early return
-TEST_F(TargetSeqTest, MoveToMyPos_NeitherPosSet_WithTilt_EarlyReturn) {
+TEST_F(TargetSequencerTest, MoveToMyPos_NeitherPosSet_WithTilt_EarlyReturn) {
     shade.tiltType   = tilt_types::integrated;
     shade.targetSequencer.myPos      = -1.0f;
     shade.targetSequencer.myTiltPos  = -1.0f;
@@ -322,7 +313,7 @@ TEST_F(TargetSeqTest, MoveToMyPos_NeitherPosSet_WithTilt_EarlyReturn) {
 }
 
 // C6. simMy = false, valid myPos → sends My command
-TEST_F(TargetSeqTest, MoveToMyPos_NoSimMy_SendsMy) {
+TEST_F(TargetSequencerTest, MoveToMyPos_NoSimMy_SendsMy) {
     shade.tiltType   = tilt_types::none;
     shade.targetSequencer.myPos      = 80.0f;
     shade.currentPos = 50.0f;
@@ -331,7 +322,7 @@ TEST_F(TargetSeqTest, MoveToMyPos_NoSimMy_SendsMy) {
 }
 
 // C7. simMy = true → calls moveToTarget instead (settingPos=true, Up/Down sent)
-TEST_F(TargetSeqTest, MoveToMyPos_SimMy_CallsMoveToTarget) {
+TEST_F(TargetSequencerTest, MoveToMyPos_SimMy_CallsMoveToTarget) {
     shade.setSimMy(true);
     shade.tiltType   = tilt_types::none;
     shade.targetSequencer.myPos      = 80.0f;
@@ -342,7 +333,7 @@ TEST_F(TargetSeqTest, MoveToMyPos_SimMy_CallsMoveToTarget) {
 }
 
 // C8. target set to myPos before sending
-TEST_F(TargetSeqTest, MoveToMyPos_SetsTargetToMyPos) {
+TEST_F(TargetSequencerTest, MoveToMyPos_SetsTargetToMyPos) {
     shade.tiltType   = tilt_types::none;
     shade.targetSequencer.myPos      = 80.0f;
     shade.currentPos = 50.0f;
@@ -351,7 +342,7 @@ TEST_F(TargetSeqTest, MoveToMyPos_SetsTargetToMyPos) {
 }
 
 // C9. tiltTarget set to myTiltPos when valid
-TEST_F(TargetSeqTest, MoveToMyPos_SetsTiltTargetToMyTiltPos) {
+TEST_F(TargetSequencerTest, MoveToMyPos_SetsTiltTargetToMyTiltPos) {
     shade.tiltType       = tilt_types::integrated;
     shade.targetSequencer.myPos          = 80.0f;
     shade.targetSequencer.myTiltPos      = 40.0f;
@@ -362,7 +353,7 @@ TEST_F(TargetSeqTest, MoveToMyPos_SetsTiltTargetToMyTiltPos) {
 }
 
 // C10. tiltType::tiltonly → currentPos forced to 100 and myPos cleared to -1
-TEST_F(TargetSeqTest, MoveToMyPos_TiltOnly_ForcesCurrentPos100) {
+TEST_F(TargetSequencerTest, MoveToMyPos_TiltOnly_ForcesCurrentPos100) {
     shade.tiltType       = tilt_types::tiltonly;
     shade.currentPos     = 100.0f;
     shade.targetSequencer.myTiltPos      = 30.0f;
@@ -377,7 +368,7 @@ TEST_F(TargetSeqTest, MoveToMyPos_TiltOnly_ForcesCurrentPos100) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 // D1. pos != currentPos, pos != myPos → moveToTarget called (Down sent)
-TEST_F(TargetSeqTest, SetMyPos_None_PosNotCurrent_NotMyPos_MovesToTarget) {
+TEST_F(TargetSequencerTest, SetMyPos_None_PosNotCurrent_NotMyPos_MovesToTarget) {
     shade.tiltType   = tilt_types::none;
     shade.currentPos = 50.0f;
     shade.target     = 50.0f;
@@ -387,7 +378,7 @@ TEST_F(TargetSeqTest, SetMyPos_None_PosNotCurrent_NotMyPos_MovesToTarget) {
 }
 
 // D2. pos != currentPos, pos == myPos → moveToMyPosition called (My sent when !simMy)
-TEST_F(TargetSeqTest, SetMyPos_None_PosNotCurrent_IsMyPos_MovesToMyPosition) {
+TEST_F(TargetSequencerTest, SetMyPos_None_PosNotCurrent_IsMyPos_MovesToMyPosition) {
     shade.tiltType   = tilt_types::none;
     shade.currentPos = 50.0f;
     shade.target     = 50.0f;
@@ -397,7 +388,7 @@ TEST_F(TargetSeqTest, SetMyPos_None_PosNotCurrent_IsMyPos_MovesToMyPosition) {
 }
 
 // D3. pos == currentPos == myPos → sends My (clear-my-pos branch), settingMyPos=true
-TEST_F(TargetSeqTest, SetMyPos_None_AtCurrentAndMyPos_SendsMy) {
+TEST_F(TargetSequencerTest, SetMyPos_None_AtCurrentAndMyPos_SendsMy) {
     shade.tiltType   = tilt_types::none;
     shade.currentPos = 50.0f;
     shade.target     = 50.0f;
@@ -409,7 +400,7 @@ TEST_F(TargetSeqTest, SetMyPos_None_AtCurrentAndMyPos_SendsMy) {
 
 // D4. pos == currentPos, pos != myPos → sends My (SETMY_REPEATS) to physically program
 //     the motor's favorite position, then stores new myPos
-TEST_F(TargetSeqTest, SetMyPos_None_AtCurrentNotMyPos_SendsMyAndStoresMyPos) {
+TEST_F(TargetSequencerTest, SetMyPos_None_AtCurrentNotMyPos_SendsMyAndStoresMyPos) {
     shade.tiltType   = tilt_types::none;
     shade.currentPos = 50.0f;
     shade.target     = 50.0f;
@@ -421,7 +412,7 @@ TEST_F(TargetSeqTest, SetMyPos_None_AtCurrentNotMyPos_SendsMyAndStoresMyPos) {
 }
 
 // D5. Not idle → returns immediately
-TEST_F(TargetSeqTest, SetMyPos_None_NotIdle_DoesNothing) {
+TEST_F(TargetSequencerTest, SetMyPos_None_NotIdle_DoesNothing) {
     shade.tiltType   = tilt_types::none;
     shade.currentPos = 50.0f;
     shade.target     = 80.0f;
@@ -437,7 +428,7 @@ TEST_F(TargetSeqTest, SetMyPos_None_NotIdle_DoesNothing) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 // E1. tilt != currentTiltPos → settingMyPos=true + moveToTarget(100, tilt)
-TEST_F(TargetSeqTest, SetMyPos_TiltOnly_TiltDiffersFromCurrent_Moves) {
+TEST_F(TargetSequencerTest, SetMyPos_TiltOnly_TiltDiffersFromCurrent_Moves) {
     shade.tiltType       = tilt_types::tiltonly;
     shade.currentPos     = 100.0f;
     shade.target         = 100.0f;
@@ -449,7 +440,7 @@ TEST_F(TargetSeqTest, SetMyPos_TiltOnly_TiltDiffersFromCurrent_Moves) {
 }
 
 // E2. tilt == myTiltPos, currentTiltPos != myTiltPos → moveToMyPosition (My sent)
-TEST_F(TargetSeqTest, SetMyPos_TiltOnly_AtMyTiltPos_NotCurrentTilt_MovesToMyPosition) {
+TEST_F(TargetSequencerTest, SetMyPos_TiltOnly_AtMyTiltPos_NotCurrentTilt_MovesToMyPosition) {
     shade.tiltType       = tilt_types::tiltonly;
     shade.currentPos     = 100.0f;
     shade.target         = 100.0f;
@@ -462,7 +453,7 @@ TEST_F(TargetSeqTest, SetMyPos_TiltOnly_AtMyTiltPos_NotCurrentTilt_MovesToMyPosi
 
 // E3. tilt == currentTiltPos, tilt != myTiltPos → sends My (SETMY_REPEATS) to program
 //     motor's favorite position, then stores new myTiltPos
-TEST_F(TargetSeqTest, SetMyPos_TiltOnly_AtCurrentNotMyTilt_SendsMyAndStoresToMyTiltPos) {
+TEST_F(TargetSequencerTest, SetMyPos_TiltOnly_AtCurrentNotMyTilt_SendsMyAndStoresToMyTiltPos) {
     shade.tiltType       = tilt_types::tiltonly;
     shade.currentPos     = 100.0f;
     shade.target         = 100.0f;
@@ -480,7 +471,7 @@ TEST_F(TargetSeqTest, SetMyPos_TiltOnly_AtCurrentNotMyTilt_SendsMyAndStoresToMyT
 // ══════════════════════════════════════════════════════════════════════════════
 
 // F1. pos != currentPos → settingMyPos=true + move initiated
-TEST_F(TargetSeqTest, SetMyPos_HasTilt_PosDiffers_InitiatesMove) {
+TEST_F(TargetSequencerTest, SetMyPos_HasTilt_PosDiffers_InitiatesMove) {
     shade.tiltType       = tilt_types::integrated;
     shade.currentPos     = 50.0f;
     shade.target         = 50.0f;
@@ -491,7 +482,7 @@ TEST_F(TargetSeqTest, SetMyPos_HasTilt_PosDiffers_InitiatesMove) {
 }
 
 // F2. pos == myPos AND tilt == myTiltPos → moveToMyPosition (My sent when !simMy)
-TEST_F(TargetSeqTest, SetMyPos_HasTilt_AtMyPos_MovesToMyPosition) {
+TEST_F(TargetSequencerTest, SetMyPos_HasTilt_AtMyPos_MovesToMyPosition) {
     shade.tiltType       = tilt_types::integrated;
     shade.currentPos     = 50.0f;
     shade.target         = 50.0f;
@@ -505,7 +496,7 @@ TEST_F(TargetSeqTest, SetMyPos_HasTilt_AtMyPos_MovesToMyPosition) {
 
 // F3. pos == currentPos AND tilt == currentTiltPos AND both == myPos/myTiltPos →
 //     sends My (the exact-match clear path), settingMyPos=true
-TEST_F(TargetSeqTest, SetMyPos_HasTilt_AtCurrentAndMyPos_SendsMy) {
+TEST_F(TargetSequencerTest, SetMyPos_HasTilt_AtCurrentAndMyPos_SendsMy) {
     shade.tiltType       = tilt_types::integrated;
     shade.currentPos     = 50.0f;
     shade.target         = 50.0f;
@@ -520,7 +511,7 @@ TEST_F(TargetSeqTest, SetMyPos_HasTilt_AtCurrentAndMyPos_SendsMy) {
 
 // F4. pos == currentPos AND tilt == currentTiltPos AND not at myPos/myTiltPos →
 //     sends My (SETMY_REPEATS) to program the motor, stores new myPos/myTiltPos
-TEST_F(TargetSeqTest, SetMyPos_HasTilt_AtCurrentNotMyPos_SendsMyAndStoresMyPos) {
+TEST_F(TargetSequencerTest, SetMyPos_HasTilt_AtCurrentNotMyPos_SendsMyAndStoresMyPos) {
     shade.tiltType       = tilt_types::integrated;
     shade.currentPos     = 50.0f;
     shade.target         = 50.0f;
@@ -541,7 +532,7 @@ TEST_F(TargetSeqTest, SetMyPos_HasTilt_AtCurrentNotMyPos_SendsMyAndStoresMyPos) 
 
 // E. tiltonly: tilt == currentTiltPos AND tilt == myTiltPos →
 //    "already at the requested my-position" clear-path; sends My + settingMyPos=true
-TEST_F(TargetSeqTest, SetMyPos_TiltOnly_AtCurrentAndMyTilt_SendsMy) {
+TEST_F(TargetSequencerTest, SetMyPos_TiltOnly_AtCurrentAndMyTilt_SendsMy) {
     shade.tiltType       = tilt_types::tiltonly;
     shade.currentPos     = 100.0f;
     shade.target         = 100.0f;
@@ -555,7 +546,7 @@ TEST_F(TargetSeqTest, SetMyPos_TiltOnly_AtCurrentAndMyTilt_SendsMy) {
 
 // F5. has-tilt: floor(currentPos)==floor(myPos) but currentPos != myPos
 //     → "clear my pos" branch with float sub-integer precision; calls moveToMyPosition
-TEST_F(TargetSeqTest, SetMyPos_HasTilt_FloorMatchButExactDiffers_CallsMoveToMyPos) {
+TEST_F(TargetSequencerTest, SetMyPos_HasTilt_FloorMatchButExactDiffers_CallsMoveToMyPos) {
     shade.tiltType       = tilt_types::integrated;
     shade.currentPos     = 50.5f;  // floor = 50
     shade.target         = 50.5f;
@@ -570,7 +561,7 @@ TEST_F(TargetSeqTest, SetMyPos_HasTilt_FloorMatchButExactDiffers_CallsMoveToMyPo
 
 // D6. tiltType::none: floor(currentPos)==floor(myPos) but exact differs
 //     → "clear my pos" branch; calls moveToMyPosition
-TEST_F(TargetSeqTest, SetMyPos_None_FloorMatchButExactDiffers_CallsMoveToMyPos) {
+TEST_F(TargetSequencerTest, SetMyPos_None_FloorMatchButExactDiffers_CallsMoveToMyPos) {
     shade.tiltType   = tilt_types::none;
     shade.currentPos = 50.5f;  // floor = 50
     shade.target     = 50.5f;
@@ -582,7 +573,7 @@ TEST_F(TargetSeqTest, SetMyPos_None_FloorMatchButExactDiffers_CallsMoveToMyPos) 
 
 // C3b. moveToMyPosition: currentPos==myPos AND tiltType!=none AND currentTiltPos!=myTiltPos
 //      → does NOT return early; continues to set tilt target and send My
-TEST_F(TargetSeqTest, MoveToMyPos_AtPosNotAtTilt_ContinuesToSetTilt) {
+TEST_F(TargetSequencerTest, MoveToMyPos_AtPosNotAtTilt_ContinuesToSetTilt) {
     shade.tiltType       = tilt_types::integrated;
     shade.targetSequencer.myPos          = 80.0f;
     shade.targetSequencer.myTiltPos      = 30.0f;
@@ -597,7 +588,7 @@ TEST_F(TargetSeqTest, MoveToMyPos_AtPosNotAtTilt_ContinuesToSetTilt) {
 
 // E2b. tiltonly: floor(currentTiltPos)==floor(myTiltPos)==tilt but exact values differ
 //      → "clear my pos" branch; currentTiltPos != myTiltPos → settingMyPos + moveToMyPosition
-TEST_F(TargetSeqTest, SetMyPos_TiltOnly_FloorTiltMatchButExactDiffers_CallsMoveToMyPos) {
+TEST_F(TargetSequencerTest, SetMyPos_TiltOnly_FloorTiltMatchButExactDiffers_CallsMoveToMyPos) {
     shade.tiltType       = tilt_types::tiltonly;
     shade.currentPos     = 100.0f;
     shade.target         = 100.0f;
