@@ -8,6 +8,74 @@
 
 static const char *TAG = "SomfyMovementTracker";
 
+bool SomfyMovementTracker::computeDirections() {
+  shade->p_direction(shade->currentPos == shade->target ? 0 : shade->currentPos > shade->target ? -1 : 1);
+  bool tilt_first = shade->tiltType == tilt_types::integrated &&
+                    ((shade->direction == -1 && shade->currentTiltPos != 0.0f) ||
+                     (shade->direction ==  1 && shade->currentTiltPos != 100.0f));
+  shade->p_tiltDirection(shade->currentTiltPos == shade->tiltTarget ? 0 : shade->currentTiltPos > shade->tiltTarget ? -1 : 1);
+  if(tilt_first) shade->p_tiltDirection(shade->direction);
+  else if(shade->direction != 0) shade->p_tiltDirection(0);
+  return tilt_first;
+}
+
+void SomfyMovementTracker::tickFlagTimers(uint64_t curTime) {
+  auto tick = shade->flagManager.tickTimers(shade->flags, curTime, shade->shadeId);
+  if(tick.setSunTarget) {
+    shade->p_target(shade->getMyPos() >= 0 ? shade->getMyPos() : 100.0f);
+  }
+  if(tick.setNoSunTarget || tick.setWindTarget) {
+    if(shade->tiltType == tilt_types::tiltonly) shade->p_tiltTarget(0.0f);
+    shade->p_target(0.0f);
+  }
+}
+
+float SomfyMovementTracker::calcInterpolatedPos(float startPct, uint64_t elapsed, int32_t totalTime, int8_t dir) {
+  // msFromStart: distance already travelled in ms, clamped to [0, totalTime]
+  int32_t msFromStart = (int32_t)floor((startPct / 100.0f) * totalTime);
+  if(dir < 0) msFromStart = totalTime - msFromStart;  // up: invert so 0 = "just started from 100"
+  msFromStart = min(totalTime, msFromStart + (int32_t)elapsed);
+  float ratio = min(max(0.0f, (float)msFromStart / (float)totalTime), 1.0f);
+  return dir > 0 ? ratio * 100.0f : (1.0f - ratio) * 100.0f;
+}
+
+void SomfyMovementTracker::handlePosTargetReached(float endpoint, uint64_t curTime) {
+  shade->p_currentPos(shade->target);
+  if(motionState.settingPos) {
+    if(!shade->isAtTarget()) {
+      ESP_LOGI(TAG, "We are not at our tilt target: %.2f", shade->tiltTarget);
+      if(shade->target != endpoint) shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
+      delay(100);
+      shade->moveToTiltTarget(shade->tiltTarget);
+    }
+    else {
+      if(shade->target != endpoint) shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
+    }
+  }
+  shade->p_direction(0);
+  tiltStart    = curTime;
+  startTiltPos = shade->currentTiltPos;
+  if(shade->isAtTarget()) shade->commitShadePosition();
+}
+
+void SomfyMovementTracker::handleTiltTargetReached(float endpoint) {
+  shade->p_currentTiltPos(shade->tiltTarget);
+  if(motionState.settingTiltPos) {
+    if(shade->tiltType == tilt_types::integrated) {
+      ESP_LOGD(TAG, "Sending My -- tiltTarget: %.2f, tiltDirection: %d", shade->tiltTarget, shade->tiltDirection);
+      if(shade->tiltTarget != endpoint || shade->currentPos != endpoint)
+        shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
+    }
+    else {
+      if(shade->tiltTarget != endpoint)
+        shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
+    }
+  }
+  shade->p_tiltDirection(0);
+  motionState.settingTiltPos = false;
+  if(shade->isAtTarget()) shade->commitShadePosition();
+}
+
 void SomfyMovementTracker::checkMovement() {
   const uint64_t curTime = millis();
   int32_t downTime = (int32_t)shade->getDownTime();
@@ -16,138 +84,54 @@ void SomfyMovementTracker::checkMovement() {
   if(shade->shadeType == shade_types::drycontact || shade->shadeType == shade_types::drycontact2)
     downTime = upTime = tiltTime = 1;
 
-  int8_t currDir     = shade->direction;
-  int8_t currTiltDir = shade->tiltDirection;
-  shade->p_direction(shade->currentPos == shade->target ? 0 : shade->currentPos > shade->target ? -1 : 1);
-  bool tilt_first = shade->tiltType == tilt_types::integrated &&
-                    ((shade->direction == -1 && shade->currentTiltPos != 0.0f) ||
-                     (shade->direction ==  1 && shade->currentTiltPos != 100.0f));
-
-  shade->p_tiltDirection(shade->currentTiltPos == shade->tiltTarget ? 0 : shade->currentTiltPos > shade->tiltTarget ? -1 : 1);
-  if(tilt_first) shade->p_tiltDirection(shade->direction);
-  else if(shade->direction != 0) shade->p_tiltDirection(0);
-
+  // Snapshot pre-tick state for the emit-state diff at the bottom.
+  int8_t  currDir     = shade->direction;
+  int8_t  currTiltDir = shade->tiltDirection;
   uint8_t currPos     = floor(shade->currentPos);
   uint8_t currTiltPos = floor(shade->currentTiltPos);
-  if(shade->direction != 0) shade->setLastMovement(shade->direction);
-  {
-    auto tick = shade->flagManager.tickTimers(shade->flags, curTime, shade->shadeId);
-    if(tick.setSunTarget)
-      shade->p_target(shade->getMyPos() >= 0 ? shade->getMyPos() : 100.0f);
-    if(tick.setNoSunTarget) {
-      if(shade->tiltType == tilt_types::tiltonly) shade->p_tiltTarget(0.0f);
-      shade->p_target(0.0f);
-    }
-    if(tick.setWindTarget) {
-      if(shade->tiltType == tilt_types::tiltonly) shade->p_tiltTarget(0.0f);
-      shade->p_target(0.0f);
-    }
-  }
 
+  // Compute directions from current pos vs target. Intentionally called before
+  // tickFlagTimers so direction is stable for one tick when a flag overrides the target.
+  bool tilt_first = computeDirections();
+
+  if(shade->direction != 0) shade->setLastMovement(shade->direction);
+
+  // Advance sun/wind timers; may shift target/tiltTarget for this tick's interpolation.
+  tickFlagTimers(curTime);
+
+  // ── Shade position interpolation ──────────────────────────────────────────
+  // Skipped entirely when tilt_first: the integrated tilt must reach its
+  // endpoint before the shade starts moving. While tilt_first is active the
+  // tilt block below continuously resets moveStart so shade starts from t=0.
   if(!tilt_first && shade->direction > 0) {
-    if(downTime == 0) {
-      shade->p_currentPos(100.0);
-    }
-    else {
-      int32_t msFrom0 = (int32_t)floor((startPos/100) * downTime);
-      msFrom0 += (curTime - moveStart);
-      msFrom0 = min(downTime, msFrom0);
-      if(msFrom0 >= downTime) {
-        shade->p_currentPos(100.0f);
-      }
-      else {
-        shade->p_currentPos((min(max((float)0.0, (float)msFrom0 / (float)downTime), (float)1.0)) * 100);
-      }
-    }
-    if(shade->currentPos >= shade->target) {
-      shade->p_currentPos(shade->target);
-      if(motionState.settingPos) {
-        if(!shade->isAtTarget()) {
-          ESP_LOGI(TAG, "We are not at our tilt target: %.2f", shade->tiltTarget);
-          if(shade->target != 100.0) shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
-          delay(100);
-          shade->moveToTiltTarget(shade->tiltTarget);
-        }
-        else
-          if(shade->target != 100.0) shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
-      }
-      shade->p_direction(0);
-      tiltStart    = curTime;
-      startTiltPos = shade->currentTiltPos;
-      if(shade->isAtTarget()) shade->commitShadePosition();
-    }
+    shade->p_currentPos(downTime == 0 ? 100.0f : calcInterpolatedPos(startPos, curTime - moveStart, downTime, 1));
+    if(shade->currentPos >= shade->target) handlePosTargetReached(100.0f, curTime);
   }
   else if(!tilt_first && shade->direction < 0) {
-    if(upTime == 0) {
-      shade->p_currentPos(0);
-    }
-    else {
-      int32_t msFrom100 = upTime - (int32_t)floor((startPos/100) * upTime);
-      msFrom100 += (curTime - moveStart);
-      msFrom100 = min(upTime, msFrom100);
-      if(msFrom100 >= upTime) {
-        shade->p_currentPos(0.0f);
-      }
-      else {
-        float fpos = ((float)1.0 - min(max((float)0.0, (float)msFrom100 / (float)upTime), (float)1.0)) * 100;
-        shade->p_currentPos(fpos);
-      }
-    }
-    if(shade->currentPos <= shade->target) {
-      shade->p_currentPos(shade->target);
-      if(motionState.settingPos) {
-        if(!shade->isAtTarget()) {
-          ESP_LOGI(TAG, "We are not at our tilt target: %.2f", shade->tiltTarget);
-          if(shade->target != 0.0) shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
-          delay(100);
-          shade->moveToTiltTarget(shade->tiltTarget);
-        }
-        else
-          if(shade->target != 0.0) shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
-      }
-      shade->p_direction(0);
-      tiltStart    = curTime;
-      startTiltPos = shade->currentTiltPos;
-      if(shade->isAtTarget()) shade->commitShadePosition();
-    }
+    shade->p_currentPos(upTime == 0 ? 0.0f : calcInterpolatedPos(startPos, curTime - moveStart, upTime, -1));
+    if(shade->currentPos <= shade->target) handlePosTargetReached(0.0f, curTime);
   }
+
+  // ── Tilt position interpolation ───────────────────────────────────────────
+  // Runs regardless of tilt_first. When tilt_first is active, moveStart is
+  // reset each tick so that once tilt completes the shade clock starts fresh.
   if(shade->tiltDirection > 0) {
     if(tilt_first) moveStart = curTime;
-    int32_t msFrom0 = (int32_t)floor((startTiltPos/100) * tiltTime);
-    msFrom0 += (curTime - tiltStart);
-    msFrom0 = min(tiltTime, msFrom0);
-    if(msFrom0 >= tiltTime) {
+    if(tiltTime == 0) {
       shade->p_currentTiltPos(100.0f);
-      ESP_LOGD(TAG, "Setting tiltDirection to 0 (not enough time) %.4f %.4f", msFrom0, tiltTime);
     }
     else {
-      float fpos = (min(max((float)0.0, (float)msFrom0 / (float)tiltTime), (float)1.0)) * 100;
-      shade->p_currentTiltPos(fpos);
+      shade->p_currentTiltPos(calcInterpolatedPos(startTiltPos, curTime - tiltStart, tiltTime, 1));
     }
     if(tilt_first) {
       if(shade->currentTiltPos >= 100.0f) {
         shade->p_currentTiltPos(100.0f);
         moveStart = curTime;
         startPos  = shade->currentPos;
-        ESP_LOGD(TAG, "Setting tiltDirection to 0 (tilt_first)");
       }
     }
     else if(shade->currentTiltPos >= shade->tiltTarget) {
-      shade->p_currentTiltPos(shade->tiltTarget);
-      if(motionState.settingTiltPos) {
-        if(shade->tiltType == tilt_types::integrated) {
-          ESP_LOGD(TAG, "Sending My -- tiltTarget: %.2f, tiltDirection: %d", shade->tiltTarget, shade->tiltDirection);
-          if(shade->tiltTarget != 100.0f || shade->currentPos != 100.0f)
-            shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
-        }
-        else {
-          if(shade->tiltTarget != 100.0f)
-            shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
-        }
-      }
-      shade->p_tiltDirection(0);
-      motionState.settingTiltPos = false;
-      if(shade->isAtTarget()) shade->commitShadePosition();
+      handleTiltTargetReached(100.0f);
     }
   }
   else if(shade->tiltDirection < 0) {
@@ -157,17 +141,7 @@ void SomfyMovementTracker::checkMovement() {
       shade->p_currentTiltPos(0.0f);
     }
     else {
-      int32_t msFrom100 = tiltTime - (int32_t)floor((startTiltPos/100) * tiltTime);
-      msFrom100 += (curTime - tiltStart);
-      msFrom100 = min(tiltTime, msFrom100);
-      if(msFrom100 >= tiltTime) {
-        shade->p_currentTiltPos(0.0f);
-      }
-      float fpos = ((float)1.0 - min(max((float)0.0, (float)msFrom100 / (float)tiltTime), (float)1.0)) * 100;
-      if(fpos <= 0.0f) {
-        shade->p_currentTiltPos(0.0f);
-      }
-      else shade->p_currentTiltPos(fpos);
+      shade->p_currentTiltPos(calcInterpolatedPos(startTiltPos, curTime - tiltStart, tiltTime, -1));
     }
     if(tilt_first) {
       if(shade->currentTiltPos <= 0.0f) {
@@ -177,24 +151,10 @@ void SomfyMovementTracker::checkMovement() {
       }
     }
     else if(shade->currentTiltPos <= shade->tiltTarget) {
-      shade->p_currentTiltPos(shade->tiltTarget);
-      if(motionState.settingTiltPos) {
-        if(shade->tiltType == tilt_types::integrated) {
-          ESP_LOGD(TAG, "Sending My -- tiltTarget: %.2f, tiltDirection: %d", shade->tiltTarget, shade->tiltDirection);
-          if(shade->tiltTarget != 0.0 || shade->currentPos != 0.0)
-            shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
-        }
-        else {
-          if(shade->tiltTarget != 0.0)
-            shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
-        }
-      }
-      shade->p_tiltDirection(0);
-      motionState.settingTiltPos = false;
-      ESP_LOGI(TAG, "Stopping at tilt position");
-      if(shade->isAtTarget()) shade->commitShadePosition();
+      handleTiltTargetReached(0.0f);
     }
   }
+  // tiltDirection == 0: not tilting, nothing to interpolate.
   if(motionState.settingMyPos && shade->isAtTarget()) {
     delay(200);
     if(shade->tiltType != tilt_types::none) {
