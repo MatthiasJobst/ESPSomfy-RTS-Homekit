@@ -29,6 +29,7 @@ jobs:
 
       - name: Generate coverage report
         run: |
+          mkdir -p test/unit/build/coverage
           gcovr \
             --root ${{ github.workspace }} \
             --filter 'main/somfy/' \
