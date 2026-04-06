@@ -447,6 +447,21 @@ TEST_F(MovementTrackerTest, Up_SettingPos_TargetIsZero_NoMy) {
 // tiltDirection > 0 (tilt moving clockwise / extending)
 // ══════════════════════════════════════════════════════════════════════════════
 
+// tiltTime == 0 → immediately snap to 100 (tiltDirection > 0 path)
+TEST_F(MovementTrackerTest, TiltUp_TiltTimeZero_SnapsToHundred) {
+    shade.tiltType       = tilt_types::tiltmotor;
+    shade.setTiltTime(0);
+    shade.currentTiltPos = 0.0f;
+    shade.tiltTarget     = 100.0f;
+    shade.setStartTiltPos(0.0f);
+    shade.setTiltStart(0);
+    test_clock_ms = 1;
+
+    shade.checkMovement();
+    EXPECT_FLOAT_EQ(shade.currentTiltPos, 100.0f);
+    EXPECT_EQ(shade.getTiltDirection(), 0);
+}
+
 // Mid-tilt (not tilt_first, not at target)
 TEST_F(MovementTrackerTest, TiltUp_MidMove_InterpolatesTiltPos) {
     shade.tiltType       = tilt_types::tiltmotor;

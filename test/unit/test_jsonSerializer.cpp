@@ -543,3 +543,46 @@ TEST_F(JsonSerializerTest, ToJSON_GpioLLTrigger_Set) {
     JsonResponse json;
     shade.toJSON(json);
 }
+
+// ── Validate: transceiver hits on downPin (upPin==255) → -10 ─────────────────
+// GP_Relay + drycontact: upPin and myPin are forced to 255, downPin remains.
+// With transceiver enabled and usesPin=true, line 59 (downPin check) is reached.
+TEST_F(JsonSerializerTest, Validate_TransceiverConflict_OnDownPin_ReturnsMinus10) {
+    shade.setProto(radio_proto::GP_Relay);
+    shade.shadeType = shade_types::drycontact;  // upPin forced to 255
+    somfy.transceiver.config.enabled = true;
+    transceiver_stub_uses_pin        = true;
+    JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
+    obj["proto"] = static_cast<uint8_t>(radio_proto::GP_Relay);
+    EXPECT_EQ(shade.validateJSON(obj), -10);
+}
+
+// ── Validate: ethernet branch, myPin check (line 66) is reached ──────────────
+// GP_Remote + roller: upPin/downPin/myPin all set. EthernetSettings.usesPin
+// always returns false, so line 65 is false; line 66 (myPin check) is evaluated.
+TEST_F(JsonSerializerTest, Validate_EthernetBranch_MyPinCheck_Reached) {
+    shade.setProto(radio_proto::GP_Remote);
+    shade.shadeType = shade_types::roller;
+    somfy.transceiver.config.enabled = false;
+    transceiver_stub_uses_pin        = false;
+    settings.connType                = conn_types_t::ethernet;
+    JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
+    obj["proto"] = static_cast<uint8_t>(radio_proto::GP_Remote);
+    // No conflict (all usesPin calls return false) → 0
+    EXPECT_EQ(shade.validateJSON(obj), 0);
+}
+
+// ── Validate: shade in loop checked but no conflict → loop body continues ─────
+// Sets up a non-conflicting shade (RTS proto, usesPin returns false) in slot 0.
+// This makes the for-loop body reach the closing } (line 79) without breaking.
+TEST_F(JsonSerializerTest, Validate_OtherShade_NoConflict_LoopContinues) {
+    shade.setProto(radio_proto::GP_Relay);
+    shade.setGpioDown(10);
+    // Slot 0: different shade, RTS proto (usesPin always false)
+    somfy.shades[0].setShadeId(2);
+    somfy.shades[0].proto = radio_proto::RTS;
+    somfy.shades[0].gpioControl.gpioDown = 10;  // same pin but RTS → usesPin returns false
+    JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
+    obj["proto"] = static_cast<uint8_t>(radio_proto::GP_Relay);
+    EXPECT_EQ(shade.validateJSON(obj), 0);
+}

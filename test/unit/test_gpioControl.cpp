@@ -342,3 +342,52 @@ TEST_F(GPIOControlTest, UsesPin_Relay_DryContact2_UpPin_ReturnsTrue) {
     shade.shadeType = shade_types::drycontact2;
     EXPECT_TRUE(shade.usesPin(PIN_UP));
 }
+
+TEST_F(GPIOControlTest, UsesPin_Relay_DryContact_OtherPin_ReturnsFalse) {
+    // shadeType==drycontact and pin!=gpioDown: reaches the return-false path in
+    // the drycontact else-if branch (line 149 in SomfyGPIOControl.cpp).
+    shade.setProto(radio_proto::GP_Relay);
+    shade.shadeType = shade_types::drycontact;
+    EXPECT_FALSE(shade.usesPin(PIN_UP));
+}
+
+TEST_F(GPIOControlTest, UsesPin_Remote_DryContact2_NonDownPin_ReturnsFalse) {
+    // proto=GP_Remote, drycontact2, pin!=gpioDown: enters the drycontact2 else-if block
+    // but inner if(GP_Relay && ...) is false → falls through the closing brace (line 155).
+    shade.setProto(radio_proto::GP_Remote);
+    shade.shadeType = shade_types::drycontact2;
+    EXPECT_FALSE(shade.usesPin(PIN_UP));
+}
+
+// ── tiltonly: direction falls back to tiltDirection ───────────────────────────
+TEST_F(GPIOControlTest, SetGPIOs_Relay_TiltOnly_UsesTiltDirection) {
+    shade.setProto(radio_proto::GP_Relay);
+    shade.tiltType = tilt_types::tiltonly;
+    shade.setDirection(1);  // any non-zero direction to ensure tiltonly takes effect
+    shade.setGPIOs();
+    // tiltDirection is 0 by default → falls back to idle (dir==0)
+    EXPECT_EQ(gpio_pin_levels[PIN_UP],   0u);
+    EXPECT_EQ(gpio_pin_levels[PIN_DOWN], 0u);
+}
+
+// ── triggerGPIOs: MyUpDown + isToggle (garage) → all three pins high ─────────
+TEST_F(GPIOControlTest, TriggerGPIOs_Remote_MyUpDown_Toggle_AllPinsHigh) {
+    shade.setProto(radio_proto::GP_Remote);
+    shade.shadeType = shade_types::garage1;  // isToggle() == true
+    auto f = make_frame(somfy_commands::MyUpDown, 1);
+    shade.triggerGPIOs(f);
+    EXPECT_EQ(gpio_pin_levels[PIN_UP],   1u);
+    EXPECT_EQ(gpio_pin_levels[PIN_MY],   1u);
+    EXPECT_EQ(gpio_pin_levels[PIN_DOWN], 1u);
+}
+
+// ── triggerGPIOs: unhandled cmd hits default: break ───────────────────────────
+TEST_F(GPIOControlTest, TriggerGPIOs_Remote_Prog_DefaultBranch_NoExtraWrites) {
+    shade.setProto(radio_proto::GP_Remote);
+    auto f = make_frame(somfy_commands::Prog, 1);
+    shade.triggerGPIOs(f);
+    // Prog is not in any specific case → default: break. No pin writes expected.
+    EXPECT_EQ(gpio_pin_levels.count(PIN_UP),   0u);
+    EXPECT_EQ(gpio_pin_levels.count(PIN_DOWN), 0u);
+    EXPECT_EQ(gpio_pin_levels.count(PIN_MY),   0u);
+}
