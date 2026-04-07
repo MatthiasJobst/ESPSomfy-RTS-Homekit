@@ -19,7 +19,7 @@ class SomfyRemote {
     uint8_t gpioDown = 0;
     uint8_t gpioMy = 0;
     uint32_t gpioRelease = 0;
-    somfy_frame_t lastFrame;
+    somfy_frame_t lastFrame = {};
     bool flipCommands = false;
     uint16_t lastRollingCode = 0;
     uint8_t flags = 0;

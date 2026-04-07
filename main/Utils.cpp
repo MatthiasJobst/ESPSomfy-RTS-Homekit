@@ -107,7 +107,7 @@ time_t Timestamp::getUTC(time_t t) {
 }
 char * Timestamp::getISOTime() { return this->getISOTime(this->getUTC()); }
 char * Timestamp::getISOTime(time_t epoch) {
-  struct tm *dt = localtime((time_t *)&epoch);
+  struct tm *dt = localtime(&epoch);
   return this->formatISO(dt, this->tzOffset());
 }
 char * Timestamp::formatISO(struct tm *dt, int tz) {

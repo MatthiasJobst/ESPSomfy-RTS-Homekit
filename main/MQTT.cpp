@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
@@ -203,7 +204,7 @@ bool MQTTClass::connect() {
   if(settings.MQTT.enabled && !this->suspended) {
     if(this->lastConnect + 10000 > millis()) return false;    
     uint64_t mac = ESP.getEfuseMac();
-    snprintf(this->clientId, sizeof(this->clientId), "client-%08lx%08lx", (uint32_t)((mac >> 32) & 0xFFFFFFFF), (uint32_t)(mac & 0xFFFFFFFF));
+    snprintf(this->clientId, sizeof(this->clientId), "client-%08" PRIx32 "%08" PRIx32, (uint32_t)((mac >> 32) & 0xFFFFFFFF), (uint32_t)(mac & 0xFFFFFFFF));
     if(strlen(settings.MQTT.protocol) > 0 && strlen(settings.MQTT.hostname) > 0) {
       mqttClient.setServer(settings.MQTT.hostname, settings.MQTT.port);
       char lwtTopic[128] = "status";
@@ -313,7 +314,7 @@ bool MQTTClass::publish(const char *topic, const char *payload, bool retain) {
   return false;
 }
 bool MQTTClass::publish(const char *topic, uint32_t val, bool retain) {
-  snprintf(g_content, sizeof(g_content), "%lu", val);
+  snprintf(g_content, sizeof(g_content), "%" PRIu32, val);
   return this->publish(topic, g_content, retain);
 }
 bool MQTTClass::unpublish(const char *topic) {

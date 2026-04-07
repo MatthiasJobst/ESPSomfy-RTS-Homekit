@@ -1,6 +1,7 @@
 // ConfigFile.cpp — ConfigFile base class implementation: open/close, typed binary
 // read/write helpers (int, uint, float, bool, string), record seeking and header
 // read/write. Used as the base for ShadeConfigFile.
+#include <inttypes.h>
 #include <Arduino.h>
 #include <LittleFS.h>
 #include <esp_log.h>
@@ -214,7 +215,7 @@ bool ConfigFile::writeUInt16(const uint16_t val, const char tok) {
 }
 bool ConfigFile::writeUInt32(const uint32_t val, const char tok) {
   char buff[11];
-  snprintf(buff, sizeof(buff), "%10lu", val);
+  snprintf(buff, sizeof(buff), "%10" PRIu32, val);
   return this->writeString(buff, sizeof(buff), tok);
 }
 bool ConfigFile::writeFloat(const float val, const uint8_t prec, const char tok) {

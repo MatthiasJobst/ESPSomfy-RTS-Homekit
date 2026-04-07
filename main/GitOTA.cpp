@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <Update.h>
@@ -76,7 +77,7 @@ void GitRelease::setAssetProperty(const char *key, const char *val) {
 void GitRelease::toJSON(JsonResponse &json) {
   Timestamp ts;
   char buff[20];
-  sprintf(buff, "%llu", this->id);
+  sprintf(buff, "%" PRIu64, this->id);
   json.addElem("id", buff);
   json.addElem("name", this->name);
   json.addElem("date", ts.getISOTime(this->releaseDate));
