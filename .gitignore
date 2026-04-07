@@ -4,10 +4,8 @@ esp32.vsd
 esp32s3.svd
 debug.cfg
 
-SomfyController.ino.XIAO_ESP32S3.bin
-SomfyController.ino.esp32c3.bin
-SomfyController.ino.esp32s2.bin
-.vscode/settings.json
+.vscode/
+.claude/
 
 documentation/
 
@@ -16,6 +14,5 @@ build/
 sdkconfig
 managed_components/
 dependencies.locksdkconfig.old
-.claude/settings.local.json
 test/unit/build/
 test/unit/build-cov/
