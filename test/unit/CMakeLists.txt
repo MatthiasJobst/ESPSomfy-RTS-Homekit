@@ -35,6 +35,8 @@ set(PRODUCTION_SOURCES
     ../../main/somfy/shade/SomfyJSONSerializer.cpp
     ../../main/somfy/shade/SomfyShade.cpp
     ../../main/somfy/SomfyRemote.cpp
+    ../../main/somfy/SomfyRoom.cpp
+    ../../main/somfy/SomfyGroup.cpp
     ../../main/somfy/SomfyFrame.cpp
 )
 

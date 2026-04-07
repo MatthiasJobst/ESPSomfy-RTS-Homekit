@@ -15,6 +15,8 @@ idf_component_register(
         "somfy/SomfyFrame.cpp"
         "somfy/SomfyTransceiver.cpp"
         "somfy/SomfyRemote.cpp"
+        "somfy/SomfyRoom.cpp"
+        "somfy/SomfyGroup.cpp"
         "somfy/shade/SomfyFlagManager.cpp"
         "somfy/shade/SomfyGPIOControl.cpp"
         "somfy/shade/SomfyMQTTPublisher.cpp"
