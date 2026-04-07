@@ -33,6 +33,10 @@ jobs:
           gcovr \
             --root ${{ github.workspace }} \
             --filter 'main/somfy/' \
+            --exclude 'main/somfy/SomfyRoom\.cpp' \
+            --exclude 'main/somfy/SomfyRoom\.h' \
+            --exclude 'main/somfy/SomfyGroup\.cpp' \
+            --exclude 'main/somfy/SomfyGroup\.h' \
             --exclude-unreachable-branches \
             --print-summary \
             --html-details test/unit/build/coverage/index.html \
