@@ -284,7 +284,7 @@ void Web::handleSetMyPosition(WebServer &server) {
     else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No shade object supplied.\"}"));
     SomfyShade* shade = requireShade(server, shadeId);
     if (shade) {
-      if(tilt < 0) tilt = shade->myPos;
+      if(tilt < 0) tilt = shade->getMyPos();
       if(shade->tiltType == tilt_types::none) tilt = -1;
       if(pos >= 0 && pos <= 100)
         shade->setMyPosition(shade->transformPosition(pos), shade->transformPosition(tilt));

@@ -84,12 +84,12 @@ static int shade_write(hap_write_data_t write_data[], int count,
             // SomfyShade (with flipPosition already applied by transformPosition).
             // We need to undo transformPosition to get the internal 0-100 float.
             float target;
-            if(shade->flipPosition)
+            if(shade->getFlipPosition())
                 target = 100.0f - (float)w->val.u;
             else
                 target = (float)w->val.u;
             ESP_LOGI(TAG, "TargetPosition write: hap=%u -> somfy=%.0f (currentPos=%.0f flip=%d)",
-                     w->val.u, target, shade->currentPos, shade->flipPosition);
+                     w->val.u, target, shade->currentPos, shade->getFlipPosition());
             shade->moveToTarget(target);
             hap_char_update_val(w->hc, &w->val);
             *(w->status) = HAP_STATUS_SUCCESS;

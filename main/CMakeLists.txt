@@ -15,7 +15,18 @@ idf_component_register(
         "somfy/SomfyFrame.cpp"
         "somfy/SomfyTransceiver.cpp"
         "somfy/SomfyRemote.cpp"
-        "somfy/SomfyShade.cpp"
+        "somfy/SomfyRoom.cpp"
+        "somfy/SomfyGroup.cpp"
+        "somfy/shade/SomfyFlagManager.cpp"
+        "somfy/shade/SomfyGPIOControl.cpp"
+        "somfy/shade/SomfyMQTTPublisher.cpp"
+        "somfy/shade/SomfyPersistence.cpp"
+        "somfy/shade/SomfyCommandTransmitter.cpp"
+        "somfy/shade/SomfyTargetSequencer.cpp"
+        "somfy/shade/SomfyCommandProcessor.cpp"
+        "somfy/shade/SomfyMovementTracker.cpp"
+        "somfy/shade/SomfyJSONSerializer.cpp"
+        "somfy/shade/SomfyShade.cpp"
         "somfy/SomfyController.cpp"
         "SSDP.cpp"
         "Utils.cpp"
@@ -30,6 +41,7 @@ idf_component_register(
     INCLUDE_DIRS
         "."
         "somfy"
+        "somfy/shade"
         "web"
     REQUIRES
         arduino-esp32
@@ -46,6 +58,9 @@ idf_component_register(
 # Build a LittleFS image from the data/ directory and flash it automatically
 # alongside the firmware image when running `idf.py flash`.
 littlefs_create_partition_image(spiffs ../data FLASH_IN_PROJECT)
+
+# Enable NVS-backed persistence for shade state (position, my-position, rolling codes).
+target_compile_definitions(${COMPONENT_LIB} PRIVATE USE_NVS)
 
 # Suppress deprecation warnings for ArduinoJson v6→v7 API changes.
 # These are deferred to a later migration step; the deprecated APIs are

@@ -1,0 +1,1037 @@
+// test_commandProcessor.cpp — tests for SomfyCommandProcessor
+//
+// Covers: processFrame(), processInternalCommand(), processWaitingFrame()
+//   and the motionState flags (settingPos, settingTiltPos, settingMyPos)
+//   set/cleared by processFrame, moveToTarget, moveToTiltTarget, setMyPosition.
+//
+// Guards: unknown remote, shadeId==255, drycontact suppression
+// Commands: Up, Down, Stop, My, Toggle, Prog, Sensor, SunFlag, Flag,
+//           StepUp, StepDown, Favorite, linked remote
+// MotionState: external frame clears flags; internal frame preserves them;
+//              moveToTarget/moveToTiltTarget/setMyPosition set them correctly
+
+#include "TestableShade.h"
+#include <gtest/gtest.h>
+#include <gmock/gmock.h>
+
+using ::testing::_;
+using ::testing::AnyNumber;
+
+// ── helpers ────────────────────────────────────────────────────────────────
+
+static somfy_frame_t make_frame(somfy_commands cmd, uint32_t addr = 0xABCDEF, uint16_t rc = 1) {
+    somfy_frame_t f{};
+    f.cmd           = cmd;
+    f.remoteAddress = addr;
+    f.rollingCode   = rc;
+    f.valid         = true;
+    return f;
+}
+
+// ── fixture ───────────────────────────────────────────────────────────────
+
+class CommandProcessorTest : public ::testing::Test {
+protected:
+    TestableShade shade;
+
+    void SetUp() override {
+        shade.setShadeId(1);
+        shade.setRemoteAddress(0xABCDEF);
+        shade.shadeType  = shade_types::roller;
+        shade.tiltType   = tilt_types::none;
+        shade.setUpTime(10000);
+        shade.setDownTime(10000);
+        shade.setTiltTime(7000);
+        shade.setStepSize(100);
+        shade.currentPos = 50.0f;
+        shade.currentTiltPos = 50.0f;
+        shade.target     = 50.0f;
+        shade.tiltTarget = 50.0f;
+
+        // Silence unexpected calls to emitState — most tests only care about emitCommand.
+        EXPECT_CALL(shade, emitState(_)).Times(AnyNumber());
+        EXPECT_CALL(shade, emitState(_, _)).Times(AnyNumber());
+
+        test_clock_ms = 0;
+    }
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Guards
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, UnknownRemote_DoesNothing) {
+    auto f = make_frame(somfy_commands::Down, /*addr=*/0x000001);
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(0);
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 50.0f);  // unchanged
+}
+
+TEST_F(CommandProcessorTest, ShadeId255_DoesNothing) {
+    shade.setShadeId(255);
+    auto f = make_frame(somfy_commands::Down);
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(0);
+    shade.processFrame(f);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Up
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, Up_Roller_SetsTargetZero) {
+    auto f = make_frame(somfy_commands::Up);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Up, _, _, _));
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 0.0f);
+}
+
+TEST_F(CommandProcessorTest, Up_DryContact_DoesNotEmitCommand) {
+    shade.shadeType = shade_types::drycontact;
+    auto f = make_frame(somfy_commands::Up);
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(0);
+    shade.processFrame(f);
+    EXPECT_TRUE(shade.lastFrame.processed);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Down
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, Down_Roller_SetsTargetHundred) {
+    auto f = make_frame(somfy_commands::Down);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Down, _, _, _));
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 100.0f);
+}
+
+TEST_F(CommandProcessorTest, Down_DryContact_DoesNotEmitCommand) {
+    shade.shadeType = shade_types::drycontact;
+    auto f = make_frame(somfy_commands::Down);
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(0);
+    shade.processFrame(f);
+}
+
+TEST_F(CommandProcessorTest, Down_DryContact2_TogglesPosition) {
+    shade.shadeType  = shade_types::drycontact2;
+    shade.currentPos = 0.0f;
+    shade.target     = 0.0f;
+    auto f = make_frame(somfy_commands::Down);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Down, _, _, _));
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 100.0f);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Stop
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, Stop_SetsTargetToCurrentPos) {
+    shade.currentPos     = 42.0f;
+    shade.currentTiltPos = 25.0f;
+    auto f = make_frame(somfy_commands::Stop);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Stop, _, _, _));
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_FLOAT_EQ(shade.getTarget(),     42.0f);
+    EXPECT_FLOAT_EQ(shade.getTiltTarget(), 25.0f);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// My
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, My_Internal_Idle_MovesToMyPos) {
+    shade.targetSequencer.myPos     = 30.0f;
+    shade.targetSequencer.myTiltPos = -1.0f;
+    shade.currentPos = shade.target = 50.0f;
+    auto f = make_frame(somfy_commands::My);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::My, _, _, _));
+    shade.processFrame(f, /*internal=*/true);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 30.0f);
+}
+
+TEST_F(CommandProcessorTest, My_Internal_Idle_MyPosAndTiltPos_BothSet) {
+    shade.targetSequencer.myPos     = 30.0f;
+    shade.targetSequencer.myTiltPos = 10.0f;
+    shade.currentPos = shade.target = 50.0f;
+    shade.currentTiltPos = shade.tiltTarget = 50.0f;
+    auto f = make_frame(somfy_commands::My);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::My, _, _, _));
+    shade.processFrame(f, /*internal=*/true);
+    EXPECT_FLOAT_EQ(shade.getTarget(),     30.0f);
+    EXPECT_FLOAT_EQ(shade.getTiltTarget(), 10.0f);
+}
+
+TEST_F(CommandProcessorTest, My_Remote_Idle_SetsAwait) {
+    shade.currentPos = shade.target = 50.0f;
+    test_clock_ms = 1000;
+    auto f = make_frame(somfy_commands::My);
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(0);
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_GT(shade.getLastFrameAwait(), 0u);
+}
+
+TEST_F(CommandProcessorTest, My_Remote_Moving_Stops) {
+    shade.currentPos = 30.0f;
+    shade.target     = 80.0f;
+    shade.setDirection(1);
+    auto f = make_frame(somfy_commands::My);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::My, _, _, _));
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 30.0f);
+}
+
+TEST_F(CommandProcessorTest, My_DryContact_Toggles_AtBottom) {
+    shade.shadeType  = shade_types::drycontact;
+    shade.currentPos = 100.0f;
+    shade.target     = 100.0f;
+    auto f = make_frame(somfy_commands::My);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::My, _, _, _));
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 0.0f);
+}
+
+TEST_F(CommandProcessorTest, My_DryContact_Toggles_AtTop) {
+    shade.shadeType  = shade_types::drycontact;
+    shade.currentPos = 0.0f;
+    shade.target     = 0.0f;
+    auto f = make_frame(somfy_commands::My);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::My, _, _, _));
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 100.0f);
+}
+
+TEST_F(CommandProcessorTest, My_DryContact2_Ignored) {
+    shade.shadeType = shade_types::drycontact2;
+    auto f = make_frame(somfy_commands::My);
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(0);
+    shade.processFrame(f);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Toggle
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, Toggle_WhenAtBottom_GoesUp) {
+    shade.currentPos = 100.0f;
+    shade.target     = 100.0f;
+    auto f = make_frame(somfy_commands::Toggle);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Toggle, _, _, _));
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 0.0f);
+}
+
+TEST_F(CommandProcessorTest, Toggle_WhenAtTop_GoesDown) {
+    shade.currentPos = 0.0f;
+    shade.target     = 0.0f;
+    auto f = make_frame(somfy_commands::Toggle);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Toggle, _, _, _));
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 100.0f);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Prog / passthrough
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, Prog_EmitsCommand) {
+    auto f = make_frame(somfy_commands::Prog);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Prog, _, _, _));
+    shade.processFrame(f, /*internal=*/false);
+}
+
+TEST_F(CommandProcessorTest, Prog_DryContact_DoesNotEmit) {
+    shade.shadeType = shade_types::drycontact;
+    auto f = make_frame(somfy_commands::Prog);
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(0);
+    shade.processFrame(f);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Linked remote
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, LinkedRemote_AcceptsFrame) {
+    constexpr uint32_t linked_addr = 0x111111;
+    shade.linkRemote(linked_addr, 0);
+    auto f = make_frame(somfy_commands::Down, linked_addr);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Down, _, _, _));
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 100.0f);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Sensor
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, Sensor_SetsSunnyFlag) {
+    auto f = make_frame(somfy_commands::Sensor, 0xABCDEF, /*rc=*/0x02);
+    shade.processFrame(f);
+    EXPECT_TRUE(shade.isSunny());
+    EXPECT_FALSE(shade.isWindy());
+}
+
+TEST_F(CommandProcessorTest, Sensor_ClearsSunnyFlag) {
+    shade.setFlags(shade.getFlags() | static_cast<uint8_t>(somfy_flags_t::Sunny));
+    auto f = make_frame(somfy_commands::Sensor, 0xABCDEF, /*rc=*/0x00);
+    shade.processFrame(f);
+    EXPECT_FALSE(shade.isSunny());
+}
+
+TEST_F(CommandProcessorTest, Sensor_SetsWindyFlag) {
+    test_clock_ms = 5000;
+    auto f = make_frame(somfy_commands::Sensor, 0xABCDEF, /*rc=*/0x01);
+    shade.processFrame(f);
+    EXPECT_TRUE(shade.isWindy());
+}
+
+TEST_F(CommandProcessorTest, Sensor_SunTransition_StartsTimer) {
+    test_clock_ms = 1000;
+    auto f = make_frame(somfy_commands::Sensor, 0xABCDEF, /*rc=*/0x02);
+    shade.processFrame(f);
+    EXPECT_EQ(shade.getSunStart(), 1000u);
+    EXPECT_FALSE(shade.getSunDone());
+}
+
+TEST_F(CommandProcessorTest, Sensor_SunClearTransition_StartsNoSunTimer) {
+    test_clock_ms = 2000;
+    shade.setFlags(shade.getFlags() | static_cast<uint8_t>(somfy_flags_t::Sunny));
+    auto f = make_frame(somfy_commands::Sensor, 0xABCDEF, /*rc=*/0x00);
+    shade.processFrame(f);
+    EXPECT_EQ(shade.getNoSunStart(), 2000u);
+    EXPECT_FALSE(shade.getNoSunDone());
+}
+
+TEST_F(CommandProcessorTest, Sensor_WindTransition_StartsTimer) {
+    test_clock_ms = 3000;
+    auto f = make_frame(somfy_commands::Sensor, 0xABCDEF, /*rc=*/0x01);
+    shade.processFrame(f);
+    EXPECT_EQ(shade.getWindStart(), 3000u);
+    EXPECT_FALSE(shade.getWindDone());
+}
+
+TEST_F(CommandProcessorTest, Sensor_WindClearTransition_StartsNoWindTimer) {
+    test_clock_ms = 4000;
+    shade.setFlags(shade.getFlags() | static_cast<uint8_t>(somfy_flags_t::Windy));
+    auto f = make_frame(somfy_commands::Sensor, 0xABCDEF, /*rc=*/0x00);
+    shade.processFrame(f);
+    EXPECT_EQ(shade.getNoWindStart(), 4000u);
+    EXPECT_FALSE(shade.getNoWindDone());
+}
+
+TEST_F(CommandProcessorTest, Sensor_DryContact_DoesNothing) {
+    shade.shadeType = shade_types::drycontact;
+    auto f = make_frame(somfy_commands::Sensor, 0xABCDEF, /*rc=*/0x02);
+    EXPECT_CALL(shade, emitState(_)).Times(0);
+    EXPECT_CALL(shade, emitState(_, _)).Times(0);
+    shade.processFrame(f);
+    EXPECT_FALSE(shade.isSunny());
+}
+
+TEST_F(CommandProcessorTest, Sensor_DemoMode_SetsFlag) {
+    auto f = make_frame(somfy_commands::Sensor, 0xABCDEF, /*rc=*/0x04);
+    shade.processFrame(f);
+    EXPECT_TRUE(shade.getFlags() & static_cast<uint8_t>(somfy_flags_t::DemoMode));
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SunFlag / Flag
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, SunFlag_SetsSunFlagBit) {
+    auto f = make_frame(somfy_commands::SunFlag);
+    shade.processFrame(f);
+    EXPECT_TRUE(shade.hasSunFlag());
+}
+
+TEST_F(CommandProcessorTest, SunFlag_BogusRollingCode_Ignored) {
+    auto f = make_frame(somfy_commands::SunFlag, 0xABCDEF, /*rc=*/0x8000);
+    shade.processFrame(f);
+    EXPECT_FALSE(shade.hasSunFlag());
+}
+
+TEST_F(CommandProcessorTest, SunFlag_DryContact_Ignored) {
+    shade.shadeType = shade_types::drycontact;
+    auto f = make_frame(somfy_commands::SunFlag);
+    shade.processFrame(f);
+    EXPECT_FALSE(shade.hasSunFlag());
+}
+
+TEST_F(CommandProcessorTest, SunFlag_SunnyAndNoWind_SunDone_MovesToMyPos) {
+    shade.setFlags(static_cast<uint8_t>(somfy_flags_t::Sunny));
+    shade.setSunDone(true);
+    shade.targetSequencer.myPos = 75.0f;
+    auto f = make_frame(somfy_commands::SunFlag);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::SunFlag, _, _, _));
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 75.0f);
+}
+
+TEST_F(CommandProcessorTest, SunFlag_SunnyAndNoWind_SunDone_NoMyPos_MovesToHundred) {
+    shade.setFlags(static_cast<uint8_t>(somfy_flags_t::Sunny));
+    shade.setSunDone(true);
+    shade.targetSequencer.myPos = -1.0f;
+    auto f = make_frame(somfy_commands::SunFlag);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::SunFlag, _, _, _));
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 100.0f);
+}
+
+TEST_F(CommandProcessorTest, SunFlag_NotSunny_NoSunDone_MovesToZero) {
+    shade.setFlags(0);
+    shade.setNoSunDone(true);
+    auto f = make_frame(somfy_commands::SunFlag);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::SunFlag, _, _, _));
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 0.0f);
+}
+
+TEST_F(CommandProcessorTest, SunFlag_WindyActive_DoesNotMoveTarget) {
+    shade.setFlags(static_cast<uint8_t>(somfy_flags_t::Sunny) |
+                   static_cast<uint8_t>(somfy_flags_t::Windy));
+    shade.setSunDone(true);
+    shade.targetSequencer.myPos = 75.0f;
+    shade.target = 50.0f;
+    auto f = make_frame(somfy_commands::SunFlag);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::SunFlag, _, _, _));
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 50.0f);
+}
+
+TEST_F(CommandProcessorTest, Flag_ClearsSunFlagBit) {
+    shade.setFlags(shade.getFlags() | static_cast<uint8_t>(somfy_flags_t::SunFlag));
+    auto f = make_frame(somfy_commands::Flag);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Flag, _, _, _));
+    shade.processFrame(f);
+    EXPECT_FALSE(shade.hasSunFlag());
+}
+
+TEST_F(CommandProcessorTest, Flag_BogusRollingCode_Ignored) {
+    shade.setFlags(shade.getFlags() | static_cast<uint8_t>(somfy_flags_t::SunFlag));
+    auto f = make_frame(somfy_commands::Flag, 0xABCDEF, /*rc=*/0x8001);
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(0);
+    shade.processFrame(f);
+    EXPECT_TRUE(shade.hasSunFlag());
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Up/Down with tilt variants and wind suppression
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, Up_TiltMotor_Remote_SetsAwait) {
+    shade.tiltType = tilt_types::tiltmotor;
+    auto f = make_frame(somfy_commands::Up);
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(0);
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_GT(shade.getLastFrameAwait(), 0u);
+}
+
+TEST_F(CommandProcessorTest, Down_TiltMotor_Remote_SetsAwait) {
+    shade.tiltType = tilt_types::tiltmotor;
+    auto f = make_frame(somfy_commands::Down);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Down, _, _, _));
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_GT(shade.getLastFrameAwait(), 0u);
+}
+
+TEST_F(CommandProcessorTest, Down_RecentWind_Suppressed) {
+    test_clock_ms = 10000;
+    shade.setWindLast(9000);
+    auto f = make_frame(somfy_commands::Down);
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(0);
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 50.0f);
+}
+
+TEST_F(CommandProcessorTest, Down_OldWind_NotSuppressed) {
+    test_clock_ms = 100000;
+    shade.setWindLast(1000);
+    auto f = make_frame(somfy_commands::Down);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Down, _, _, _));
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 100.0f);
+}
+
+TEST_F(CommandProcessorTest, Up_TiltOnly_Remote_SetsTiltTargetZero) {
+    shade.tiltType = tilt_types::tiltonly;
+    auto f = make_frame(somfy_commands::Up);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Up, _, _, _));
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_FLOAT_EQ(shade.getTiltTarget(), 0.0f);
+}
+
+TEST_F(CommandProcessorTest, Down_TiltOnly_Remote_SetsTiltTargetHundred) {
+    shade.tiltType   = tilt_types::tiltonly;
+    shade.tiltTarget = 0.0f;
+    auto f = make_frame(somfy_commands::Down);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Down, _, _, _));
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_FLOAT_EQ(shade.getTiltTarget(), 100.0f);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// StepUp / StepDown
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, StepUp_Roller_DecreasesTarget) {
+    shade.currentPos = 50.0f;
+    shade.target     = 50.0f;
+    auto f = make_frame(somfy_commands::StepUp);
+    f.stepSize = 1;
+    EXPECT_CALL(shade, emitCommand(somfy_commands::StepUp, _, _, _));
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_LT(shade.getTarget(), 50.0f);
+}
+
+TEST_F(CommandProcessorTest, StepDown_Roller_IncreasesTarget) {
+    shade.currentPos = 50.0f;
+    shade.target     = 50.0f;
+    auto f = make_frame(somfy_commands::StepDown);
+    f.stepSize = 1;
+    EXPECT_CALL(shade, emitCommand(somfy_commands::StepDown, _, _, _));
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_GT(shade.getTarget(), 50.0f);
+}
+
+TEST_F(CommandProcessorTest, StepUp_Roller_AtTop_DoesNothing) {
+    shade.currentPos = 0.0f;
+    shade.target     = 0.0f;
+    auto f = make_frame(somfy_commands::StepUp);
+    f.stepSize = 1;
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(0);
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 0.0f);
+}
+
+TEST_F(CommandProcessorTest, StepDown_Roller_AtBottom_DoesNothing) {
+    shade.currentPos = 100.0f;
+    shade.target     = 100.0f;
+    auto f = make_frame(somfy_commands::StepDown);
+    f.stepSize = 1;
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(0);
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 100.0f);
+}
+
+TEST_F(CommandProcessorTest, StepUp_DryContact_NoEmit) {
+    shade.shadeType = shade_types::drycontact;
+    auto f = make_frame(somfy_commands::StepUp);
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(0);
+    shade.processFrame(f);
+}
+
+TEST_F(CommandProcessorTest, StepUp_Repeat_SecondFrameIgnored) {
+    shade.currentPos = 50.0f;
+    shade.target     = 50.0f;
+    auto f = make_frame(somfy_commands::StepUp);
+    f.stepSize = 1;
+    EXPECT_CALL(shade, emitCommand(somfy_commands::StepUp, _, _, _)).Times(1);
+    shade.processFrame(f, /*internal=*/false);
+    shade.processFrame(f, /*internal=*/false);
+}
+
+TEST_F(CommandProcessorTest, StepUp_TiltOnly_DecreasesTiltTarget) {
+    shade.tiltType       = tilt_types::tiltonly;
+    shade.currentTiltPos = 50.0f;
+    shade.tiltTarget     = 50.0f;
+    auto f = make_frame(somfy_commands::StepUp);
+    f.stepSize = 1;
+    EXPECT_CALL(shade, emitCommand(somfy_commands::StepUp, _, _, _));
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_LT(shade.getTiltTarget(), 50.0f);
+}
+
+TEST_F(CommandProcessorTest, StepDown_TiltOnly_IncreasesTiltTarget) {
+    shade.tiltType       = tilt_types::tiltonly;
+    shade.currentTiltPos = 50.0f;
+    shade.tiltTarget     = 50.0f;
+    shade.target         = 50.0f;
+    auto f = make_frame(somfy_commands::StepDown);
+    f.stepSize = 1;
+    EXPECT_CALL(shade, emitCommand(somfy_commands::StepDown, _, _, _));
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_GT(shade.getTiltTarget(), 50.0f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 50.0f);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Favorite
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, Favorite_MovesToMyPos) {
+    shade.targetSequencer.myPos     = 40.0f;
+    shade.targetSequencer.myTiltPos = -1.0f;
+    auto f = make_frame(somfy_commands::Favorite);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Favorite, _, _, _));
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 40.0f);
+}
+
+TEST_F(CommandProcessorTest, Favorite_MyPosAndTiltPos_BothSet) {
+    shade.targetSequencer.myPos     = 40.0f;
+    shade.targetSequencer.myTiltPos = 20.0f;
+    auto f = make_frame(somfy_commands::Favorite);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Favorite, _, _, _));
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTarget(),     40.0f);
+    EXPECT_FLOAT_EQ(shade.getTiltTarget(), 20.0f);
+}
+
+TEST_F(CommandProcessorTest, Favorite_Repeat_Ignored) {
+    shade.targetSequencer.myPos = 40.0f;
+    auto f = make_frame(somfy_commands::Favorite);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Favorite, _, _, _)).Times(1);
+    shade.processFrame(f);
+    shade.processFrame(f);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MotionState flags — set/cleared by processFrame and move* methods
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, ExternalFrame_ClearsSettingPos) {
+    shade.setSettingPos(true);
+    auto f = make_frame(somfy_commands::Up);
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_FALSE(shade.getSettingPos());
+}
+
+TEST_F(CommandProcessorTest, ExternalFrame_ClearsSettingTiltPos) {
+    shade.setSettingTiltPos(true);
+    auto f = make_frame(somfy_commands::Down);
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_FALSE(shade.getSettingTiltPos());
+}
+
+TEST_F(CommandProcessorTest, ExternalFrame_ClearsSettingMyPos) {
+    shade.setSettingMyPos(true);
+    auto f = make_frame(somfy_commands::My);
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_FALSE(shade.getSettingMyPos());
+}
+
+TEST_F(CommandProcessorTest, ExternalFrame_ClearsAllThreeFlagsAtOnce) {
+    shade.setSettingPos(true);
+    shade.setSettingTiltPos(true);
+    shade.setSettingMyPos(true);
+    auto f = make_frame(somfy_commands::Up);
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_FALSE(shade.getSettingPos());
+    EXPECT_FALSE(shade.getSettingTiltPos());
+    EXPECT_FALSE(shade.getSettingMyPos());
+}
+
+TEST_F(CommandProcessorTest, InternalFrame_PreservesSettingPos) {
+    shade.setSettingPos(true);
+    auto f = make_frame(somfy_commands::Up);
+    shade.processFrame(f, /*internal=*/true);
+    EXPECT_TRUE(shade.getSettingPos());
+}
+
+TEST_F(CommandProcessorTest, InternalFrame_PreservesSettingTiltPos) {
+    shade.setSettingTiltPos(true);
+    auto f = make_frame(somfy_commands::Down);
+    shade.processFrame(f, /*internal=*/true);
+    EXPECT_TRUE(shade.getSettingTiltPos());
+}
+
+TEST_F(CommandProcessorTest, InternalFrame_PreservesSettingMyPos) {
+    shade.setSettingMyPos(true);
+    auto f = make_frame(somfy_commands::My);
+    shade.processFrame(f, /*internal=*/true);
+    EXPECT_TRUE(shade.getSettingMyPos());
+}
+
+TEST_F(CommandProcessorTest, MoveToTarget_DifferentPos_SetsSettingPos) {
+    shade.currentPos = 50.0f;
+    shade.moveToTarget(80.0f);
+    EXPECT_TRUE(shade.getSettingPos());
+}
+
+TEST_F(CommandProcessorTest, MoveToTarget_SamePos_NoTilt_DoesNotSetSettingPos) {
+    shade.currentPos = 50.0f;
+    shade.moveToTarget(50.0f);
+    EXPECT_FALSE(shade.getSettingPos());
+}
+
+TEST_F(CommandProcessorTest, MoveToTarget_WithTilt_SetsBothFlags) {
+    shade.tiltType       = tilt_types::integrated;
+    shade.currentPos     = 50.0f;
+    shade.currentTiltPos = 50.0f;
+    shade.moveToTarget(80.0f, 30.0f);
+    EXPECT_TRUE(shade.getSettingPos());
+    EXPECT_TRUE(shade.getSettingTiltPos());
+}
+
+TEST_F(CommandProcessorTest, MoveToTarget_SamePosNewTilt_SetsSettingTiltPos) {
+    shade.tiltType       = tilt_types::integrated;
+    shade.currentPos     = 50.0f;
+    shade.currentTiltPos = 50.0f;
+    shade.moveToTarget(50.0f, 20.0f);
+    EXPECT_TRUE(shade.getSettingPos());
+    EXPECT_TRUE(shade.getSettingTiltPos());
+}
+
+TEST_F(CommandProcessorTest, MoveToTiltTarget_DifferentTilt_SetsSettingTiltPos) {
+    shade.tiltType       = tilt_types::integrated;
+    shade.currentTiltPos = 50.0f;
+    shade.currentPos     = shade.target;
+    shade.moveToTiltTarget(20.0f);
+    EXPECT_TRUE(shade.getSettingTiltPos());
+}
+
+TEST_F(CommandProcessorTest, MoveToTiltTarget_SameTilt_DoesNotSetSettingTiltPos) {
+    shade.tiltType       = tilt_types::integrated;
+    shade.currentTiltPos = 50.0f;
+    shade.currentPos     = shade.target;
+    shade.moveToTiltTarget(50.0f);
+    EXPECT_FALSE(shade.getSettingTiltPos());
+}
+
+TEST_F(CommandProcessorTest, SetMyPosition_NoTilt_DifferentPos_SetsSettingMyPos) {
+    shade.tiltType   = tilt_types::none;
+    shade.currentPos = 50.0f;
+    shade.target     = 50.0f;
+    shade.setMyPosition(80, -1);
+    EXPECT_TRUE(shade.getSettingMyPos());
+}
+
+TEST_F(CommandProcessorTest, SetMyPosition_NoTilt_AtCurrentAndMyPos_SetsSettingMyPos) {
+    shade.tiltType   = tilt_types::none;
+    shade.currentPos = 50.0f;
+    shade.target     = 50.0f;
+    shade.targetSequencer.myPos = 50.0f;
+    shade.setMyPosition(50, -1);
+    EXPECT_TRUE(shade.getSettingMyPos());
+}
+
+TEST_F(CommandProcessorTest, SetMyPosition_NoTilt_AtCurrentNotMyPos_DoesNotSetSettingMyPos) {
+    shade.tiltType   = tilt_types::none;
+    shade.currentPos = 50.0f;
+    shade.target     = 50.0f;
+    shade.targetSequencer.myPos = 30.0f;
+    shade.setMyPosition(50, -1);
+    EXPECT_FALSE(shade.getSettingMyPos());
+    EXPECT_FLOAT_EQ(shade.targetSequencer.myPos, 50.0f);
+}
+
+TEST_F(CommandProcessorTest, SetMyPosition_WhileMoving_DoesNothing) {
+    shade.tiltType   = tilt_types::none;
+    shade.currentPos = 50.0f;
+    shade.target     = 80.0f;
+    shade.setDirection(1);
+    shade.setMyPosition(80, -1);
+    EXPECT_FALSE(shade.getSettingMyPos());
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MyUp / MyDown / UpDown / MyUpDown passthrough
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, MyUp_EmitsCommand) {
+    auto f = make_frame(somfy_commands::MyUp);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::MyUp, _, _, _));
+    shade.processFrame(f);
+}
+
+TEST_F(CommandProcessorTest, MyDown_EmitsCommand) {
+    auto f = make_frame(somfy_commands::MyDown);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::MyDown, _, _, _));
+    shade.processFrame(f);
+}
+
+TEST_F(CommandProcessorTest, UpDown_EmitsCommand) {
+    auto f = make_frame(somfy_commands::UpDown);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::UpDown, _, _, _));
+    shade.processFrame(f);
+}
+
+TEST_F(CommandProcessorTest, MyUpDown_EmitsCommand) {
+    auto f = make_frame(somfy_commands::MyUpDown);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::MyUpDown, _, _, _));
+    shade.processFrame(f);
+}
+
+TEST_F(CommandProcessorTest, MyUp_DryContact_DoesNotEmit) {
+    shade.shadeType = shade_types::drycontact;
+    auto f = make_frame(somfy_commands::MyUp);
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(0);
+    shade.processFrame(f);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Toggle — moving shade stops; mid-position uses lastMovement
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, Toggle_WhenMoving_StopsAtCurrentPos) {
+    shade.currentPos = 30.0f;
+    shade.target     = 80.0f;
+    shade.setDirection(1);
+    auto f = make_frame(somfy_commands::Toggle);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Toggle, _, _, _));
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 30.0f);
+}
+
+TEST_F(CommandProcessorTest, Toggle_MidPos_LastMovementUp_GoesDown) {
+    shade.currentPos = 50.0f;
+    shade.target     = 50.0f;
+    shade.setLastMovement(-1);
+    auto f = make_frame(somfy_commands::Toggle);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Toggle, _, _, _));
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 100.0f);
+}
+
+TEST_F(CommandProcessorTest, Toggle_MidPos_LastMovementDown_GoesUp) {
+    shade.currentPos = 50.0f;
+    shade.target     = 50.0f;
+    shade.setLastMovement(1);
+    auto f = make_frame(somfy_commands::Toggle);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Toggle, _, _, _));
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 0.0f);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Up/Down DryContact2 — repeat suppression
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, Up_DryContact2_AlreadyAtTop_NoTargetChange) {
+    shade.shadeType  = shade_types::drycontact2;
+    shade.currentPos = 0.0f;
+    shade.target     = 0.0f;
+    auto f = make_frame(somfy_commands::Up);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Up, _, _, _));
+    shade.processFrame(f, /*internal=*/false);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 0.0f);
+}
+
+TEST_F(CommandProcessorTest, Down_DryContact2_Repeat_Suppressed) {
+    shade.shadeType  = shade_types::drycontact2;
+    shade.currentPos = 0.0f;
+    shade.target     = 0.0f;
+    auto f = make_frame(somfy_commands::Down);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::Down, _, _, _)).Times(1);
+    shade.processFrame(f, /*internal=*/false);
+    shade.processFrame(f, /*internal=*/false);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SunFlag + tiltonly
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, SunFlag_TiltOnly_Sunny_SunDone_SetsTiltTarget) {
+    shade.tiltType = tilt_types::tiltonly;
+    shade.setFlags(static_cast<uint8_t>(somfy_flags_t::Sunny));
+    shade.setSunDone(true);
+    shade.targetSequencer.myTiltPos = 60.0f;
+    auto f = make_frame(somfy_commands::SunFlag);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::SunFlag, _, _, _));
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTiltTarget(), 60.0f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 50.0f);
+}
+
+TEST_F(CommandProcessorTest, SunFlag_TiltOnly_NotSunny_NoSunDone_SetsTiltTargetZero) {
+    shade.tiltType = tilt_types::tiltonly;
+    shade.setFlags(0);
+    shade.setNoSunDone(true);
+    auto f = make_frame(somfy_commands::SunFlag);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::SunFlag, _, _, _));
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTiltTarget(), 0.0f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 50.0f);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Up/Down tiltmotor — internal=true path
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, Up_TiltMotor_Internal_MarksProcessed_NoAwait) {
+    shade.tiltType = tilt_types::tiltmotor;
+    auto f = make_frame(somfy_commands::Up);
+    shade.processFrame(f, /*internal=*/true);
+    EXPECT_TRUE(shade.lastFrame.processed);
+    EXPECT_EQ(shade.getLastFrameAwait(), 0u);
+}
+
+TEST_F(CommandProcessorTest, Down_TiltMotor_Internal_MarksProcessed_NoAwait) {
+    shade.tiltType = tilt_types::tiltmotor;
+    auto f = make_frame(somfy_commands::Down);
+    shade.processFrame(f, /*internal=*/true);
+    EXPECT_TRUE(shade.lastFrame.processed);
+    EXPECT_EQ(shade.getLastFrameAwait(), 0u);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// My — toggle shade types (garage1/lgate1/cgate1/rgate1)
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, My_Toggle_Moving_StopsAtCurrentPos) {
+    shade.shadeType  = shade_types::garage1;
+    shade.currentPos = 40.0f;
+    shade.target     = 100.0f;
+    shade.setDirection(1);
+    auto f = make_frame(somfy_commands::My);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::My, _, _, _));
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 40.0f);
+}
+
+TEST_F(CommandProcessorTest, My_Toggle_AtBottom_GoesUp) {
+    shade.shadeType  = shade_types::garage1;
+    shade.currentPos = 100.0f;
+    shade.target     = 100.0f;
+    auto f = make_frame(somfy_commands::My);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::My, _, _, _));
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 0.0f);
+}
+
+TEST_F(CommandProcessorTest, My_Toggle_AtTop_GoesDown) {
+    shade.shadeType  = shade_types::garage1;
+    shade.currentPos = 0.0f;
+    shade.target     = 0.0f;
+    auto f = make_frame(somfy_commands::My);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::My, _, _, _));
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 100.0f);
+}
+
+TEST_F(CommandProcessorTest, My_Toggle_MidPosition_UsesLastMovement) {
+    shade.shadeType  = shade_types::garage1;
+    shade.currentPos = 50.0f;
+    shade.target     = 50.0f;
+    shade.setLastMovement(-1);
+    auto f = make_frame(somfy_commands::My);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::My, _, _, _));
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 100.0f);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// My — drycontact mid-position
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, My_DryContact_MidPos_LastMovementNeg1_GoesTo100) {
+    shade.shadeType  = shade_types::drycontact;
+    shade.currentPos = 50.0f;
+    shade.target     = 50.0f;
+    shade.setLastMovement(-1);
+    auto f = make_frame(somfy_commands::My);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::My, _, _, _));
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 100.0f);
+}
+
+TEST_F(CommandProcessorTest, My_DryContact_MidPos_LastMovementPos1_GoesTo0) {
+    shade.shadeType  = shade_types::drycontact;
+    shade.currentPos = 50.0f;
+    shade.target     = 50.0f;
+    shade.setLastMovement(1);
+    auto f = make_frame(somfy_commands::My);
+    EXPECT_CALL(shade, emitCommand(somfy_commands::My, _, _, _));
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 0.0f);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// StepUp / StepDown — integrated tilt
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, StepUp_Integrated_BothAtTop_DoesNothing) {
+    shade.tiltType       = tilt_types::integrated;
+    shade.currentTiltPos = 0.0f;
+    shade.currentPos     = 0.0f;
+    shade.target         = 0.0f;
+    shade.tiltTarget     = 0.0f;
+    auto f = make_frame(somfy_commands::StepUp);
+    f.stepSize = 1;
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(0);
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTarget(),     0.0f);
+    EXPECT_FLOAT_EQ(shade.getTiltTarget(), 0.0f);
+}
+
+TEST_F(CommandProcessorTest, StepUp_Integrated_TiltNotAtTop_MovesTilt) {
+    shade.tiltType       = tilt_types::integrated;
+    shade.currentTiltPos = 50.0f;
+    shade.tiltTarget     = 50.0f;
+    shade.currentPos     = 30.0f;
+    shade.target         = 30.0f;
+    auto f = make_frame(somfy_commands::StepUp);
+    f.stepSize = 1;
+    EXPECT_CALL(shade, emitCommand(somfy_commands::StepUp, _, _, _));
+    shade.processFrame(f);
+    EXPECT_LT(shade.getTiltTarget(), 50.0f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 30.0f);
+}
+
+TEST_F(CommandProcessorTest, StepUp_Integrated_TiltAtTop_MovesLift) {
+    shade.tiltType       = tilt_types::integrated;
+    shade.currentTiltPos = 0.0f;
+    shade.tiltTarget     = 0.0f;
+    shade.currentPos     = 50.0f;
+    shade.target         = 50.0f;
+    auto f = make_frame(somfy_commands::StepUp);
+    f.stepSize = 1;
+    EXPECT_CALL(shade, emitCommand(somfy_commands::StepUp, _, _, _));
+    shade.processFrame(f);
+    EXPECT_LT(shade.getTarget(), 50.0f);
+    EXPECT_FLOAT_EQ(shade.getTiltTarget(), 0.0f);
+}
+
+TEST_F(CommandProcessorTest, StepDown_Integrated_BothAtBottom_DoesNothing) {
+    shade.tiltType       = tilt_types::integrated;
+    shade.currentTiltPos = 100.0f;
+    shade.currentPos     = 100.0f;
+    shade.target         = 100.0f;
+    shade.tiltTarget     = 100.0f;
+    auto f = make_frame(somfy_commands::StepDown);
+    f.stepSize = 1;
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(0);
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTarget(),     100.0f);
+    EXPECT_FLOAT_EQ(shade.getTiltTarget(), 100.0f);
+}
+
+TEST_F(CommandProcessorTest, StepDown_Integrated_TiltNotAtBottom_MovesTilt) {
+    shade.tiltType       = tilt_types::integrated;
+    shade.currentTiltPos = 50.0f;
+    shade.tiltTarget     = 50.0f;
+    shade.currentPos     = 30.0f;
+    shade.target         = 30.0f;
+    auto f = make_frame(somfy_commands::StepDown);
+    f.stepSize = 1;
+    EXPECT_CALL(shade, emitCommand(somfy_commands::StepDown, _, _, _));
+    shade.processFrame(f);
+    EXPECT_GT(shade.getTiltTarget(), 50.0f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 30.0f);
+}
+
+TEST_F(CommandProcessorTest, StepDown_Integrated_TiltAtBottom_MovesLift) {
+    shade.tiltType       = tilt_types::integrated;
+    shade.currentTiltPos = 100.0f;
+    shade.tiltTarget     = 100.0f;
+    shade.currentPos     = 50.0f;
+    shade.target         = 50.0f;
+    auto f = make_frame(somfy_commands::StepDown);
+    f.stepSize = 1;
+    EXPECT_CALL(shade, emitCommand(somfy_commands::StepDown, _, _, _));
+    shade.processFrame(f);
+    EXPECT_GT(shade.getTarget(), 50.0f);
+    EXPECT_FLOAT_EQ(shade.getTiltTarget(), 100.0f);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Favorite — simMy path
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandProcessorTest, Favorite_SimMy_CallsMoveToMyPosition) {
+    shade.setFlags(shade.getFlags() | static_cast<uint8_t>(somfy_flags_t::SimMy));
+    shade.targetSequencer.myPos = 35.0f;
+    auto f = make_frame(somfy_commands::Favorite);
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(0);
+    shade.processFrame(f);
+    EXPECT_FLOAT_EQ(shade.getTarget(), 35.0f);
+}

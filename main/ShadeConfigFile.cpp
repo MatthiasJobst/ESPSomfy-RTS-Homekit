@@ -1,6 +1,7 @@
 #include "compat/preferences.h"
 #include "ShadeConfigFile.h"
 #include "esp_log.h"
+#include "driver/gpio.h"
 
 extern Preferences pref;
 extern ConfigSettings settings;
@@ -502,12 +503,12 @@ bool ShadeConfigFile::readShadeRecord(SomfyShade *shade) {
     shade->tiltType = static_cast<tilt_types>(this->readUInt8(0));
   if(this->header.version > 6) shade->proto = static_cast<radio_proto>(this->readUInt8(0));
   if(this->header.version > 1) shade->bitLength = this->readUInt8(56);
-  shade->upTime = this->readUInt32(shade->upTime);
-  shade->downTime = this->readUInt32(shade->downTime);
-  shade->tiltTime = this->readUInt32(shade->tiltTime);
-  if(this->header.version > 5) shade->stepSize = this->readUInt16(100);
+  shade->setUpTime(this->readUInt32(shade->getUpTime()));
+  shade->setDownTime(this->readUInt32(shade->getDownTime()));
+  shade->setTiltTime(this->readUInt32(shade->getTiltTime()));
+  if(this->header.version > 5) shade->setStepSize(this->readUInt16(100));
   for(uint8_t j = 0; j < SOMFY_MAX_LINKED_REMOTES; j++) {
-    SomfyLinkedRemote *rem = &shade->linkedRemotes[j];
+    SomfyLinkedRemote *rem = &shade->getLinkedRemote(j);
     rem->setRemoteAddress(this->readUInt32(0));
     if(rem->getRemoteAddress() != 0) rem->lastRollingCode = pref.getUShort(rem->getRemotePrefId(), 0);
     if(this->header.version < 5 && j == 4) break; // Prior to version 5 we only supported 5 linked remotes.
@@ -522,17 +523,17 @@ bool ShadeConfigFile::readShadeRecord(SomfyShade *shade) {
     if(rc < shade->lastRollingCode) pref.putUShort(shade->getRemotePrefId(), shade->lastRollingCode);
   }
   if(this->header.version < 4)
-    shade->myPos = static_cast<float>(this->readUInt8(255));
+    shade->p_myPos(static_cast<float>(this->readUInt8(255)));
   else {
-    shade->myPos = this->readFloat(-1);
-    shade->myTiltPos = this->readFloat(-1);
+    shade->p_myPos(this->readFloat(-1));
+    shade->p_myTiltPos(this->readFloat(-1));
   }
-  if(shade->myPos > 100 || shade->myPos < 0) shade->myPos = -1;
-  if(shade->myTiltPos > 100 || shade->myTiltPos < 0) shade->myTiltPos = -1;
+  if(shade->getMyPos() > 100 || shade->getMyPos() < 0) shade->p_myPos(-1);
+  if(shade->getMyTiltPos() > 100 || shade->getMyTiltPos() < 0) shade->p_myTiltPos(-1);
   shade->currentPos = this->readFloat(0);
   shade->currentTiltPos = this->readFloat(0);
   if(shade->tiltType == tilt_types::none || shade->shadeType != shade_types::blind) {
-    shade->myTiltPos = -1;
+    shade->p_myTiltPos(-1);
     shade->currentTiltPos = 0;
     shade->tiltType = tilt_types::none;
   }
@@ -543,29 +544,29 @@ bool ShadeConfigFile::readShadeRecord(SomfyShade *shade) {
   shade->target = floor(shade->currentPos);
   shade->tiltTarget = floor(shade->currentTiltPos);
   if(this->header.version >= 9) shade->flipCommands = this->readBool(false);
-  if(this->header.version >= 10) shade->flipPosition = this->readBool(false);
+  if(this->header.version >= 10) shade->setFlipPosition(this->readBool(false));
   if(this->header.version >= 12) shade->repeats = this->readUInt8(1);
   if(this->header.version >= 13) shade->sortOrder = this->readUInt8(shade->getShadeId() - 1);
   else shade->sortOrder = shade->getShadeId() - 1;
   if(this->header.version > 14) {
-    shade->gpioUp = this->readUInt8(shade->gpioUp);
-    shade->gpioDown = this->readUInt8(shade->gpioDown);
+    shade->gpioControl.gpioUp = this->readUInt8(shade->gpioControl.gpioUp);
+    shade->gpioControl.gpioDown = this->readUInt8(shade->gpioControl.gpioDown);
   }
   if(this->header.version > 15)
-    shade->gpioMy = this->readUInt8(shade->gpioMy);
+    shade->gpioControl.gpioMy = this->readUInt8(shade->gpioControl.gpioMy);
   if(this->header.version > 16)
-    shade->gpioFlags = this->readUInt8(shade->gpioFlags);
+    shade->gpioControl.gpioFlags = this->readUInt8(shade->gpioControl.gpioFlags);
   if(shade->getShadeId() == 255) shade->clear();
   else if(shade->tiltType == tilt_types::tiltonly) {
-    shade->myPos = shade->currentPos = shade->target = 100.0f;
+    shade->p_myPos(100.0f); shade->currentPos = shade->target = 100.0f;
   }
   pref.end();
   if(shade->proto == radio_proto::GP_Relay || shade->proto == radio_proto::GP_Remote) {
-    pinMode(shade->gpioUp, OUTPUT);
-    pinMode(shade->gpioDown, OUTPUT);
+    gpio_set_direction((gpio_num_t)shade->gpioControl.gpioUp, GPIO_MODE_OUTPUT);
+    gpio_set_direction((gpio_num_t)shade->gpioControl.gpioDown, GPIO_MODE_OUTPUT);
   }
   if(shade->proto == radio_proto::GP_Remote)
-    pinMode(shade->gpioMy, OUTPUT);
+    gpio_set_direction((gpio_num_t)shade->gpioControl.gpioMy, GPIO_MODE_OUTPUT);
   if(this->header.version >= 19) shade->roomId = this->readUInt8(0);
   if(this->file.position() != startPos + this->header.shadeRecordSize) {
     ESP_LOGI(TAG, "Reading to end of shade record");
@@ -659,7 +660,7 @@ bool ShadeConfigFile::writeRoomRecord(SomfyRoom *room) {
 }
 bool ShadeConfigFile::writeShadeRecord(SomfyShade *shade) {
   if(shade->tiltType == tilt_types::none || shade->shadeType != shade_types::blind) {
-    shade->myTiltPos = -1;
+    shade->p_myTiltPos(-1);
     shade->currentTiltPos = 0;
     shade->tiltType = tilt_types::none;
   }
@@ -671,19 +672,19 @@ bool ShadeConfigFile::writeShadeRecord(SomfyShade *shade) {
   this->writeUInt8(static_cast<uint8_t>(shade->tiltType));
   this->writeUInt8(static_cast<uint8_t>(shade->proto));
   this->writeUInt8(shade->bitLength);
-  this->writeUInt32(shade->upTime);
-  this->writeUInt32(shade->downTime);
-  this->writeUInt32(shade->tiltTime);
-  this->writeUInt16(shade->stepSize);
+  this->writeUInt32(shade->getUpTime());
+  this->writeUInt32(shade->getDownTime());
+  this->writeUInt32(shade->getTiltTime());
+  this->writeUInt16(shade->getStepSize());
   for(uint8_t j = 0; j < SOMFY_MAX_LINKED_REMOTES; j++) {
-    SomfyLinkedRemote *rem = &shade->linkedRemotes[j];
+    SomfyLinkedRemote *rem = &shade->getLinkedRemote(j);
     this->writeUInt32(rem->getRemoteAddress());
   }
   this->writeUInt16(shade->lastRollingCode);
   if(shade->getShadeId() != 255) {
     this->writeUInt8(shade->flags & 0xFF);
-    this->writeFloat(shade->myPos, 5);
-    this->writeFloat(shade->myTiltPos, 5);
+    this->writeFloat(shade->getMyPos(), 5);
+    this->writeFloat(shade->getMyTiltPos(), 5);
     this->writeFloat(shade->currentPos, 5);
     this->writeFloat(shade->currentTiltPos, 5);
   }
@@ -696,7 +697,7 @@ bool ShadeConfigFile::writeShadeRecord(SomfyShade *shade) {
     this->writeFloat(0.0f, 5); // currentTiltPos
   }
   this->writeBool(shade->flipCommands);
-  this->writeBool(shade->flipPosition);
+  this->writeBool(shade->getFlipPosition());
   this->writeUInt8(shade->repeats);
   this->writeUInt8(shade->sortOrder);
   this->writeUInt8(shade->gpioUp);

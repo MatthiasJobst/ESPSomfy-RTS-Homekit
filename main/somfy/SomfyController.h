@@ -4,7 +4,8 @@
 #pragma once
 #include "SomfyFrame.h"
 #include "SomfyTransceiver.h"
-#include "SomfyRemote.h"
+#include "SomfyRoom.h"
+#include "SomfyGroup.h"
 #include "SomfyShade.h"
 
 #define SOMFY_MAX_SHADES 32
