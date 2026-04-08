@@ -378,7 +378,6 @@ void Web::handleRepeatCommand(WebServer& server) {
 void Web::handleGroupCommand(WebServer &server) {
   HTTPMethod method = server.method();
   uint8_t groupId = 255;
-  uint8_t stepSize = 0;
   int8_t repeat = -1;
   somfy_commands command = somfy_commands::My;
   if (method == HTTP_GET || method == HTTP_PUT || method == HTTP_POST) {
@@ -386,7 +385,6 @@ void Web::handleGroupCommand(WebServer &server) {
       groupId = atoi(server.arg("groupId").c_str());
       if (server.hasArg("command")) command = translateSomfyCommand(server.arg("command"));
       if(server.hasArg("repeat")) repeat = atoi(server.arg("repeat").c_str());
-      if(server.hasArg("stepSize")) stepSize = atoi(server.arg("stepSize").c_str());
     }
     else if (server.hasArg("plain")) {
       ESP_LOGI(TAG, "Sending Group Command");
@@ -402,14 +400,12 @@ void Web::handleGroupCommand(WebServer &server) {
         command = translateSomfyCommand(scmd);
       }
       if(obj.containsKey("repeat")) repeat = obj["repeat"].as<uint8_t>();
-      if(obj.containsKey("stepSize")) stepSize = obj["stepSize"].as<uint8_t>();
     }
     else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group object supplied.\"}"));
     SomfyGroup * group = somfy.getGroupById(groupId);
     if (group) {
       ESP_LOGI(TAG, "Received: %s", server.arg("plain").c_str());
-      // Send the command to the group.
-      group->sendCommand(command, repeat >= 0 ? repeat : group->repeats, stepSize);
+      somfy.enqueueGroupCommand(groupId, command, repeat >= 0 ? (uint8_t)repeat : group->repeats);
       JsonResponse resp;
       resp.beginResponse(&server, g_content, sizeof(g_content));
       resp.beginObject();
@@ -599,6 +595,7 @@ void Web::handleReboot(WebServer &server) {
   }
 }
 void Web::begin() {
+  webLog.begin();
   ESP_LOGI(TAG, "Creating Web MicroServices...");
   const char *keys[1] = {"apikey"};
   server.collectHeaders(keys, 1);

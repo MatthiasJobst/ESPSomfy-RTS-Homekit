@@ -103,9 +103,9 @@ void Web::handleShadeCommand(WebServer& server) {
     if (shade) {
       ESP_LOGI(TAG, "Received: %s", server.arg("plain").c_str());
       if (target <= 100)
-          shade->moveToTarget(shade->transformPosition(target));
+          somfy.enqueueShadeTarget(shadeId, shade->transformPosition(target));
       else
-          shade->sendCommand(command, repeat > 0 ? repeat : shade->repeats, stepSize);
+          somfy.enqueueShadeCommand(shadeId, command, repeat > 0 ? repeat : shade->repeats, stepSize);
       sendShadeJSON(server, shade, true);
     }
   }
@@ -141,9 +141,9 @@ void Web::handleTiltCommand(WebServer &server) {
     if (shade) {
       ESP_LOGI(TAG, "Received: %s", server.arg("plain").c_str());
       if(target <= 100)
-        shade->moveToTiltTarget(shade->transformPosition(target));
+        somfy.enqueueShadeTiltTarget(shadeId, shade->transformPosition(target));
       else
-        shade->sendTiltCommand(command);
+        somfy.enqueueShadeTiltCommand(shadeId, command);
       sendShadeJSON(server, shade, true);
     }
   }

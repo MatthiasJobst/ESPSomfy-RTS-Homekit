@@ -22,6 +22,14 @@ uint8_t rxmode = 0;   // 0=off 1=receive 3=frequency-scan
 uint8_t bit_length = 56;  // current protocol frame width; set by apply(), read by sendCommand()
 static int interruptPin = 0;
 
+// RF noise watchdog state (written in ISR, read in loop)
+static volatile bool noiseDetected = false;
+static volatile uint32_t noiseWindowStart = 0;
+static volatile uint16_t noisePulseCount = 0;
+static const uint16_t NOISE_PULSE_THRESHOLD = 100;
+static const uint32_t NOISE_WINDOW_MS = 10000;
+static const uint32_t NOISE_COOLDOWN_MS = 30000;
+
 #define SETMY_REPEATS 35
 #define TILT_REPEATS 15
 #define TX_QUEUE_DELAY 100
@@ -140,6 +148,23 @@ void RECEIVE_ATTR Transceiver::handleReceive() {
     static unsigned long last_time = 0;
     const long time = micros();
     const unsigned int duration = time - last_time;
+
+    // RF noise watchdog: count rapid pulses; disable RX if threshold is exceeded.
+    if(somfy.transceiver.config.noiseDetection) {
+        uint32_t now = millis();
+        if(now - noiseWindowStart > NOISE_WINDOW_MS) {
+            noiseWindowStart = now;
+            noisePulseCount = 0;
+        }
+        noisePulseCount = noisePulseCount + 1;
+        if(noisePulseCount > NOISE_PULSE_THRESHOLD) {
+            gpio_intr_disable((gpio_num_t)interruptPin);
+            noiseDetected = true;
+            noisePulseCount = 0;
+            return;
+        }
+    }
+
     if (duration < bitMin) {
         // The incoming bit is < 448us so it is probably a glitch so blow it off.
         // We need to ignore this bit.
@@ -497,6 +522,7 @@ void transceiver_config_t::fromJSON(JsonObject& obj) {
     if(obj.containsKey("enabled")) this->enabled = obj["enabled"];
     if(obj.containsKey("txPower")) this->txPower = obj["txPower"];
     if(obj.containsKey("proto")) this->proto = static_cast<radio_proto>(obj["proto"].as<uint8_t>());
+    if(obj.containsKey("noiseDetection")) this->noiseDetection = obj["noiseDetection"];
     /*
     if (obj.containsKey("internalCCMode")) this->internalCCMode = obj["internalCCMode"];
     if (obj.containsKey("modulationMode")) this->modulationMode = obj["modulationMode"];
@@ -540,6 +566,7 @@ void transceiver_config_t::toJSON(JsonResponse &json) {
     json.addElem("proto", static_cast<uint8_t>(this->proto));
     json.addElem("enabled", this->enabled);
     json.addElem("radioInit", this->radioInit);
+    json.addElem("noiseDetection", this->noiseDetection);
 }
 
 void transceiver_config_t::save() {
@@ -559,7 +586,8 @@ void transceiver_config_t::save() {
     pref.putBool("radioInit", true);
     pref.putChar("txPower", this->txPower);
     pref.putChar("proto", static_cast<uint8_t>(this->proto));
-    
+    pref.putBool("noiseDet", this->noiseDetection);
+
     /*
     pref.putBool("internalCCMode", this->internalCCMode);
     pref.putUChar("modulationMode", this->modulationMode);
@@ -651,6 +679,7 @@ void transceiver_config_t::load() {
     this->txPower = pref.getChar("txPower", this->txPower);
     this->rxBandwidth = pref.getFloat("rxBandwidth", this->rxBandwidth);
     this->proto = static_cast<radio_proto>(pref.getChar("proto", static_cast<uint8_t>(this->proto)));
+    this->noiseDetection = pref.getBool("noiseDet", this->noiseDetection);
     this->removeNVSKey("internalCCMode");
     this->removeNVSKey("modulationMode");
     this->removeNVSKey("channel");
@@ -802,6 +831,23 @@ bool Transceiver::begin() {
 }
 
 void Transceiver::loop() {
+  // RF noise watchdog: re-enable RX after cooldown period.
+  if(noiseDetected) {
+    static uint32_t noiseDisabledAt = 0;
+    if(noiseDisabledAt == 0) {
+      noiseDisabledAt = millis();
+      ESP_LOGW(TAG, "RF noise detected — RX disabled for %lu ms", (unsigned long)NOISE_COOLDOWN_MS);
+    } else if(millis() - noiseDisabledAt > NOISE_COOLDOWN_MS) {
+      ESP_LOGI(TAG, "RF noise cooldown elapsed — re-enabling RX");
+      noiseDetected = false;
+      noiseDisabledAt = 0;
+      noisePulseCount = 0;
+      noiseWindowStart = millis();
+      gpio_intr_enable((gpio_num_t)interruptPin);
+    }
+    return;
+  }
+
   somfy_rx_t rx;
   if(rxmode == 3) {
     if(this->receive(&rx))
