@@ -595,7 +595,6 @@ void Web::handleReboot(WebServer &server) {
   }
 }
 void Web::begin() {
-  webLog.begin();
   ESP_LOGI(TAG, "Creating Web MicroServices...");
   const char *keys[1] = {"apikey"};
   server.collectHeaders(keys, 1);
