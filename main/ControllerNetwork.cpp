@@ -472,7 +472,9 @@ bool ControllerNetwork::connectWiFi(const uint8_t *bssid, const int32_t channel)
     this->connType = conn_types_t::unset;
     ESP_LOGI(TAG, "WiFi begin...");
     this->_connecting = true;
+    ESP_LOGD(TAG, "connectWiFi: WiFi.begin bssid CH:%ld", channel);
     WiFi.begin(settings.WIFI.ssid, settings.WIFI.passphrase, channel, bssid);
+    ESP_LOGD(TAG, "connectWiFi: WiFi.begin returned");
     this->connectStart = millis();
   }
   else if(settings.WIFI.ssid[0] != '\0') {

@@ -29,6 +29,13 @@ CONFIG_MBEDTLS_PSK_MODES=y
 # WDT timeout — matches the 7s set in app_main()
 CONFIG_ESP_TASK_WDT_TIMEOUT_S=10
 
+# Core dump to UART — on panic, prints base64-encoded ELF core dump to serial.
+# Decode with: idf.py coredump-info --core <(base64 -d <<< "<base64 block>")
+# No partition table change needed; does not affect flash layout.
+CONFIG_ESP_COREDUMP_ENABLE_TO_UART=y
+CONFIG_ESP_COREDUMP_DATA_FORMAT_ELF=y
+CONFIG_ESP_COREDUMP_CHECKSUM_CRC32=y
+
 # Pin Arduino event task to core 1 so it doesn't compete with our main loop task.
 CONFIG_ARDUINO_EVENT_RUN_CORE1=y
 CONFIG_ARDUINO_EVENT_RUNNING_CORE=1

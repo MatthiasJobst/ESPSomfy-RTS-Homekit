@@ -98,10 +98,15 @@ void SocketEmitter::initClients() {
       if(sockServer.clientIsConnected(num)) {
         ESP_LOGI(TAG, "Initializing Socket Client %u", num);
         esp_task_wdt_reset();
+        ESP_LOGD(TAG, "initClients[%u]: emitSockets", num);
         settings.emitSockets(num);
+        ESP_LOGD(TAG, "initClients[%u]: emitState", num);
         somfy.emitState(num);
+        ESP_LOGD(TAG, "initClients[%u]: emitUpdateCheck", num);
         git.emitUpdateCheck(num);
+        ESP_LOGD(TAG, "initClients[%u]: net.emitSockets", num);
         net.emitSockets(num);
+        ESP_LOGD(TAG, "initClients[%u]: done", num);
         esp_task_wdt_reset();
       }
       this->newClients[i] = 255;
