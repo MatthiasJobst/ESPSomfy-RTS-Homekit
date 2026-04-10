@@ -16,11 +16,6 @@
 #define SOMFY_NO_WIND_REMOTE_TIMEOUT SECS_TO_MILLIS(static_cast<uint64_t>(30))
 
 class SomfyFlagManager {
-protected:
-    bool isSunDone(uint64_t curTime);
-    bool isNoWindDone(uint64_t curTime);
-    bool isNoSunDone(uint64_t curTime);
-    bool isWindDone(uint64_t curTime);
 public:
     // Timer/debounce state only — the flags bitfield lives in SomfyRemote::flags.
     uint64_t sunStart    = 0;
@@ -48,4 +43,12 @@ public:
         bool setWindTarget  = false; // p_target → 0  (+ tiltTarget if tiltonly)
     };
     TimerTick tickTimers(SomfyFlag flags, uint64_t curTime, uint8_t shadeId = 255);
+protected:
+    bool isSunDone(uint64_t curTime) const;
+    bool isNoWindDone(uint64_t curTime) const;
+    bool isNoSunDone(uint64_t curTime) const;
+    bool isWindDone(uint64_t curTime) const;
+
+    void tickSunTimers(SomfyFlag flags, uint64_t curTime, uint8_t shadeId, TimerTick& result);
+    void tickWindTimer(uint64_t curTime, uint8_t shadeId, TimerTick& result);
 };
