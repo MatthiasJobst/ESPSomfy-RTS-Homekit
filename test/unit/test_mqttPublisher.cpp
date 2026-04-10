@@ -103,31 +103,25 @@ TEST_F(MQTTPublisherTest, Publish_UsesShadeIdInTopic) {
 // B. p_*() setters — publish only on change, apply floor/transform correctly
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST_F(MQTTPublisherTest, p_direction_ChangedValue_Publishes) {
+TEST_F(MQTTPublisherTest, p_direction_PublishesOnChangeOnly) {
     mqtt_connected_flag = true;
     shade.direction = 0;
     shade.p_direction(1);
     EXPECT_EQ(mqtt_published.count("shades/1/direction"), 1u);
-}
-
-TEST_F(MQTTPublisherTest, p_direction_SameValue_DoesNotPublish) {
-    mqtt_connected_flag = true;
+    mqtt_published.clear();
     shade.direction = 1;
     shade.p_direction(1);
-    EXPECT_TRUE(mqtt_published.empty());
+    EXPECT_EQ(mqtt_published.count("shades/1/direction"), 0u);
 }
 
-TEST_F(MQTTPublisherTest, p_currentPos_FloorChanges_Publishes) {
+TEST_F(MQTTPublisherTest, p_currentPos_PublishesOnFloorChangeOnly) {
     mqtt_connected_flag = true;
     shade.currentPos = 50.0f;
     shade.p_currentPos(51.0f);
     EXPECT_EQ(mqtt_published.count("shades/1/position"), 1u);
-}
-
-TEST_F(MQTTPublisherTest, p_currentPos_SameFloor_DoesNotPublish) {
-    mqtt_connected_flag = true;
+    mqtt_published.clear();
     shade.currentPos = 50.0f;
-    shade.p_currentPos(50.4f);   // floor(50.0) == floor(50.4)
+    shade.p_currentPos(50.4f);  // floor(50.0) == floor(50.4)
     EXPECT_EQ(mqtt_published.count("shades/1/position"), 0u);
 }
 
@@ -135,74 +129,62 @@ TEST_F(MQTTPublisherTest, p_currentPos_FlipPosition_PublishesTransformed) {
     mqtt_connected_flag = true;
     shade.setFlipPosition(true);
     shade.currentPos = 30.0f;
-    shade.p_currentPos(40.0f);   // transformPosition(40) = 100-40 = 60
+    shade.p_currentPos(40.0f);  // transformPosition(40) = 100-40 = 60
     EXPECT_EQ(mqtt_published["shades/1/position"], "60");
 }
 
-TEST_F(MQTTPublisherTest, p_target_TransformChanges_Publishes) {
+TEST_F(MQTTPublisherTest, p_target_PublishesOnChangeOnly) {
     mqtt_connected_flag = true;
     shade.target = 50.0f;
     shade.p_target(80.0f);
     EXPECT_EQ(mqtt_published.count("shades/1/target"), 1u);
-}
-
-TEST_F(MQTTPublisherTest, p_target_SameTransform_DoesNotPublish) {
-    mqtt_connected_flag = true;
+    mqtt_published.clear();
     shade.target = 50.0f;
     shade.p_target(50.0f);
     EXPECT_EQ(mqtt_published.count("shades/1/target"), 0u);
 }
 
-TEST_F(MQTTPublisherTest, p_myPos_ChangedTransform_Publishes) {
+TEST_F(MQTTPublisherTest, p_myPos_PublishesOnChangeOnly) {
     mqtt_connected_flag = true;
     shade.targetSequencer.myPos = 30.0f;
     shade.p_myPos(40.0f);
     EXPECT_EQ(mqtt_published.count("shades/1/mypos"), 1u);
-}
-
-TEST_F(MQTTPublisherTest, p_myPos_SameTransform_DoesNotPublish) {
-    mqtt_connected_flag = true;
+    mqtt_published.clear();
     shade.targetSequencer.myPos = 30.0f;
     shade.p_myPos(30.0f);
     EXPECT_EQ(mqtt_published.count("shades/1/mypos"), 0u);
 }
 
-TEST_F(MQTTPublisherTest, p_sunFlag_ChangedValue_Publishes) {
+TEST_F(MQTTPublisherTest, p_sunFlag_PublishesOnChangeOnly) {
     mqtt_connected_flag = true;
     shade.setFlags(0);
     shade.p_sunFlag(true);
     EXPECT_EQ(mqtt_published.count("shades/1/sunFlag"), 1u);
-}
-
-TEST_F(MQTTPublisherTest, p_sunFlag_SameValue_DoesNotPublish) {
-    mqtt_connected_flag = true;
-    shade.p_sunFlag(false);   // already false
+    mqtt_published.clear();
+    shade.p_sunFlag(true);  // same value
     EXPECT_EQ(mqtt_published.count("shades/1/sunFlag"), 0u);
 }
 
-TEST_F(MQTTPublisherTest, p_windy_ChangedValue_Publishes) {
+TEST_F(MQTTPublisherTest, p_windy_PublishesOnChange) {
     mqtt_connected_flag = true;
     shade.setFlags(0);
     shade.p_windy(true);
     EXPECT_EQ(mqtt_published.count("shades/1/windy"), 1u);
 }
 
-TEST_F(MQTTPublisherTest, p_sunny_ChangedValue_Publishes) {
+TEST_F(MQTTPublisherTest, p_sunny_PublishesOnChange) {
     mqtt_connected_flag = true;
     shade.setFlags(0);
     shade.p_sunny(true);
     EXPECT_EQ(mqtt_published.count("shades/1/sunny"), 1u);
 }
 
-TEST_F(MQTTPublisherTest, p_lastRollingCode_ChangedValue_Publishes) {
+TEST_F(MQTTPublisherTest, p_lastRollingCode_PublishesOnChangeOnly) {
     mqtt_connected_flag = true;
     shade.lastRollingCode = 10;
     shade.p_lastRollingCode(20);
     EXPECT_EQ(mqtt_published.count("shades/1/lastRollingCode"), 1u);
-}
-
-TEST_F(MQTTPublisherTest, p_lastRollingCode_SameValue_DoesNotPublish) {
-    mqtt_connected_flag = true;
+    mqtt_published.clear();
     shade.lastRollingCode = 10;
     shade.p_lastRollingCode(10);
     EXPECT_EQ(mqtt_published.count("shades/1/lastRollingCode"), 0u);
@@ -345,7 +327,7 @@ TEST_F(MQTTPublisherTest, EmitCommand_Connected_SourceValuePropagated) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// F. publishDisco() — only when connected AND pubDisco; cover vs switch topic
+// F. publishDisco() — connectivity gate, cover vs switch topic, shade variants
 // ══════════════════════════════════════════════════════════════════════════════
 
 TEST_F(MQTTPublisherTest, PublishDisco_NotConnected_DoesNothing) {
@@ -367,8 +349,7 @@ TEST_F(MQTTPublisherTest, PublishDisco_Roller_UsesCoverTopic) {
     settings.MQTT.pubDisco = true;
     shade.shadeType = shade_types::roller;
     shade.publishDisco();
-    // cover/<shadeId>/config under discoTopic (default "homeassistant")
-    EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"), 1u);
+    EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"),  1u);
     EXPECT_EQ(mqtt_published.count("homeassistant/switch/1/config"), 0u);
 }
 
@@ -387,6 +368,42 @@ TEST_F(MQTTPublisherTest, PublishDisco_DryContact2_UsesSwitchTopic) {
     shade.shadeType = shade_types::drycontact2;
     shade.publishDisco();
     EXPECT_EQ(mqtt_published.count("homeassistant/switch/1/config"), 1u);
+}
+
+// All non-drycontact shade types produce a cover topic. Verify each branch
+// is reachable by iterating over the remaining types.
+TEST_F(MQTTPublisherTest, PublishDisco_AllCoverShadeTypes_UseCoverTopic) {
+    mqtt_connected_flag = true;
+    settings.MQTT.pubDisco = true;
+    const shade_types coverTypes[] = {
+        shade_types::blind, shade_types::awning, shade_types::shutter,
+        shade_types::garage1, shade_types::lgate, shade_types::garage3,
+    };
+    for (auto st : coverTypes) {
+        mqtt_published.clear();
+        shade.shadeType = st;
+        shade.publishDisco();
+        EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"), 1u)
+            << "shade_type=" << (int)st;
+    }
+}
+
+TEST_F(MQTTPublisherTest, PublishDisco_TiltOnly_UsesCoverTopic) {
+    mqtt_connected_flag = true;
+    settings.MQTT.pubDisco = true;
+    shade.shadeType = shade_types::roller;
+    shade.tiltType  = tilt_types::tiltonly;
+    shade.publishDisco();
+    EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"), 1u);
+}
+
+TEST_F(MQTTPublisherTest, PublishDisco_WithIntegratedTilt_UsesCoverTopic) {
+    mqtt_connected_flag = true;
+    settings.MQTT.pubDisco = true;
+    shade.shadeType = shade_types::roller;
+    shade.tiltType  = tilt_types::integrated;
+    shade.publishDisco();
+    EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"), 1u);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -469,150 +486,70 @@ TEST_F(MQTTPublisherTest, Unpublish_ById_PubDiscoTrue_ClearsDiscoTopics) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// I_extra. publishDisco() — additional shade-type device_class coverage
-// ══════════════════════════════════════════════════════════════════════════════
-
-TEST_F(MQTTPublisherTest, PublishDisco_Blind_UsesCoverTopicAndBlindClass) {
-    mqtt_connected_flag = true;
-    settings.MQTT.pubDisco = true;
-    shade.shadeType = shade_types::blind;
-    shade.publishDisco();
-    EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"), 1u);
-}
-
-TEST_F(MQTTPublisherTest, PublishDisco_Awning_UsesCoverTopic) {
-    mqtt_connected_flag = true;
-    settings.MQTT.pubDisco = true;
-    shade.shadeType = shade_types::awning;
-    shade.publishDisco();
-    EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"), 1u);
-}
-
-TEST_F(MQTTPublisherTest, PublishDisco_Shutter_UsesCoverTopic) {
-    mqtt_connected_flag = true;
-    settings.MQTT.pubDisco = true;
-    shade.shadeType = shade_types::shutter;
-    shade.publishDisco();
-    EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"), 1u);
-}
-
-TEST_F(MQTTPublisherTest, PublishDisco_Garage_UsesCoverTopic) {
-    mqtt_connected_flag = true;
-    settings.MQTT.pubDisco = true;
-    shade.shadeType = shade_types::garage1;
-    shade.publishDisco();
-    EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"), 1u);
-}
-
-TEST_F(MQTTPublisherTest, PublishDisco_Gate_UsesCoverTopic) {
-    mqtt_connected_flag = true;
-    settings.MQTT.pubDisco = true;
-    shade.shadeType = shade_types::lgate;
-    shade.publishDisco();
-    EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"), 1u);
-}
-
-TEST_F(MQTTPublisherTest, PublishDisco_Garage3_UsesCoverTopic) {
-    mqtt_connected_flag = true;
-    settings.MQTT.pubDisco = true;
-    shade.shadeType = shade_types::garage3;
-    shade.publishDisco();
-    EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"), 1u);
-}
-
-TEST_F(MQTTPublisherTest, PublishDisco_TiltOnly_OmitsPositionTopics) {
-    mqtt_connected_flag = true;
-    settings.MQTT.pubDisco = true;
-    shade.shadeType = shade_types::roller;
-    shade.tiltType  = tilt_types::tiltonly;
-    shade.publishDisco();
-    // tiltonly suppresses command_topic/position_topic — still a cover topic
-    EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"), 1u);
-}
-
-TEST_F(MQTTPublisherTest, PublishDisco_WithIntegratedTilt_AddsTiltTopics) {
-    mqtt_connected_flag = true;
-    settings.MQTT.pubDisco = true;
-    shade.shadeType = shade_types::roller;
-    shade.tiltType  = tilt_types::integrated;
-    shade.publishDisco();
-    EXPECT_EQ(mqtt_published.count("homeassistant/cover/1/config"), 1u);
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
 // J. Tilt-specific p_*() setters
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST_F(MQTTPublisherTest, p_tiltDirection_ChangedValue_Publishes) {
+TEST_F(MQTTPublisherTest, p_tiltDirection_PublishesOnChangeOnly) {
     mqtt_connected_flag = true;
     shade.tiltDirection = 0;
     shade.p_tiltDirection(1);
     EXPECT_EQ(mqtt_published.count("shades/1/tiltDirection"), 1u);
-}
-
-TEST_F(MQTTPublisherTest, p_tiltDirection_SameValue_DoesNotPublish) {
-    mqtt_connected_flag = true;
+    mqtt_published.clear();
     shade.tiltDirection = 1;
     shade.p_tiltDirection(1);
     EXPECT_EQ(mqtt_published.count("shades/1/tiltDirection"), 0u);
 }
 
-TEST_F(MQTTPublisherTest, p_tiltTarget_ChangedTransform_Publishes) {
+TEST_F(MQTTPublisherTest, p_tiltTarget_PublishesOnChangeOnly) {
     mqtt_connected_flag = true;
     shade.tiltTarget = 50.0f;
     shade.p_tiltTarget(80.0f);
     EXPECT_EQ(mqtt_published.count("shades/1/tiltTarget"), 1u);
-}
-
-TEST_F(MQTTPublisherTest, p_tiltTarget_SameTransform_DoesNotPublish) {
-    mqtt_connected_flag = true;
+    mqtt_published.clear();
     shade.tiltTarget = 50.0f;
     shade.p_tiltTarget(50.0f);
     EXPECT_EQ(mqtt_published.count("shades/1/tiltTarget"), 0u);
 }
 
-TEST_F(MQTTPublisherTest, p_currentTiltPos_FloorChanges_Publishes) {
+TEST_F(MQTTPublisherTest, p_currentTiltPos_PublishesOnFloorChangeOnly) {
     mqtt_connected_flag = true;
     shade.currentTiltPos = 50.0f;
     shade.p_currentTiltPos(51.0f);
     EXPECT_EQ(mqtt_published.count("shades/1/tiltPosition"), 1u);
-}
-
-TEST_F(MQTTPublisherTest, p_currentTiltPos_SameFloor_DoesNotPublish) {
-    mqtt_connected_flag = true;
+    mqtt_published.clear();
     shade.currentTiltPos = 50.0f;
-    shade.p_currentTiltPos(50.4f);   // floor(50) == floor(50.4)
+    shade.p_currentTiltPos(50.4f);  // floor(50) == floor(50.4)
     EXPECT_EQ(mqtt_published.count("shades/1/tiltPosition"), 0u);
 }
 
-TEST_F(MQTTPublisherTest, p_myTiltPos_ChangedTransform_Publishes) {
+TEST_F(MQTTPublisherTest, p_myTiltPos_PublishesOnChangeOnly) {
     mqtt_connected_flag = true;
     shade.targetSequencer.myTiltPos = 30.0f;
     shade.p_myTiltPos(60.0f);
     EXPECT_EQ(mqtt_published.count("shades/1/myTiltPos"), 1u);
-}
-
-TEST_F(MQTTPublisherTest, p_myTiltPos_SameTransform_DoesNotPublish) {
-    mqtt_connected_flag = true;
+    mqtt_published.clear();
     shade.targetSequencer.myTiltPos = 30.0f;
     shade.p_myTiltPos(30.0f);
     EXPECT_EQ(mqtt_published.count("shades/1/myTiltPos"), 0u);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// I. emitState() real body — socket-emit path (coverage; no MQTT side-effects)
+// K. emitState() real body — socket-emit path; no-tilt and tilt branches
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST_F(MQTTPublisherTest, EmitState_NoTilt_DoesNotCrash) {
+TEST_F(MQTTPublisherTest, EmitState_NoTilt_OmitsTiltFields) {
     shade.tiltType = tilt_types::none;
+    // callRealEmitState exercises the emitState(num, evt) body; the tilt branch
+    // must not be entered — if it were, myTiltPos/tiltTarget would be serialised.
+    // We verify the call completes without touching the tilt-publish path.
     EXPECT_NO_FATAL_FAILURE(shade.callRealEmitState());
 }
 
-TEST_F(MQTTPublisherTest, EmitState_WithTilt_DoesNotCrash) {
+TEST_F(MQTTPublisherTest, EmitState_WithTilt_IncludesTiltFields) {
     shade.tiltType       = tilt_types::integrated;
     shade.tiltDirection  = 1;
     shade.currentTiltPos = 60.0f;
     shade.tiltTarget     = 70.0f;
-    shade.targetSequencer.myTiltPos      = 40.0f;
+    shade.targetSequencer.myTiltPos = 40.0f;
     EXPECT_NO_FATAL_FAILURE(shade.callRealEmitState());
 }

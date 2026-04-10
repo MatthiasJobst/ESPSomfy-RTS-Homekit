@@ -589,28 +589,7 @@ TEST_F(CommandProcessorTest, Favorite_Repeat_Ignored) {
 // MotionState flags — set/cleared by processFrame and move* methods
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST_F(CommandProcessorTest, ExternalFrame_ClearsSettingPos) {
-    shade.setSettingPos(true);
-    auto f = make_frame(somfy_commands::Up);
-    shade.processFrame(f, /*internal=*/false);
-    EXPECT_FALSE(shade.getSettingPos());
-}
-
-TEST_F(CommandProcessorTest, ExternalFrame_ClearsSettingTiltPos) {
-    shade.setSettingTiltPos(true);
-    auto f = make_frame(somfy_commands::Down);
-    shade.processFrame(f, /*internal=*/false);
-    EXPECT_FALSE(shade.getSettingTiltPos());
-}
-
-TEST_F(CommandProcessorTest, ExternalFrame_ClearsSettingMyPos) {
-    shade.setSettingMyPos(true);
-    auto f = make_frame(somfy_commands::My);
-    shade.processFrame(f, /*internal=*/false);
-    EXPECT_FALSE(shade.getSettingMyPos());
-}
-
-TEST_F(CommandProcessorTest, ExternalFrame_ClearsAllThreeFlagsAtOnce) {
+TEST_F(CommandProcessorTest, ExternalFrame_ClearsAllMotionStateFlags) {
     shade.setSettingPos(true);
     shade.setSettingTiltPos(true);
     shade.setSettingMyPos(true);
@@ -621,24 +600,14 @@ TEST_F(CommandProcessorTest, ExternalFrame_ClearsAllThreeFlagsAtOnce) {
     EXPECT_FALSE(shade.getSettingMyPos());
 }
 
-TEST_F(CommandProcessorTest, InternalFrame_PreservesSettingPos) {
+TEST_F(CommandProcessorTest, InternalFrame_PreservesAllMotionStateFlags) {
     shade.setSettingPos(true);
+    shade.setSettingTiltPos(true);
+    shade.setSettingMyPos(true);
     auto f = make_frame(somfy_commands::Up);
     shade.processFrame(f, /*internal=*/true);
     EXPECT_TRUE(shade.getSettingPos());
-}
-
-TEST_F(CommandProcessorTest, InternalFrame_PreservesSettingTiltPos) {
-    shade.setSettingTiltPos(true);
-    auto f = make_frame(somfy_commands::Down);
-    shade.processFrame(f, /*internal=*/true);
     EXPECT_TRUE(shade.getSettingTiltPos());
-}
-
-TEST_F(CommandProcessorTest, InternalFrame_PreservesSettingMyPos) {
-    shade.setSettingMyPos(true);
-    auto f = make_frame(somfy_commands::My);
-    shade.processFrame(f, /*internal=*/true);
     EXPECT_TRUE(shade.getSettingMyPos());
 }
 
@@ -728,28 +697,16 @@ TEST_F(CommandProcessorTest, SetMyPosition_WhileMoving_DoesNothing) {
 // MyUp / MyDown / UpDown / MyUpDown passthrough
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST_F(CommandProcessorTest, MyUp_EmitsCommand) {
-    auto f = make_frame(somfy_commands::MyUp);
-    EXPECT_CALL(shade, emitCommand(somfy_commands::MyUp, _, _, _));
-    shade.processFrame(f);
-}
-
-TEST_F(CommandProcessorTest, MyDown_EmitsCommand) {
-    auto f = make_frame(somfy_commands::MyDown);
-    EXPECT_CALL(shade, emitCommand(somfy_commands::MyDown, _, _, _));
-    shade.processFrame(f);
-}
-
-TEST_F(CommandProcessorTest, UpDown_EmitsCommand) {
-    auto f = make_frame(somfy_commands::UpDown);
-    EXPECT_CALL(shade, emitCommand(somfy_commands::UpDown, _, _, _));
-    shade.processFrame(f);
-}
-
-TEST_F(CommandProcessorTest, MyUpDown_EmitsCommand) {
-    auto f = make_frame(somfy_commands::MyUpDown);
-    EXPECT_CALL(shade, emitCommand(somfy_commands::MyUpDown, _, _, _));
-    shade.processFrame(f);
+TEST_F(CommandProcessorTest, Combo_Commands_EmitPassthrough) {
+    const somfy_commands cmds[] = {
+        somfy_commands::MyUp, somfy_commands::MyDown,
+        somfy_commands::UpDown, somfy_commands::MyUpDown,
+    };
+    for (auto cmd : cmds) {
+        auto f = make_frame(cmd);
+        EXPECT_CALL(shade, emitCommand(cmd, _, _, _));
+        shade.processFrame(f);
+    }
 }
 
 TEST_F(CommandProcessorTest, MyUp_DryContact_DoesNotEmit) {

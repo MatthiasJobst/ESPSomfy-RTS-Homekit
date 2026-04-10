@@ -42,59 +42,70 @@ TEST(SomfyFrameTest, SortAsc_Equal) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// B  translateSomfyCommand(String) — exact matches
+// B  translateSomfyCommand(String) — exact matches and abbreviation prefixes
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST(SomfyFrameTest, Translate_String_My)       { EXPECT_EQ(translateSomfyCommand(String("My")),       somfy_commands::My); }
-TEST(SomfyFrameTest, Translate_String_Up)       { EXPECT_EQ(translateSomfyCommand(String("Up")),       somfy_commands::Up); }
-TEST(SomfyFrameTest, Translate_String_MyUp)     { EXPECT_EQ(translateSomfyCommand(String("MyUp")),     somfy_commands::MyUp); }
-TEST(SomfyFrameTest, Translate_String_Down)     { EXPECT_EQ(translateSomfyCommand(String("Down")),     somfy_commands::Down); }
-TEST(SomfyFrameTest, Translate_String_MyDown)   { EXPECT_EQ(translateSomfyCommand(String("MyDown")),   somfy_commands::MyDown); }
-TEST(SomfyFrameTest, Translate_String_UpDown)   { EXPECT_EQ(translateSomfyCommand(String("UpDown")),   somfy_commands::UpDown); }
-TEST(SomfyFrameTest, Translate_String_MyUpDown) { EXPECT_EQ(translateSomfyCommand(String("MyUpDown")), somfy_commands::MyUpDown); }
-TEST(SomfyFrameTest, Translate_String_Prog)     { EXPECT_EQ(translateSomfyCommand(String("Prog")),     somfy_commands::Prog); }
-TEST(SomfyFrameTest, Translate_String_SunFlag)  { EXPECT_EQ(translateSomfyCommand(String("SunFlag")),  somfy_commands::SunFlag); }
-TEST(SomfyFrameTest, Translate_String_StepUp)   { EXPECT_EQ(translateSomfyCommand(String("StepUp")),   somfy_commands::StepUp); }
-TEST(SomfyFrameTest, Translate_String_StepDown) { EXPECT_EQ(translateSomfyCommand(String("StepDown")), somfy_commands::StepDown); }
-TEST(SomfyFrameTest, Translate_String_Flag)     { EXPECT_EQ(translateSomfyCommand(String("Flag")),     somfy_commands::Flag); }
-TEST(SomfyFrameTest, Translate_String_Sensor)   { EXPECT_EQ(translateSomfyCommand(String("Sensor")),   somfy_commands::Sensor); }
-TEST(SomfyFrameTest, Translate_String_Toggle)   { EXPECT_EQ(translateSomfyCommand(String("Toggle")),   somfy_commands::Toggle); }
-TEST(SomfyFrameTest, Translate_String_Favorite) { EXPECT_EQ(translateSomfyCommand(String("Favorite")), somfy_commands::Favorite); }
-TEST(SomfyFrameTest, Translate_String_Stop)     { EXPECT_EQ(translateSomfyCommand(String("Stop")),     somfy_commands::Stop); }
-TEST(SomfyFrameTest, Translate_String_CaseInsensitive) { EXPECT_EQ(translateSomfyCommand(String("UP")), somfy_commands::Up); }
+struct StringCmdCase { const char *input; somfy_commands expected; };
 
-// ── Abbreviation prefixes ─────────────────────────────────────────────────
+class TranslateStringTest : public ::testing::TestWithParam<StringCmdCase> {};
 
-TEST(SomfyFrameTest, Translate_Prefix_fav)  { EXPECT_EQ(translateSomfyCommand(String("fav")),  somfy_commands::Favorite); }
-TEST(SomfyFrameTest, Translate_Prefix_FAV)  { EXPECT_EQ(translateSomfyCommand(String("FAV")),  somfy_commands::Favorite); }
-TEST(SomfyFrameTest, Translate_Prefix_mud)  { EXPECT_EQ(translateSomfyCommand(String("mud")),  somfy_commands::MyUpDown); }
-TEST(SomfyFrameTest, Translate_Prefix_MUD)  { EXPECT_EQ(translateSomfyCommand(String("MUD")),  somfy_commands::MyUpDown); }
-TEST(SomfyFrameTest, Translate_Prefix_md)   { EXPECT_EQ(translateSomfyCommand(String("md")),   somfy_commands::MyDown); }
-TEST(SomfyFrameTest, Translate_Prefix_MD)   { EXPECT_EQ(translateSomfyCommand(String("MD")),   somfy_commands::MyDown); }
-TEST(SomfyFrameTest, Translate_Prefix_ud)   { EXPECT_EQ(translateSomfyCommand(String("ud")),   somfy_commands::UpDown); }
-TEST(SomfyFrameTest, Translate_Prefix_UD)   { EXPECT_EQ(translateSomfyCommand(String("UD")),   somfy_commands::UpDown); }
-TEST(SomfyFrameTest, Translate_Prefix_mu)   { EXPECT_EQ(translateSomfyCommand(String("mu")),   somfy_commands::MyUp); }
-TEST(SomfyFrameTest, Translate_Prefix_MU)   { EXPECT_EQ(translateSomfyCommand(String("MU")),   somfy_commands::MyUp); }
-TEST(SomfyFrameTest, Translate_Prefix_su)   { EXPECT_EQ(translateSomfyCommand(String("su")),   somfy_commands::StepUp); }
-TEST(SomfyFrameTest, Translate_Prefix_SU)   { EXPECT_EQ(translateSomfyCommand(String("SU")),   somfy_commands::StepUp); }
-TEST(SomfyFrameTest, Translate_Prefix_sd)   { EXPECT_EQ(translateSomfyCommand(String("sd")),   somfy_commands::StepDown); }
-TEST(SomfyFrameTest, Translate_Prefix_SD)   { EXPECT_EQ(translateSomfyCommand(String("SD")),   somfy_commands::StepDown); }
-TEST(SomfyFrameTest, Translate_Prefix_sen)  { EXPECT_EQ(translateSomfyCommand(String("sen")),  somfy_commands::Sensor); }
-TEST(SomfyFrameTest, Translate_Prefix_SEN)  { EXPECT_EQ(translateSomfyCommand(String("SEN")),  somfy_commands::Sensor); }
-TEST(SomfyFrameTest, Translate_Prefix_p)    { EXPECT_EQ(translateSomfyCommand(String("p")),    somfy_commands::Prog); }
-TEST(SomfyFrameTest, Translate_Prefix_P)    { EXPECT_EQ(translateSomfyCommand(String("P")),    somfy_commands::Prog); }
-TEST(SomfyFrameTest, Translate_Prefix_u)    { EXPECT_EQ(translateSomfyCommand(String("u")),    somfy_commands::Up); }
-TEST(SomfyFrameTest, Translate_Prefix_U)    { EXPECT_EQ(translateSomfyCommand(String("U")),    somfy_commands::Up); }
-TEST(SomfyFrameTest, Translate_Prefix_d)    { EXPECT_EQ(translateSomfyCommand(String("d")),    somfy_commands::Down); }
-TEST(SomfyFrameTest, Translate_Prefix_D)    { EXPECT_EQ(translateSomfyCommand(String("D")),    somfy_commands::Down); }
-TEST(SomfyFrameTest, Translate_Prefix_m)    { EXPECT_EQ(translateSomfyCommand(String("m")),    somfy_commands::My); }
-TEST(SomfyFrameTest, Translate_Prefix_M)    { EXPECT_EQ(translateSomfyCommand(String("M")),    somfy_commands::My); }
-TEST(SomfyFrameTest, Translate_Prefix_f)    { EXPECT_EQ(translateSomfyCommand(String("f")),    somfy_commands::Flag); }
-TEST(SomfyFrameTest, Translate_Prefix_F)    { EXPECT_EQ(translateSomfyCommand(String("F")),    somfy_commands::Flag); }
-TEST(SomfyFrameTest, Translate_Prefix_s)    { EXPECT_EQ(translateSomfyCommand(String("s")),    somfy_commands::SunFlag); }
-TEST(SomfyFrameTest, Translate_Prefix_S)    { EXPECT_EQ(translateSomfyCommand(String("S")),    somfy_commands::SunFlag); }
-TEST(SomfyFrameTest, Translate_Prefix_t)    { EXPECT_EQ(translateSomfyCommand(String("t")),    somfy_commands::Toggle); }
-TEST(SomfyFrameTest, Translate_Prefix_T)    { EXPECT_EQ(translateSomfyCommand(String("T")),    somfy_commands::Toggle); }
+TEST_P(TranslateStringTest, MapsCorrectly) {
+    auto p = GetParam();
+    EXPECT_EQ(translateSomfyCommand(String(p.input)), p.expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(ExactMatch, TranslateStringTest, ::testing::Values(
+    StringCmdCase{"My",       somfy_commands::My},
+    StringCmdCase{"Up",       somfy_commands::Up},
+    StringCmdCase{"MyUp",     somfy_commands::MyUp},
+    StringCmdCase{"Down",     somfy_commands::Down},
+    StringCmdCase{"MyDown",   somfy_commands::MyDown},
+    StringCmdCase{"UpDown",   somfy_commands::UpDown},
+    StringCmdCase{"MyUpDown", somfy_commands::MyUpDown},
+    StringCmdCase{"Prog",     somfy_commands::Prog},
+    StringCmdCase{"SunFlag",  somfy_commands::SunFlag},
+    StringCmdCase{"StepUp",   somfy_commands::StepUp},
+    StringCmdCase{"StepDown", somfy_commands::StepDown},
+    StringCmdCase{"Flag",     somfy_commands::Flag},
+    StringCmdCase{"Sensor",   somfy_commands::Sensor},
+    StringCmdCase{"Toggle",   somfy_commands::Toggle},
+    StringCmdCase{"Favorite", somfy_commands::Favorite},
+    StringCmdCase{"Stop",     somfy_commands::Stop},
+    StringCmdCase{"UP",       somfy_commands::Up}   // case-insensitive
+));
+
+INSTANTIATE_TEST_SUITE_P(Prefix, TranslateStringTest, ::testing::Values(
+    StringCmdCase{"fav", somfy_commands::Favorite},
+    StringCmdCase{"FAV", somfy_commands::Favorite},
+    StringCmdCase{"mud", somfy_commands::MyUpDown},
+    StringCmdCase{"MUD", somfy_commands::MyUpDown},
+    StringCmdCase{"md",  somfy_commands::MyDown},
+    StringCmdCase{"MD",  somfy_commands::MyDown},
+    StringCmdCase{"ud",  somfy_commands::UpDown},
+    StringCmdCase{"UD",  somfy_commands::UpDown},
+    StringCmdCase{"mu",  somfy_commands::MyUp},
+    StringCmdCase{"MU",  somfy_commands::MyUp},
+    StringCmdCase{"su",  somfy_commands::StepUp},
+    StringCmdCase{"SU",  somfy_commands::StepUp},
+    StringCmdCase{"sd",  somfy_commands::StepDown},
+    StringCmdCase{"SD",  somfy_commands::StepDown},
+    StringCmdCase{"sen", somfy_commands::Sensor},
+    StringCmdCase{"SEN", somfy_commands::Sensor},
+    StringCmdCase{"p",   somfy_commands::Prog},
+    StringCmdCase{"P",   somfy_commands::Prog},
+    StringCmdCase{"u",   somfy_commands::Up},
+    StringCmdCase{"U",   somfy_commands::Up},
+    StringCmdCase{"d",   somfy_commands::Down},
+    StringCmdCase{"D",   somfy_commands::Down},
+    StringCmdCase{"m",   somfy_commands::My},
+    StringCmdCase{"M",   somfy_commands::My},
+    StringCmdCase{"f",   somfy_commands::Flag},
+    StringCmdCase{"F",   somfy_commands::Flag},
+    StringCmdCase{"s",   somfy_commands::SunFlag},
+    StringCmdCase{"S",   somfy_commands::SunFlag},
+    StringCmdCase{"t",   somfy_commands::Toggle},
+    StringCmdCase{"T",   somfy_commands::Toggle}
+));
 
 // ── Single hex char → strtol ──────────────────────────────────────────────
 TEST(SomfyFrameTest, Translate_SingleHexChar) {
@@ -111,22 +122,34 @@ TEST(SomfyFrameTest, Translate_UnknownString_FallsBackToMy) {
 // C  translateSomfyCommand(somfy_commands) — enum → string
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST(SomfyFrameTest, Translate_Cmd_Up)       { EXPECT_EQ(translateSomfyCommand(somfy_commands::Up),       String("Up")); }
-TEST(SomfyFrameTest, Translate_Cmd_Down)     { EXPECT_EQ(translateSomfyCommand(somfy_commands::Down),     String("Down")); }
-TEST(SomfyFrameTest, Translate_Cmd_My)       { EXPECT_EQ(translateSomfyCommand(somfy_commands::My),       String("My")); }
-TEST(SomfyFrameTest, Translate_Cmd_MyUp)     { EXPECT_EQ(translateSomfyCommand(somfy_commands::MyUp),     String("My+Up")); }
-TEST(SomfyFrameTest, Translate_Cmd_UpDown)   { EXPECT_EQ(translateSomfyCommand(somfy_commands::UpDown),   String("Up+Down")); }
-TEST(SomfyFrameTest, Translate_Cmd_MyDown)   { EXPECT_EQ(translateSomfyCommand(somfy_commands::MyDown),   String("My+Down")); }
-TEST(SomfyFrameTest, Translate_Cmd_MyUpDown) { EXPECT_EQ(translateSomfyCommand(somfy_commands::MyUpDown), String("My+Up+Down")); }
-TEST(SomfyFrameTest, Translate_Cmd_Prog)     { EXPECT_EQ(translateSomfyCommand(somfy_commands::Prog),     String("Prog")); }
-TEST(SomfyFrameTest, Translate_Cmd_SunFlag)  { EXPECT_EQ(translateSomfyCommand(somfy_commands::SunFlag),  String("Sun Flag")); }
-TEST(SomfyFrameTest, Translate_Cmd_Flag)     { EXPECT_EQ(translateSomfyCommand(somfy_commands::Flag),     String("Flag")); }
-TEST(SomfyFrameTest, Translate_Cmd_StepUp)   { EXPECT_EQ(translateSomfyCommand(somfy_commands::StepUp),   String("Step Up")); }
-TEST(SomfyFrameTest, Translate_Cmd_StepDown) { EXPECT_EQ(translateSomfyCommand(somfy_commands::StepDown), String("Step Down")); }
-TEST(SomfyFrameTest, Translate_Cmd_Sensor)   { EXPECT_EQ(translateSomfyCommand(somfy_commands::Sensor),   String("Sensor")); }
-TEST(SomfyFrameTest, Translate_Cmd_Toggle)   { EXPECT_EQ(translateSomfyCommand(somfy_commands::Toggle),   String("Toggle")); }
-TEST(SomfyFrameTest, Translate_Cmd_Favorite) { EXPECT_EQ(translateSomfyCommand(somfy_commands::Favorite), String("Favorite")); }
-TEST(SomfyFrameTest, Translate_Cmd_Stop)     { EXPECT_EQ(translateSomfyCommand(somfy_commands::Stop),     String("Stop")); }
+struct CmdStringCase { somfy_commands cmd; const char *expected; };
+
+class TranslateCmdTest : public ::testing::TestWithParam<CmdStringCase> {};
+
+TEST_P(TranslateCmdTest, MapsCorrectly) {
+    auto p = GetParam();
+    EXPECT_EQ(translateSomfyCommand(p.cmd), String(p.expected));
+}
+
+INSTANTIATE_TEST_SUITE_P(AllCommands, TranslateCmdTest, ::testing::Values(
+    CmdStringCase{somfy_commands::Up,       "Up"},
+    CmdStringCase{somfy_commands::Down,     "Down"},
+    CmdStringCase{somfy_commands::My,       "My"},
+    CmdStringCase{somfy_commands::MyUp,     "My+Up"},
+    CmdStringCase{somfy_commands::UpDown,   "Up+Down"},
+    CmdStringCase{somfy_commands::MyDown,   "My+Down"},
+    CmdStringCase{somfy_commands::MyUpDown, "My+Up+Down"},
+    CmdStringCase{somfy_commands::Prog,     "Prog"},
+    CmdStringCase{somfy_commands::SunFlag,  "Sun Flag"},
+    CmdStringCase{somfy_commands::Flag,     "Flag"},
+    CmdStringCase{somfy_commands::StepUp,   "Step Up"},
+    CmdStringCase{somfy_commands::StepDown, "Step Down"},
+    CmdStringCase{somfy_commands::Sensor,   "Sensor"},
+    CmdStringCase{somfy_commands::Toggle,   "Toggle"},
+    CmdStringCase{somfy_commands::Favorite, "Favorite"},
+    CmdStringCase{somfy_commands::Stop,     "Stop"}
+));
+
 TEST(SomfyFrameTest, Translate_Cmd_Unknown) {
     EXPECT_TRUE(translateSomfyCommand(static_cast<somfy_commands>(0x00)).startsWith("Unknown"));
 }
@@ -350,139 +373,41 @@ TEST(SomfyFrameTest, Decode_RTWProto_EncKey134_ProtoRTW) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// E3  decodeFrame — 80-bit extensions
+// E3  decodeFrame — 80-bit roundtrips
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST(SomfyFrameTest, EncoDecode_RTS80_Toggle_Roundtrip) {
-    somfy_frame_t tx;
-    tx.cmd           = somfy_commands::Toggle;
-    tx.remoteAddress = 0x123456;
-    tx.rollingCode   = 5;
-    tx.encKey        = 0xA7;
-    tx.bitLength     = 80;
-    tx.proto         = radio_proto::RTS;
-    tx.repeats       = 0;
-    byte encoded[10] = {};
-    tx.encodeFrame(encoded);
-    somfy_frame_t rx;
-    rx.bitLength = 80;
-    rx.decodeFrame(encoded);
-    EXPECT_TRUE(rx.valid);
-    EXPECT_EQ(rx.cmd, somfy_commands::Toggle);
-}
-
-TEST(SomfyFrameTest, EncoDecode_RTS80_Favorite_Roundtrip) {
-    somfy_frame_t tx;
-    tx.cmd           = somfy_commands::Favorite;
-    tx.remoteAddress = 0x123456;
-    tx.rollingCode   = 5;
-    tx.encKey        = 0xA7;
-    tx.bitLength     = 80;
-    tx.proto         = radio_proto::RTS;
-    tx.repeats       = 0;
-    byte encoded[10] = {};
-    tx.encodeFrame(encoded);
-    somfy_frame_t rx;
-    rx.bitLength = 80;
-    rx.decodeFrame(encoded);
-    EXPECT_TRUE(rx.valid);
-    EXPECT_EQ(rx.cmd, somfy_commands::Favorite);
-}
-
-TEST(SomfyFrameTest, EncoDecode_RTS80_Stop_Roundtrip) {
-    somfy_frame_t tx;
-    tx.cmd           = somfy_commands::Stop;
-    tx.remoteAddress = 0x123456;
-    tx.rollingCode   = 5;
-    tx.encKey        = 0xA7;
-    tx.bitLength     = 80;
-    tx.proto         = radio_proto::RTS;
-    tx.repeats       = 0;
-    byte encoded[10] = {};
-    tx.encodeFrame(encoded);
-    somfy_frame_t rx;
-    rx.bitLength = 80;
-    rx.decodeFrame(encoded);
-    EXPECT_TRUE(rx.valid);
-    EXPECT_EQ(rx.cmd, somfy_commands::Stop);
-}
-
-TEST(SomfyFrameTest, EncoDecode_RTS80_StepUp_Roundtrip) {
-    somfy_frame_t tx;
-    tx.cmd           = somfy_commands::StepUp;
-    tx.remoteAddress = 0x123456;
-    tx.rollingCode   = 5;
-    tx.encKey        = 0xA7;
-    tx.bitLength     = 80;
-    tx.proto         = radio_proto::RTS;
-    tx.repeats       = 0;
-    tx.stepSize      = 3;
-    byte encoded[10] = {};
-    tx.encodeFrame(encoded);
-    somfy_frame_t rx;
-    rx.bitLength = 80;
-    rx.decodeFrame(encoded);
-    EXPECT_TRUE(rx.valid);
-    EXPECT_EQ(rx.cmd,      somfy_commands::StepUp);
-    EXPECT_EQ(rx.stepSize, 3u);
-}
-
-TEST(SomfyFrameTest, EncoDecode_RTS80_StepDown_Roundtrip) {
-    somfy_frame_t tx;
-    tx.cmd           = somfy_commands::StepDown;
-    tx.remoteAddress = 0x123456;
-    tx.rollingCode   = 5;
-    tx.encKey        = 0xA7;
-    tx.bitLength     = 80;
-    tx.proto         = radio_proto::RTS;
-    tx.repeats       = 0;
-    tx.stepSize      = 5;
-    byte encoded[10] = {};
-    tx.encodeFrame(encoded);
-    somfy_frame_t rx;
-    rx.bitLength = 80;
-    rx.decodeFrame(encoded);
-    EXPECT_TRUE(rx.valid);
-    EXPECT_EQ(rx.cmd, somfy_commands::StepDown);
-}
-
-TEST(SomfyFrameTest, EncoDecode_RTS80_Up_Roundtrip) {
-    somfy_frame_t tx;
-    tx.cmd = somfy_commands::Up; tx.remoteAddress = 0x123456;
-    tx.rollingCode = 5; tx.encKey = 0xA7; tx.bitLength = 80;
-    tx.proto = radio_proto::RTS; tx.repeats = 0;
-    byte encoded[10] = {};
-    tx.encodeFrame(encoded);
-    somfy_frame_t rx; rx.bitLength = 80;
-    rx.decodeFrame(encoded);
-    EXPECT_TRUE(rx.valid);
-    EXPECT_EQ(rx.cmd, somfy_commands::Up);
-}
-
-TEST(SomfyFrameTest, EncoDecode_RTS80_Down_Roundtrip) {
-    somfy_frame_t tx;
-    tx.cmd = somfy_commands::Down; tx.remoteAddress = 0x123456;
-    tx.rollingCode = 5; tx.encKey = 0xA7; tx.bitLength = 80;
-    tx.proto = radio_proto::RTS; tx.repeats = 0;
-    byte encoded[10] = {};
-    tx.encodeFrame(encoded);
-    somfy_frame_t rx; rx.bitLength = 80;
-    rx.decodeFrame(encoded);
-    EXPECT_TRUE(rx.valid);
-    EXPECT_EQ(rx.cmd, somfy_commands::Down);
-}
-
-TEST(SomfyFrameTest, EncoDecode_RTS80_My_Roundtrip) {
-    somfy_frame_t tx;
-    tx.cmd = somfy_commands::My; tx.remoteAddress = 0x123456;
-    tx.rollingCode = 5; tx.encKey = 0xA7; tx.bitLength = 80;
-    tx.proto = radio_proto::RTS; tx.repeats = 0;
-    byte encoded[10] = {};
-    tx.encodeFrame(encoded);
-    somfy_frame_t rx; rx.bitLength = 80;
-    rx.decodeFrame(encoded);
-    EXPECT_TRUE(rx.valid);
-    EXPECT_EQ(rx.cmd, somfy_commands::My);
+TEST(SomfyFrameTest, EncoDecode_RTS80_AllCommands) {
+    struct Case { somfy_commands cmd; uint8_t stepSize; };
+    const Case cases[] = {
+        {somfy_commands::Toggle,   0},
+        {somfy_commands::Favorite, 0},
+        {somfy_commands::Stop,     0},
+        {somfy_commands::StepUp,   3},
+        {somfy_commands::StepDown, 5},
+        {somfy_commands::Up,       0},
+        {somfy_commands::Down,     0},
+        {somfy_commands::My,       0},
+    };
+    for (auto &c : cases) {
+        somfy_frame_t tx;
+        tx.cmd           = c.cmd;
+        tx.remoteAddress = 0x123456;
+        tx.rollingCode   = 5;
+        tx.encKey        = 0xA7;
+        tx.bitLength     = 80;
+        tx.proto         = radio_proto::RTS;
+        tx.repeats       = 0;
+        tx.stepSize      = c.stepSize;
+        byte encoded[10] = {};
+        tx.encodeFrame(encoded);
+        somfy_frame_t rx;
+        rx.bitLength = 80;
+        rx.decodeFrame(encoded);
+        EXPECT_TRUE(rx.valid)        << "cmd=" << (int)c.cmd;
+        EXPECT_EQ(rx.cmd, c.cmd)     << "cmd=" << (int)c.cmd;
+        if (c.stepSize)
+            EXPECT_EQ(rx.stepSize, c.stepSize) << "cmd=" << (int)c.cmd;
+    }
 }
 
 TEST(SomfyFrameTest, Decode_RTS80_BadParity_Invalid) {
