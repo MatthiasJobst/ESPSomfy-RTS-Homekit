@@ -3,8 +3,24 @@
 // Pure data + logic — no MQTT, no emitState. Callers handle side effects.
 #pragma once
 #include "SomfyFrame.h"
+#include "SomfyFlag.h"
+
+#define SECS_TO_MILLIS(x) ((x) * 1000)
+#define MINS_TO_MILLIS(x) SECS_TO_MILLIS((x) * 60)
+
+#define SOMFY_SUN_TIMEOUT MINS_TO_MILLIS(static_cast<uint64_t>(2))
+#define SOMFY_NO_SUN_TIMEOUT MINS_TO_MILLIS(static_cast<uint64_t>(20))
+
+#define SOMFY_WIND_TIMEOUT SECS_TO_MILLIS(static_cast<uint64_t>(2))
+#define SOMFY_NO_WIND_TIMEOUT MINS_TO_MILLIS(static_cast<uint64_t>(12))
+#define SOMFY_NO_WIND_REMOTE_TIMEOUT SECS_TO_MILLIS(static_cast<uint64_t>(30))
 
 class SomfyFlagManager {
+protected:
+    bool isSunDone(uint64_t curTime);
+    bool isNoWindDone(uint64_t curTime);
+    bool isNoSunDone(uint64_t curTime);
+    bool isWindDone(uint64_t curTime);
 public:
     // Timer/debounce state only — the flags bitfield lives in SomfyRemote::flags.
     uint64_t sunStart    = 0;
@@ -31,5 +47,5 @@ public:
         bool setNoSunTarget = false; // p_target → 0  (+ tiltTarget if tiltonly)
         bool setWindTarget  = false; // p_target → 0  (+ tiltTarget if tiltonly)
     };
-    TimerTick tickTimers(uint8_t flags, uint64_t curTime, uint8_t shadeId = 255);
+    TimerTick tickTimers(SomfyFlag flags, uint64_t curTime, uint8_t shadeId = 255);
 };

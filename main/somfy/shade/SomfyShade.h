@@ -130,7 +130,7 @@ class SomfyShade : public SomfyRemote {
     float p_tiltTarget(float target);
     float p_myPos(float pos);
     float p_myTiltPos(float pos);
-    bool p_flag(somfy_flags_t flag, bool val);
+    bool p_demoMode(bool val);
     bool p_sunFlag(bool val);
     bool p_sunny(bool val);
     bool p_windy(bool val);

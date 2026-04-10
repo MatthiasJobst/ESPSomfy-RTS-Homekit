@@ -3,36 +3,44 @@
 
 static const char *TAG = "SomfyFlagManager";
 
-SomfyFlagManager::TimerTick SomfyFlagManager::tickTimers(uint8_t flags, uint64_t curTime, uint8_t shadeId) {
-    TimerTick result;
-    const bool isSunny = flags & static_cast<uint8_t>(somfy_flags_t::Sunny);
-    const bool isWindy = flags & static_cast<uint8_t>(somfy_flags_t::Windy);
-    const bool sunFlag = flags & static_cast<uint8_t>(somfy_flags_t::SunFlag);
+bool SomfyFlagManager::isSunDone(uint64_t curTime) {
+    return this->sunDone || (this->sunStart > 0 && (curTime - this->sunStart) >= SOMFY_SUN_TIMEOUT);
+}
+bool SomfyFlagManager::isNoWindDone(uint64_t curTime) {
+    return !this->noWindDone && (this->noWindStart > 0)
+                    && (curTime - this->noWindStart) >= SOMFY_NO_WIND_TIMEOUT;
+}
+bool SomfyFlagManager::isNoSunDone(uint64_t curTime) {
+    return !this->noSunDone && (this->noSunStart > 0)
+                && (curTime - this->noSunStart) >= SOMFY_NO_SUN_TIMEOUT;
+}
+bool SomfyFlagManager::isWindDone(uint64_t curTime) {
+    return this->windDone || (this->windStart > 0 && (curTime - this->windStart) >= SOMFY_WIND_TIMEOUT);
+}
 
-    if (sunFlag) {
-        if (isSunny && !isWindy) {
-            if (this->noWindDone && !this->sunDone && this->sunStart
-                    && (curTime - this->sunStart) >= SOMFY_SUN_TIMEOUT) {
+SomfyFlagManager::TimerTick SomfyFlagManager::tickTimers(SomfyFlag flags, uint64_t curTime, uint8_t shadeId) {
+    TimerTick result;
+
+    if (flags.hasSunFlag()) {
+        if (flags.isSunny() && !flags.isWindy()) {
+            if (isSunDone(curTime)) {
                 this->sunDone = true;
                 result.setSunTarget = true;
                 ESP_LOGI(TAG, "[%u] Sun -> done", shadeId);
             }
-            if (!this->noWindDone && this->noWindStart
-                    && (curTime - this->noWindStart) >= SOMFY_NO_WIND_TIMEOUT) {
+            if (isNoWindDone(curTime)) {
                 this->noWindDone = true;
                 result.setSunTarget = true;
                 ESP_LOGI(TAG, "[%u] No Wind -> done", shadeId);
             }
         }
-        if (!isSunny && !this->noSunDone && this->noSunStart
-                && (curTime - this->noSunStart) >= SOMFY_NO_SUN_TIMEOUT) {
+        if (!flags.isSunny() && isNoSunDone(curTime)) {
             this->noSunDone = true;
             result.setNoSunTarget = true;
             ESP_LOGI(TAG, "[%u] No Sun -> done", shadeId);
         }
     }
-    if (isWindy && !this->windDone && this->windStart
-            && (curTime - this->windStart) >= SOMFY_WIND_TIMEOUT) {
+    if (flags.isWindy()  && isWindDone(curTime)) {
         this->windDone = true;
         result.setWindTarget = true;
         ESP_LOGI(TAG, "[%u] Wind -> done", shadeId);

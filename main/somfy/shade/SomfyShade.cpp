@@ -132,29 +132,26 @@ uint16_t SomfyShade::p_lastRollingCode(uint16_t code) {
   return old;
 }
 
-bool SomfyShade::p_flag(somfy_flags_t flag, bool val) {
-  bool old = !!(this->flags & static_cast<uint8_t>(flag));
-  if(val)
-    this->flags |= static_cast<uint8_t>(flag);
-  else
-    this->flags &= ~(static_cast<uint8_t>(flag));
+bool SomfyShade::p_demoMode( bool val) {
+  bool old = this->flags.setDemoFlagReturnOld( val);
+  if(old != val) this->publish("demoMode", static_cast<uint8_t>(val));
   return old;
 }
 
 bool SomfyShade::p_sunFlag(bool val) {
-  bool old = this->p_flag(somfy_flags_t::SunFlag, val);
+  bool old = this->flags.setSunFlagReturnOld(val);
   if(old != val) this->publish("sunFlag", static_cast<uint8_t>(val));
   return old;
 }
 
 bool SomfyShade::p_windy(bool val) {
-  bool old = this->p_flag(somfy_flags_t::Windy, val);
+  bool old = this->flags.setWindyReturnOld(val);
   if(old != val) this->publish("windy", static_cast<uint8_t>(val));
   return old;
 }
 
 bool SomfyShade::p_sunny(bool val) {
-  bool old = this->p_flag(somfy_flags_t::Sunny, val);
+  bool old = this->flags.setSunnyReturnOld(val);
   if(old != val) this->publish("sunny", static_cast<uint8_t>(val));
   return old;
 }

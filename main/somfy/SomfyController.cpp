@@ -59,9 +59,9 @@ void SomfyShadeController::updateGroupFlags() {
   for(uint8_t i = 0; i < SOMFY_MAX_GROUPS; i++) {
     SomfyGroup *group = &this->groups[i];
     if(group && group->getGroupId() != 255) {
-      uint8_t flags = group->flags;
+      SomfyFlag oldFlags = group->flags;
       group->updateFlags();
-      if(flags != group->flags)
+      if(oldFlags != group->flags)
         group->emitState();
     }
   }

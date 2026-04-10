@@ -126,16 +126,16 @@ void SomfyCommandProcessor::processWaitingFrame() {
 }
 
 void SomfyCommandProcessor::processSensorCommand(somfy_frame_t &frame, uint64_t curTime) {
-  const bool wasSunny = !!(shade->flags & static_cast<uint8_t>(somfy_flags_t::Sunny));
-  const bool wasWindy = !!(shade->flags & static_cast<uint8_t>(somfy_flags_t::Windy));
+  const bool wasSunny = shade->flags.isSunny();
+  const bool wasWindy = shade->flags.isWindy();
   const uint16_t status = frame.rollingCode << 4;
-  shade->p_sunny(status & static_cast<uint8_t>(somfy_flags_t::Sunny));
-  shade->p_windy(status & static_cast<uint8_t>(somfy_flags_t::Windy));
-  shade->p_flag(somfy_flags_t::DemoMode,
-      !!(frame.rollingCode & static_cast<uint8_t>(somfy_flags_t::DemoMode)));
+  shade->p_sunny(SomfyFlag::isSunny(status));
+  shade->p_windy(SomfyFlag::isWindy(status));
+  shade->p_demoMode(
+      SomfyFlag::isDemoMode(status));
   shade->flagManager.updateTimers(wasSunny, wasWindy,
-      !!(shade->flags & static_cast<uint8_t>(somfy_flags_t::Sunny)),
-      !!(shade->flags & static_cast<uint8_t>(somfy_flags_t::Windy)),
+      shade->flags.isSunny(),
+      shade->flags.isWindy(),
       curTime, shade->shadeId);
   shade->emitState();
   somfy.updateGroupFlags();
@@ -151,8 +151,8 @@ void SomfyCommandProcessor::processFlagCommand(bool internal, somfy_frame_t &fra
 
 void SomfyCommandProcessor::processSunFlagCommand(bool internal, somfy_frame_t &frame) {
   shade->p_sunFlag(true);
-  if(!(shade->flags & static_cast<uint8_t>(somfy_flags_t::Windy))) {
-    const bool isSunny = shade->flags & static_cast<uint8_t>(somfy_flags_t::Sunny);
+  if(!(shade->flags.isWindy())) {
+    const bool isSunny = shade->flags.isSunny();
     if(isSunny && shade->flagManager.sunDone) {
       if(shade->tiltType == tilt_types::tiltonly)
         shade->p_tiltTarget(shade->getMyTiltPos() >= 0 ? shade->getMyTiltPos() : 100.0f);
@@ -523,9 +523,9 @@ void SomfyCommandProcessor::processInternalCommand(somfy_commands cmd, uint8_t r
     case somfy_commands::SunFlag:
       if(shade->hasSunSensor()) {
         shade->p_sunFlag(true);
-        if (!(shade->flags & static_cast<uint8_t>(somfy_flags_t::Windy)))
+        if (!(shade->flags.isWindy()))
         {
-          const bool isSunny = shade->flags & static_cast<uint8_t>(somfy_flags_t::Sunny);
+          const bool isSunny = shade->flags.isSunny();
           if (isSunny && shade->flagManager.sunDone)
             shade->p_target(shade->getMyPos() >= 0 ? shade->getMyPos() : 100.0f);
           else if (!isSunny && shade->flagManager.noSunDone)

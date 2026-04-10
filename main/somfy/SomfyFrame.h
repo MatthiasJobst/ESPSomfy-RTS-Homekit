@@ -15,17 +15,6 @@
 #define SOMFY_MAX_REPEATERS 7
 #define TX_QUEUE_DELAY 100
 
-#define SECS_TO_MILLIS(x) ((x) * 1000)
-#define MINS_TO_MILLIS(x) SECS_TO_MILLIS((x) * 60)
-
-#define SOMFY_SUN_TIMEOUT MINS_TO_MILLIS(2)
-#define SOMFY_NO_SUN_TIMEOUT MINS_TO_MILLIS(20)
-
-#define SOMFY_WIND_TIMEOUT SECS_TO_MILLIS(2)
-#define SOMFY_NO_WIND_TIMEOUT MINS_TO_MILLIS(12)
-#define SOMFY_NO_WIND_REMOTE_TIMEOUT SECS_TO_MILLIS(30)
-
-
 enum class radio_proto : byte { // Ordinal byte 0-255
   RTS = 0x00,
   RTW = 0x01,
@@ -158,16 +147,6 @@ struct somfy_tx_queue_t {
   void push(uint8_t hwsync, byte *payload, uint8_t bit_length);
 };
 
-enum class somfy_flags_t : byte {
-    SunFlag = 0x01,
-    SunSensor = 0x02,
-    DemoMode = 0x04,
-    Light = 0x08,
-    Windy = 0x10,
-    Sunny = 0x20,
-    Lighted = 0x40,
-    SimMy = 0x80
-};
 enum class gpio_flags_t : byte {
   LowLevelTrigger = 0x01
 };

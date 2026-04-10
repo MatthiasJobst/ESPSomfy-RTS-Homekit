@@ -166,7 +166,7 @@ int8_t SomfyJSONSerializer::fromJSON(JsonObject &obj) {
         shade->getLinkedRemote(j).setRemoteAddress(linkedAddresses[j]);
       }
     }
-    if(obj.containsKey("flags")) shade->flags = obj["flags"];
+    if(obj.containsKey("flags")) shade->flags.setFlags(obj["flags"]);
     if(shade->proto == radio_proto::GP_Remote || shade->proto == radio_proto::GP_Relay) {
       if(obj.containsKey("gpioUp")) shade->gpioControl.gpioUp = obj["gpioUp"];
       if(obj.containsKey("gpioDown")) shade->gpioControl.gpioDown = obj["gpioDown"];
@@ -192,7 +192,7 @@ void SomfyJSONSerializer::toJSONRef(JsonResponse &json) {
   json.addElem("flipPosition", shade->flipCommands);
   json.addElem("bitLength", shade->bitLength);
   json.addElem("proto", static_cast<uint8_t>(shade->proto));
-  json.addElem("flags", shade->flags);
+  json.addElem("flags", shade->flags.getFlags());
   json.addElem("sunSensor", shade->hasSunSensor());
   json.addElem("hasLight", shade->hasLight());
   json.addElem("repeats", shade->repeats);
@@ -221,7 +221,7 @@ void SomfyJSONSerializer::toJSON(JsonResponse &json) {
   json.addElem("shadeType", static_cast<uint8_t>(shade->shadeType));
   json.addElem("bitLength", shade->bitLength);
   json.addElem("proto", static_cast<uint8_t>(shade->proto));
-  json.addElem("flags", shade->flags);
+  json.addElem("flags", shade->flags.getFlags());
   json.addElem("flipCommands", shade->flipCommands);
   json.addElem("flipPosition", shade->getFlipPosition());
   json.addElem("inGroup", shade->isInGroup());
