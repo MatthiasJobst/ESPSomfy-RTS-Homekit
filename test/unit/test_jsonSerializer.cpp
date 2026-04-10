@@ -107,70 +107,17 @@ TEST_F(JsonSerializerTest, Validate_ShadeType_Uint8_AppliedToThis) {
     EXPECT_EQ(shade.shadeType, shade_types::blind);
 }
 
-TEST_F(JsonSerializerTest, Validate_ShadeType_Roller_String) {
-    JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
-    obj["shadeType"] = "roller";
-    EXPECT_EQ(shade.validateJSON(obj), 0);
-}
-
-TEST_F(JsonSerializerTest, Validate_ShadeType_LDrapery_String) {
-    JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
-    obj["shadeType"] = "ldrapery";
-    EXPECT_EQ(shade.validateJSON(obj), 0);
-}
-
-TEST_F(JsonSerializerTest, Validate_ShadeType_RDrapery_String) {
-    JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
-    obj["shadeType"] = "rdrapery";
-    EXPECT_EQ(shade.validateJSON(obj), 0);
-}
-
-TEST_F(JsonSerializerTest, Validate_ShadeType_CDrapery_String) {
-    JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
-    obj["shadeType"] = "cdrapery";
-    EXPECT_EQ(shade.validateJSON(obj), 0);
-}
-
-TEST_F(JsonSerializerTest, Validate_ShadeType_Garage1_String) {
-    JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
-    obj["shadeType"] = "garage1";
-    EXPECT_EQ(shade.validateJSON(obj), 0);
-}
-
-TEST_F(JsonSerializerTest, Validate_ShadeType_Garage3_String) {
-    JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
-    obj["shadeType"] = "garage3";
-    EXPECT_EQ(shade.validateJSON(obj), 0);
-}
-
-TEST_F(JsonSerializerTest, Validate_ShadeType_Blind_String) {
-    JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
-    obj["shadeType"] = "blind";
-    EXPECT_EQ(shade.validateJSON(obj), 0);
-}
-
-TEST_F(JsonSerializerTest, Validate_ShadeType_Awning_String) {
-    JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
-    obj["shadeType"] = "awning";
-    EXPECT_EQ(shade.validateJSON(obj), 0);
-}
-
-TEST_F(JsonSerializerTest, Validate_ShadeType_Shutter_String) {
-    JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
-    obj["shadeType"] = "shutter";
-    EXPECT_EQ(shade.validateJSON(obj), 0);
-}
-
-TEST_F(JsonSerializerTest, Validate_ShadeType_DryContact2_String) {
-    JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
-    obj["shadeType"] = "drycontact2";
-    EXPECT_EQ(shade.validateJSON(obj), 0);
-}
-
-TEST_F(JsonSerializerTest, Validate_ShadeType_DryContact_String) {
-    JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
-    obj["shadeType"] = "drycontact";
-    EXPECT_EQ(shade.validateJSON(obj), 0);
+TEST_F(JsonSerializerTest, Validate_ShadeType_AllStrings) {
+    const char *types[] = {
+        "roller", "ldrapery", "rdrapery", "cdrapery",
+        "garage1", "garage3", "blind", "awning",
+        "shutter", "drycontact2", "drycontact"
+    };
+    for (const char *s : types) {
+        JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
+        obj["shadeType"] = s;
+        EXPECT_EQ(shade.validateJSON(obj), 0) << "shadeType: " << s;
+    }
 }
 
 // Proto key present but shade proto is RTS — pin check block is skipped.
@@ -413,32 +360,19 @@ TEST_F(JsonSerializerTest, FromJSON_FlipAndRepeats_Applied) {
 }
 
 // tiltType string: none / tiltmotor / integ (→ integrated) / tiltonly.
-TEST_F(JsonSerializerTest, FromJSON_TiltType_None_String) {
-    JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
-    obj["tiltType"] = "none";
-    shade.fromJSON(obj);
-    EXPECT_EQ(shade.tiltType, tilt_types::none);
-}
-
-TEST_F(JsonSerializerTest, FromJSON_TiltType_TiltMotor_String) {
-    JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
-    obj["tiltType"] = "tiltmotor";
-    shade.fromJSON(obj);
-    EXPECT_EQ(shade.tiltType, tilt_types::tiltmotor);
-}
-
-TEST_F(JsonSerializerTest, FromJSON_TiltType_Integrated_String) {
-    JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
-    obj["tiltType"] = "integ";
-    shade.fromJSON(obj);
-    EXPECT_EQ(shade.tiltType, tilt_types::integrated);
-}
-
-TEST_F(JsonSerializerTest, FromJSON_TiltType_TiltOnly_String) {
-    JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
-    obj["tiltType"] = "tiltonly";
-    shade.fromJSON(obj);
-    EXPECT_EQ(shade.tiltType, tilt_types::tiltonly);
+TEST_F(JsonSerializerTest, FromJSON_TiltType_AllStrings) {
+    const struct { const char *s; tilt_types t; } cases[] = {
+        { "none",      tilt_types::none       },
+        { "tiltmotor", tilt_types::tiltmotor  },
+        { "integ",     tilt_types::integrated },
+        { "tiltonly",  tilt_types::tiltonly   },
+    };
+    for (auto &c : cases) {
+        JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
+        obj["tiltType"] = c.s;
+        shade.fromJSON(obj);
+        EXPECT_EQ(shade.tiltType, c.t) << "tiltType string: " << c.s;
+    }
 }
 
 TEST_F(JsonSerializerTest, FromJSON_TiltType_Uint8_Applied) {
