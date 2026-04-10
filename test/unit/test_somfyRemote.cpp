@@ -27,7 +27,7 @@ protected:
         remote.repeats      = 1;
         remote.flipCommands = false;
         remote.proto        = radio_proto::RTS;
-        remote.flags        = 0;
+        remote.flags        = SomfyFlag();
         nvs_stub_use_nvs    = false;
         nvs_stub_reset_all();
     }

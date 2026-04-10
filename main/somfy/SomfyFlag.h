@@ -42,23 +42,23 @@ class SomfyFlag {
       return *this;
     }
     bool hasSunFlag() const { return (this->flags & static_cast<byte>(somfy_flags_t::SunFlag)) > 0; };
-    void setSunFlag(bool bSunFlag) { bSunFlag ? this->flags |= static_cast<byte>(somfy_flags_t::SunFlag) : this->flags &= ~(static_cast<byte>(somfy_flags_t::SunFlag)); };
-    bool setSunFlagReturnOld(bool val) { return setFlagReturnOld(somfy_flags_t::SunFlag, val); }
+    void setSunFlag(bool bSunFlag) { setFlag(somfy_flags_t::SunFlag, bSunFlag); };
+    bool setSunFlagReturnOld(bool bSunFlag) { return setFlagReturnOld(somfy_flags_t::SunFlag, bSunFlag); }
     bool hasSunSensor() const { return (this->flags & static_cast<byte>(somfy_flags_t::SunSensor)) > 0; };
-    void setSunSensor(bool bSunSensor) { bSunSensor ? this->flags |= static_cast<byte>(somfy_flags_t::SunSensor) : this->flags &= ~(static_cast<byte>(somfy_flags_t::SunSensor)); };
+    void setSunSensor(bool bSunSensor) { setFlag(somfy_flags_t::SunSensor, bSunSensor); };
     bool isDemoMode() const { return (this->flags & static_cast<byte>(somfy_flags_t::DemoMode)) > 0; };
-    void setDemoMode(bool bDemoMode) { bDemoMode ? this->flags |= static_cast<byte>(somfy_flags_t::DemoMode) : this->flags &= ~(static_cast<byte>(somfy_flags_t::DemoMode)); };
-    bool setDemoFlagReturnOld(bool val) { return setFlagReturnOld(somfy_flags_t::DemoMode, val); }
+    void setDemoMode(bool bDemoMode) { setFlag(somfy_flags_t::DemoMode, bDemoMode); };
+    bool setDemoFlagReturnOld(bool bDemoMode) { return setFlagReturnOld(somfy_flags_t::DemoMode, bDemoMode); }
     bool isSunny() const { return (this->flags & static_cast<byte>(somfy_flags_t::Sunny)) > 0; };
-    void setSunny(bool bSunny) { bSunny ? this->flags |= static_cast<byte>(somfy_flags_t::Sunny) : this->flags &= ~(static_cast<byte>(somfy_flags_t::Sunny)); };
-    bool setSunnyReturnOld(bool val) { return setFlagReturnOld(somfy_flags_t::Sunny, val); }
+    void setSunny(bool bSunny) { setFlag(somfy_flags_t::Sunny, bSunny); };
+    bool setSunnyReturnOld(bool bSunny) { return setFlagReturnOld(somfy_flags_t::Sunny, bSunny); }
     bool isWindy() const { return (this->flags & static_cast<byte>(somfy_flags_t::Windy)) > 0; };
-    void setWindy(bool bWindy) { bWindy ? this->flags |= static_cast<byte>(somfy_flags_t::Windy) : this->flags &= ~(static_cast<byte>(somfy_flags_t::Windy)); };
-    bool setWindyReturnOld(bool val) { return setFlagReturnOld(somfy_flags_t::Windy, val); }
+    void setWindy(bool bWindy) { setFlag(somfy_flags_t::Windy, bWindy); };
+    bool setWindyReturnOld(bool bWindy) { return setFlagReturnOld(somfy_flags_t::Windy, bWindy); }
     bool hasLight() const { return (this->flags & static_cast<byte>(somfy_flags_t::Light)) > 0; };
-    void setLight(bool bLight) { bLight ? this->flags |= static_cast<byte>(somfy_flags_t::Light) : this->flags &= ~(static_cast<byte>(somfy_flags_t::Light)); };
+    void setLight(bool bLight) { setFlag(somfy_flags_t::Light, bLight); };
     bool simMy() const { return (this->flags & static_cast<byte>(somfy_flags_t::SimMy)) > 0; };
-    void setSimMy(bool bSimMy) { bSimMy ? this->flags |= static_cast<byte>(somfy_flags_t::SimMy) : this->flags &= ~(static_cast<byte>(somfy_flags_t::SimMy)); };
+    void setSimMy(bool bSimMy) { setFlag(somfy_flags_t::SimMy, bSimMy); };
 // Functions to evaluate flags
     static bool isSunny(byte mask) { return (mask & static_cast<byte>(somfy_flags_t::Sunny)) > 0; }
     static bool isWindy(byte mask) { return (mask & static_cast<byte>(somfy_flags_t::Windy)) > 0; }

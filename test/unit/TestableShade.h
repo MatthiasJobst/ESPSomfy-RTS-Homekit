@@ -28,13 +28,13 @@ public:
         (override));
 
     // ── State reads ─────────────────────────────────────────────────────────
-    float   getTarget()     const { return target; }
-    float   getTiltTarget() const { return tiltTarget; }
-    uint8_t getFlags()      const { return flags; }
+    float     getTarget()     const { return target; }
+    float     getTiltTarget() const { return tiltTarget; }
+    SomfyFlag getFlags()      const { return flags; }
 
-    bool isSunny()   const { return flags & static_cast<uint8_t>(somfy_flags_t::Sunny); }
-    bool isWindy()   const { return flags & static_cast<uint8_t>(somfy_flags_t::Windy); }
-    bool hasSunFlag()const { return flags & static_cast<uint8_t>(somfy_flags_t::SunFlag); }
+    bool isSunny()    const { return flags.isSunny(); }
+    bool isWindy()    const { return flags.isWindy(); }
+    bool hasSunFlag() const { return flags.hasSunFlag(); }
 
     uint64_t getSunStart()    const { return flagManager.sunStart; }
     uint64_t getNoSunStart()  const { return flagManager.noSunStart; }
@@ -50,7 +50,7 @@ public:
     uint8_t  getBitLength()  const { return bitLength; }
 
     // ── State writes (test setup helpers) ───────────────────────────────────
-    void setFlags(uint8_t f)        { flags = f; }
+    void setFlags(uint8_t f)        { flags.setFlags(f); }
     void setWindLast(uint64_t t)    { flagManager.windLast = t; }
     void setDirection(int8_t d)     { direction = d; }
     void setSunDone(bool v)         { flagManager.sunDone = v; }

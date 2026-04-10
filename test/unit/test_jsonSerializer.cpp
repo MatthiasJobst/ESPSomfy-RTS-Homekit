@@ -464,7 +464,7 @@ TEST_F(JsonSerializerTest, FromJSON_Flags_Applied) {
     JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
     obj["flags"] = (uint8_t)0x05;
     EXPECT_EQ(shade.fromJSON(obj), 0);
-    EXPECT_EQ(shade.getFlags(), 0x05);
+    EXPECT_EQ(shade.getFlags().getFlags(), 0x05);
 }
 
 // GP_Relay: gpioUp and gpioDown updated; gpio_set_direction called (no crash).
