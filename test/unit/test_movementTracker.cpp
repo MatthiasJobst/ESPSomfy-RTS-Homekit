@@ -144,7 +144,7 @@ TEST_F(MovementTrackerTest, SunFlag_NoWindTimeout_FiresAndSetsTarget) {
 // Line 374–383: !isSunny, !noSunDone, noSunStart set, elapsed >= NO_SUN_TIMEOUT
 // tiltonly: also resets tiltTarget to 0
 TEST_F(MovementTrackerTest, SunFlag_NoSunTimeout_Roller_SetsTargetZero) {
-    shade.flags.setSunny(true);
+    shade.flags.setSunFlag(true);
     shade.setNoSunDone(false);
     shade.setNoSunStart(1);
     shade.target = 80.0f;

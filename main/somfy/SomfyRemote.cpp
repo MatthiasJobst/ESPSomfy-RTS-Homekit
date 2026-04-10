@@ -66,15 +66,16 @@ somfy_commands SomfyRemote::transformCommand(somfy_commands cmd) {
 }
 
 void SomfyRemote::sendSensorCommand(int8_t isWindy, int8_t isSunny, uint8_t repeat) {
-  if(isWindy > 0) flags.setWindy(true);
-  if(isSunny > 0) flags.setSunny(true);
-  if(isWindy == 0) flags.setWindy(false);
-  if(isSunny == 0) flags.setSunny(false);
+  SomfyFlag frameFlags = this->flags;
+  if(isWindy > 0) frameFlags.setWindy(true);
+  if(isSunny > 0) frameFlags.setSunny(true);
+  if(isWindy == 0) frameFlags.setWindy(false);
+  if(isSunny == 0) frameFlags.setSunny(false);
 
   this->lastFrame.remoteAddress = this->getRemoteAddress();
   this->lastFrame.repeats = repeat;
   this->lastFrame.bitLength = this->bitLength;
-  this->lastFrame.rollingCode = (uint16_t)flags.getRollingCode();
+  this->lastFrame.rollingCode = (uint16_t)frameFlags.getRollingCode();
   this->lastFrame.encKey = 160; // Sensor commands are always encryption code 160.
   this->lastFrame.cmd = somfy_commands::Sensor;
   this->lastFrame.processed = false;

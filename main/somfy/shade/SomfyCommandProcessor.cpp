@@ -131,8 +131,7 @@ void SomfyCommandProcessor::processSensorCommand(somfy_frame_t &frame, uint64_t 
   const uint16_t status = frame.rollingCode << 4;
   shade->p_sunny(SomfyFlag::isSunny(status));
   shade->p_windy(SomfyFlag::isWindy(status));
-  shade->p_demoMode(
-      SomfyFlag::isDemoMode(status));
+  shade->p_demoMode(SomfyFlag::isDemoMode(frame.rollingCode));
   shade->flagManager.updateTimers(wasSunny, wasWindy,
       shade->flags.isSunny(),
       shade->flags.isWindy(),

@@ -30,7 +30,7 @@ class SomfyFlag {
       }
     }
     bool setFlagReturnOld(somfy_flags_t flag, bool val) {
-      bool old = (flags & static_cast<byte>(flag)) == 0;
+      bool old = (flags & static_cast<byte>(flag)) != 0;
       setFlag(flag, val);
       return old;
     }
