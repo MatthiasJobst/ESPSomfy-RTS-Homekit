@@ -754,8 +754,82 @@ void SomfyShadeController::toJSONRepeaters(JsonResponse &json) {
   }
 }
 
-void SomfyShadeController::loop() { 
-  this->transceiver.loop(); 
+void SomfyShadeController::drainCommandQueue() {
+  if(this->cmdQueue.empty() || !this->cmdQueue.ready()) return;
+  this->cmdQueue.lastDrain = millis();
+  queued_cmd_t c;
+  if(!this->cmdQueue.pop(c)) return;
+  switch(c.type) {
+    case cmd_queue_type_t::ShadeCommand: {
+      SomfyShade *s = this->getShadeById(c.entityId);
+      if(s) s->sendCommand(c.cmd, c.repeat, c.stepSize);
+      break;
+    }
+    case cmd_queue_type_t::ShadeTarget: {
+      SomfyShade *s = this->getShadeById(c.entityId);
+      if(s) s->moveToTarget(c.target);
+      break;
+    }
+    case cmd_queue_type_t::ShadeTiltTarget: {
+      SomfyShade *s = this->getShadeById(c.entityId);
+      if(s) s->moveToTiltTarget(c.target);
+      break;
+    }
+    case cmd_queue_type_t::ShadeTiltCommand: {
+      SomfyShade *s = this->getShadeById(c.entityId);
+      if(s) s->sendTiltCommand(c.cmd);
+      break;
+    }
+    case cmd_queue_type_t::ShadeSensor: {
+      SomfyShade *s = this->getShadeById(c.entityId);
+      if(s) s->sendSensorCommand(c.isWindy, c.isSunny, c.repeat);
+      break;
+    }
+    case cmd_queue_type_t::GroupCommand: {
+      SomfyGroup *g = this->getGroupById(c.entityId);
+      if(g) g->sendCommand(c.cmd, c.repeat);
+      break;
+    }
+    case cmd_queue_type_t::GroupSensor: {
+      SomfyGroup *g = this->getGroupById(c.entityId);
+      if(g) g->sendSensorCommand(c.isWindy, c.isSunny, c.repeat);
+      break;
+    }
+  }
+}
+
+bool SomfyShadeController::enqueueShadeCommand(uint8_t shadeId, somfy_commands cmd, uint8_t repeat, uint8_t stepSize) {
+  queued_cmd_t c; c.type = cmd_queue_type_t::ShadeCommand; c.entityId = shadeId; c.cmd = cmd; c.repeat = repeat; c.stepSize = stepSize;
+  return this->cmdQueue.push(c);
+}
+bool SomfyShadeController::enqueueShadeTarget(uint8_t shadeId, float target) {
+  queued_cmd_t c; c.type = cmd_queue_type_t::ShadeTarget; c.entityId = shadeId; c.target = target;
+  return this->cmdQueue.push(c);
+}
+bool SomfyShadeController::enqueueShadeTiltTarget(uint8_t shadeId, float target) {
+  queued_cmd_t c; c.type = cmd_queue_type_t::ShadeTiltTarget; c.entityId = shadeId; c.target = target;
+  return this->cmdQueue.push(c);
+}
+bool SomfyShadeController::enqueueShadeTiltCommand(uint8_t shadeId, somfy_commands cmd) {
+  queued_cmd_t c; c.type = cmd_queue_type_t::ShadeTiltCommand; c.entityId = shadeId; c.cmd = cmd;
+  return this->cmdQueue.push(c);
+}
+bool SomfyShadeController::enqueueShadeSensor(uint8_t shadeId, int8_t isWindy, int8_t isSunny, uint8_t repeat) {
+  queued_cmd_t c; c.type = cmd_queue_type_t::ShadeSensor; c.entityId = shadeId; c.isWindy = isWindy; c.isSunny = isSunny; c.repeat = repeat;
+  return this->cmdQueue.push(c);
+}
+bool SomfyShadeController::enqueueGroupCommand(uint8_t groupId, somfy_commands cmd, uint8_t repeat) {
+  queued_cmd_t c; c.type = cmd_queue_type_t::GroupCommand; c.entityId = groupId; c.cmd = cmd; c.repeat = repeat;
+  return this->cmdQueue.push(c);
+}
+bool SomfyShadeController::enqueueGroupSensor(uint8_t groupId, int8_t isWindy, int8_t isSunny, uint8_t repeat) {
+  queued_cmd_t c; c.type = cmd_queue_type_t::GroupSensor; c.entityId = groupId; c.isWindy = isWindy; c.isSunny = isSunny; c.repeat = repeat;
+  return this->cmdQueue.push(c);
+}
+
+void SomfyShadeController::loop() {
+  this->transceiver.loop();
+  this->drainCommandQueue();
   for(uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
     if(this->shades[i].getShadeId() != 255) {
       this->shades[i].checkMovement();

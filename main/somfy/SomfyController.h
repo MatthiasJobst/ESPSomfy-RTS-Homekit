@@ -7,6 +7,7 @@
 #include "SomfyRoom.h"
 #include "SomfyGroup.h"
 #include "SomfyShade.h"
+#include "SomfyCommandQueue.h"
 
 #define SOMFY_MAX_SHADES 32
 #define SOMFY_MAX_GROUPS 16
@@ -19,6 +20,8 @@ class SomfyShadeController {
   protected:
     uint8_t m_shadeIds[SOMFY_MAX_SHADES];
     uint32_t lastCommit = 0;
+    SomfyCommandQueue cmdQueue;
+    void drainCommandQueue();
   public:
     bool useNVS();
     bool isDirty = false;
@@ -65,6 +68,13 @@ class SomfyShadeController {
     SomfyGroup * getGroupById(uint8_t groupId);
     SomfyShade * findShadeByRemoteAddress(uint32_t address);
     SomfyGroup * findGroupByRemoteAddress(uint32_t address);
+    bool enqueueShadeCommand(uint8_t shadeId, somfy_commands cmd, uint8_t repeat, uint8_t stepSize = 0);
+    bool enqueueShadeTarget(uint8_t shadeId, float target);
+    bool enqueueShadeTiltTarget(uint8_t shadeId, float target);
+    bool enqueueShadeTiltCommand(uint8_t shadeId, somfy_commands cmd);
+    bool enqueueShadeSensor(uint8_t shadeId, int8_t isWindy, int8_t isSunny, uint8_t repeat);
+    bool enqueueGroupCommand(uint8_t groupId, somfy_commands cmd, uint8_t repeat);
+    bool enqueueGroupSensor(uint8_t groupId, int8_t isWindy, int8_t isSunny, uint8_t repeat);
     void sendFrame(somfy_frame_t &frame, uint8_t repeats = 0);
     void processFrame(somfy_frame_t &frame, bool internal = false);
     void emitState(uint8_t num = 255);
