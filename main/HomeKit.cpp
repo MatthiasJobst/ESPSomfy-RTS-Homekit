@@ -90,12 +90,12 @@ static int shade_write(hap_write_data_t write_data[], int count,
                 target = (float)w->val.u;
             ESP_LOGI(TAG, "TargetPosition write: hap=%u -> somfy=%.0f (currentPos=%.0f flip=%d)",
                      w->val.u, target, shade->currentPos, shade->getFlipPosition());
-            shade->moveToTarget(target);
+            somfy.enqueueShadeTarget(shadeId, target);
             hap_char_update_val(w->hc, &w->val);
             *(w->status) = HAP_STATUS_SUCCESS;
 
         } else if(!strcmp(uuid, HAP_CHAR_UUID_HOLD_POSITION)) {
-            if(w->val.b) shade->sendCommand(somfy_commands::Stop);
+            if(w->val.b) somfy.enqueueShadeCommand(shadeId, somfy_commands::Stop, shade->repeats);
             hap_char_update_val(w->hc, &w->val);
             *(w->status) = HAP_STATUS_SUCCESS;
 

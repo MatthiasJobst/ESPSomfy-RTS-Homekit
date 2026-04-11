@@ -7,7 +7,7 @@ debug.cfg
 .vscode/
 .claude/
 
-documentation/
+docs/
 
 # ESP-IDF build artifacts
 build/

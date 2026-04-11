@@ -50,7 +50,7 @@ void SomfyShade::clear() {
   commandProcessor.stepSize = 100;
   movementTracker.lastMovement = 0;
   this->repeats = 1;
-  this->sortOrder = 255;
+  this->sortOrder = (int8_t)255;
 }
 
 bool SomfyShade::linkRemote(uint32_t address, uint16_t rollingCode) {
