@@ -3,6 +3,7 @@
 // remote (thin subclass).
 #pragma once
 #include "SomfyFrame.h"
+#include "SomfyFlag.h"
 
 class SomfyRemote {
   // These sizes for the data have been
@@ -22,7 +23,7 @@ class SomfyRemote {
     somfy_frame_t lastFrame = {};
     bool flipCommands = false;
     uint16_t lastRollingCode = 0;
-    uint8_t flags = 0;
+    SomfyFlag flags = SomfyFlag();
     uint8_t bitLength = 0;
     uint8_t repeats = 1;
     virtual bool isLastCommand(somfy_commands cmd);

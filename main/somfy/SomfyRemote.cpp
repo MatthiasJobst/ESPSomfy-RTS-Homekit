@@ -19,17 +19,17 @@ extern MQTTClass mqtt;
 extern Preferences pref;
 extern GitUpdater git;
 
-bool SomfyRemote::simMy() { return (this->flags & static_cast<uint8_t>(somfy_flags_t::SimMy)) > 0; }
+bool SomfyRemote::simMy() { return this->flags.simMy(); }
 
-void SomfyRemote::setSimMy(bool bSimMy) { bSimMy ? this->flags |= static_cast<uint8_t>(somfy_flags_t::SimMy) : this->flags &= ~(static_cast<uint8_t>(somfy_flags_t::SimMy)); }
+void SomfyRemote::setSimMy(bool bSimMy) { this->flags.setSimMy(bSimMy); }
 
-bool SomfyRemote::hasSunSensor() { return (this->flags & static_cast<uint8_t>(somfy_flags_t::SunSensor)) > 0; }
+bool SomfyRemote::hasSunSensor() { return this->flags.hasSunSensor(); }
 
-bool SomfyRemote::hasLight() { return (this->flags & static_cast<uint8_t>(somfy_flags_t::Light)) > 0; }
+bool SomfyRemote::hasLight() { return this->flags.hasLight(); }
 
-void SomfyRemote::setSunSensor(bool bHasSensor) { bHasSensor ? this->flags |= static_cast<uint8_t>(somfy_flags_t::SunSensor) : this->flags &= ~(static_cast<uint8_t>(somfy_flags_t::SunSensor)); }
+void SomfyRemote::setSunSensor(bool bHasSensor) { this->flags.setSunSensor(bHasSensor); }
 
-void SomfyRemote::setLight(bool bHasLight) { bHasLight ? this->flags |= static_cast<uint8_t>(somfy_flags_t::Light) : this->flags &= ~(static_cast<uint8_t>(somfy_flags_t::Light)); }
+void SomfyRemote::setLight(bool bHasLight) { this->flags.setLight(bHasLight); }
 
 void SomfyRemote::triggerGPIOs(somfy_frame_t &frame) { }
 
@@ -65,16 +65,16 @@ somfy_commands SomfyRemote::transformCommand(somfy_commands cmd) {
 }
 
 void SomfyRemote::sendSensorCommand(int8_t isWindy, int8_t isSunny, uint8_t repeat) {
-  uint8_t flags = (this->flags >> 4) & 0x0F;
-  if(isWindy > 0) flags |= 0x01;
-  if(isSunny > 0) flags |= 0x02;
-  if(isWindy == 0) flags &= ~0x01;
-  if(isSunny == 0) flags &= ~0x02;
+  SomfyFlag frameFlags = this->flags;
+  if(isWindy > 0) frameFlags.setWindy(true);
+  if(isSunny > 0) frameFlags.setSunny(true);
+  if(isWindy == 0) frameFlags.setWindy(false);
+  if(isSunny == 0) frameFlags.setSunny(false);
 
   this->lastFrame.remoteAddress = this->getRemoteAddress();
   this->lastFrame.repeats = repeat;
   this->lastFrame.bitLength = this->bitLength;
-  this->lastFrame.rollingCode = (uint16_t)flags;
+  this->lastFrame.rollingCode = (uint16_t)frameFlags.getRollingCode();
   this->lastFrame.encKey = 160; // Sensor commands are always encryption code 160.
   this->lastFrame.cmd = somfy_commands::Sensor;
   this->lastFrame.processed = false;

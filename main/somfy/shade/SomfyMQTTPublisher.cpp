@@ -79,7 +79,7 @@ void SomfyMQTTPublisher::publish() {
     this->publish("remoteAddress", shade->getRemoteAddress(), true);
     this->publish("shadeType",     static_cast<uint8_t>(shade->shadeType), true);
     this->publish("tiltType",      static_cast<uint8_t>(shade->tiltType), true);
-    this->publish("flags",         shade->flags, true);
+    this->publish("flags",         shade->flags.getFlags(), true);
     this->publish("flipCommands",  shade->flipCommands, true);
     this->publish("flipPosition",  shade->getFlipPosition(), true);
     shade->publishState();
@@ -144,14 +144,11 @@ void SomfyMQTTPublisher::publishState() {
       this->publish("tiltPosition",  shade->transformPosition(shade->currentTiltPos), true);
       this->publish("tiltTarget",    shade->transformPosition(shade->tiltTarget), true);
     }
-    const uint8_t sunFlag = !!(shade->flags & static_cast<uint8_t>(somfy_flags_t::SunFlag));
-    const uint8_t isSunny = !!(shade->flags & static_cast<uint8_t>(somfy_flags_t::Sunny));
-    const uint8_t isWindy = !!(shade->flags & static_cast<uint8_t>(somfy_flags_t::Windy));
     if(shade->hasSunSensor()) {
-      this->publish("sunFlag", sunFlag);
-      this->publish("sunny",   isSunny);
+      this->publish("sunFlag", shade->flags.hasSunFlag());
+      this->publish("sunny",   shade->flags.isSunny());
     }
-    this->publish("windy", isWindy);
+    this->publish("windy", shade->flags.isWindy());
   }
 }
 
@@ -305,7 +302,7 @@ void SomfyMQTTPublisher::emitState(uint8_t num, const char *evt) {
   json->addElem("tiltType",     static_cast<uint8_t>(shade->tiltType));
   json->addElem("flipCommands", shade->flipCommands);
   json->addElem("flipPosition", shade->getFlipPosition());
-  json->addElem("flags",        shade->flags);
+  json->addElem("flags",        shade->flags.getFlags());
   json->addElem("sunSensor",    shade->hasSunSensor());
   json->addElem("light",        shade->hasLight());
   json->addElem("sortOrder",    shade->sortOrder);

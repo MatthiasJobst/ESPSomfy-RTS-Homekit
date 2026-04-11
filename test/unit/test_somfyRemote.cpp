@@ -9,6 +9,8 @@
 //   isLastCommand()                          — match and mismatch
 //   repeatFrame()                            — GP_Relay, GP_Remote, RTS 56-bit,
 //                                             RTS 80-bit (encode80BitFrame path)
+// SomfyFlag:
+//   getRollingCode(), resetFlags(), operator!=, operator|=
 
 #include "SomfyRemote.h"
 #include "nvs.h"
@@ -27,7 +29,7 @@ protected:
         remote.repeats      = 1;
         remote.flipCommands = false;
         remote.proto        = radio_proto::RTS;
-        remote.flags        = 0;
+        remote.flags        = SomfyFlag();
         nvs_stub_use_nvs    = false;
         nvs_stub_reset_all();
     }
@@ -179,4 +181,43 @@ TEST_F(SomfyRemoteTest, RepeatFrame_RTS_80Bit_Calls80BitEncode) {
     remote.lastFrame.encKey        = 0xA1;
     remote.lastFrame.cmd           = somfy_commands::Up;
     remote.repeatFrame(1);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SomfyFlag — uncovered methods
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST(SomfyFlagTest, GetRollingCode_ReturnsUpperNibble) {
+    SomfyFlag f;
+    f.setFlags(0x30); // upper nibble = 0x3
+    EXPECT_EQ(f.getRollingCode(), 0x03);
+}
+
+TEST(SomfyFlagTest, ResetFlags_ClearsAllBits) {
+    SomfyFlag f;
+    f.setFlags(0xFF);
+    f.resetFlags();
+    EXPECT_EQ(f.getFlags(), 0x00);
+}
+
+TEST(SomfyFlagTest, OperatorNotEqual_DifferentFlags_ReturnsTrue) {
+    SomfyFlag a, b;
+    a.setSunny(true);
+    EXPECT_TRUE(a != b);
+}
+
+TEST(SomfyFlagTest, OperatorNotEqual_SameFlags_ReturnsFalse) {
+    SomfyFlag a, b;
+    a.setSunny(true);
+    b.setSunny(true);
+    EXPECT_FALSE(a != b);
+}
+
+TEST(SomfyFlagTest, OperatorOrAssign_MergesFlags) {
+    SomfyFlag a, b;
+    a.setSunny(true);
+    b.setWindy(true);
+    a |= b;
+    EXPECT_TRUE(a.isSunny());
+    EXPECT_TRUE(a.isWindy());
 }

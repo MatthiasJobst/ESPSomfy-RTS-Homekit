@@ -99,8 +99,9 @@ TEST_F(MovementTrackerTest, DryContact2_TimeForcedToOne_Up) {
 // Line 353–363: isSunny, noWindDone, !sunDone, sunStart set, elapsed >= SUN_TIMEOUT
 // → sets target to myPos (or 100 if not set)
 TEST_F(MovementTrackerTest, SunFlag_SunTimeout_FiresAndSetsTarget_MyPos) {
-    shade.setFlags(static_cast<uint8_t>(somfy_flags_t::SunFlag) |
-                   static_cast<uint8_t>(somfy_flags_t::Sunny));
+    shade.flags.setSunny(true);
+    shade.flags.setSunFlag(true);
+    printf("Initial flags: %u %u\n", shade.getFlags().getFlags(), shade.getSunDone());
     shade.setSunDone(false);
     shade.setNoWindDone(true);
     shade.setSunStart(1);                        // non-zero = timer running
@@ -113,8 +114,8 @@ TEST_F(MovementTrackerTest, SunFlag_SunTimeout_FiresAndSetsTarget_MyPos) {
 }
 
 TEST_F(MovementTrackerTest, SunFlag_SunTimeout_FiresAndSetsTarget_Fallback100) {
-    shade.setFlags(static_cast<uint8_t>(somfy_flags_t::SunFlag) |
-                   static_cast<uint8_t>(somfy_flags_t::Sunny));
+    shade.flags.setSunny(true);
+    shade.flags.setSunFlag(true);
     shade.setSunDone(false);
     shade.setNoWindDone(true);
     shade.setSunStart(1);
@@ -128,8 +129,8 @@ TEST_F(MovementTrackerTest, SunFlag_SunTimeout_FiresAndSetsTarget_Fallback100) {
 // Line 364–372: isSunny, !noWindDone, noWindStart set, elapsed >= NO_WIND_TIMEOUT
 // → sets target to myPos
 TEST_F(MovementTrackerTest, SunFlag_NoWindTimeout_FiresAndSetsTarget) {
-    shade.setFlags(static_cast<uint8_t>(somfy_flags_t::SunFlag) |
-                   static_cast<uint8_t>(somfy_flags_t::Sunny));
+    shade.flags.setSunny(true);
+    shade.flags.setSunFlag(true);
     shade.setNoWindDone(false);
     shade.setNoWindStart(1);
     shade.targetSequencer.myPos = 60.0f;
@@ -143,7 +144,7 @@ TEST_F(MovementTrackerTest, SunFlag_NoWindTimeout_FiresAndSetsTarget) {
 // Line 374–383: !isSunny, !noSunDone, noSunStart set, elapsed >= NO_SUN_TIMEOUT
 // tiltonly: also resets tiltTarget to 0
 TEST_F(MovementTrackerTest, SunFlag_NoSunTimeout_Roller_SetsTargetZero) {
-    shade.setFlags(static_cast<uint8_t>(somfy_flags_t::SunFlag));  // SunFlag but not Sunny
+    shade.flags.setSunFlag(true);
     shade.setNoSunDone(false);
     shade.setNoSunStart(1);
     shade.target = 80.0f;
@@ -156,7 +157,7 @@ TEST_F(MovementTrackerTest, SunFlag_NoSunTimeout_Roller_SetsTargetZero) {
 
 TEST_F(MovementTrackerTest, SunFlag_NoSunTimeout_TiltOnly_SetsTargetAndTiltTargetZero) {
     shade.tiltType = tilt_types::tiltonly;
-    shade.setFlags(static_cast<uint8_t>(somfy_flags_t::SunFlag));
+    shade.flags.setSunFlag(true);
     shade.setNoSunDone(false);
     shade.setNoSunStart(1);
     shade.target     = 80.0f;
@@ -170,8 +171,8 @@ TEST_F(MovementTrackerTest, SunFlag_NoSunTimeout_TiltOnly_SetsTargetAndTiltTarge
 
 // Timers not yet expired — block is skipped
 TEST_F(MovementTrackerTest, SunFlag_SunTimeout_NotYetExpired_NoChange) {
-    shade.setFlags(static_cast<uint8_t>(somfy_flags_t::SunFlag) |
-                   static_cast<uint8_t>(somfy_flags_t::Sunny));
+    shade.flags.setSunny(true);
+    shade.flags.setSunFlag(true);
     shade.setSunDone(false);
     shade.setNoWindDone(true);
     shade.setSunStart(0);
@@ -186,7 +187,7 @@ TEST_F(MovementTrackerTest, SunFlag_SunTimeout_NotYetExpired_NoChange) {
 // Line 386–395: isWindy, !windDone, windStart set, elapsed >= WIND_TIMEOUT
 // tiltonly: also resets tiltTarget to 0
 TEST_F(MovementTrackerTest, Wind_Timeout_Roller_SetsTargetZero) {
-    shade.setFlags(static_cast<uint8_t>(somfy_flags_t::Windy));
+    shade.flags.setWindy(true);
     shade.setWindDone(false);
     shade.setWindStart(1);
     shade.target = 70.0f;
@@ -199,7 +200,7 @@ TEST_F(MovementTrackerTest, Wind_Timeout_Roller_SetsTargetZero) {
 
 TEST_F(MovementTrackerTest, Wind_Timeout_TiltOnly_SetsTargetAndTiltTargetZero) {
     shade.tiltType = tilt_types::tiltonly;
-    shade.setFlags(static_cast<uint8_t>(somfy_flags_t::Windy));
+    shade.flags.setWindy(true);
     shade.setWindDone(false);
     shade.setWindStart(1);
     shade.target     = 70.0f;

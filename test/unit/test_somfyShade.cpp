@@ -338,7 +338,7 @@ TEST_F(WaitingFrameTest, My_VeryHighRepeats_MarksProcessed) {
 
 // Lines 583-585: My, low repeats, idle, simMy set → calls moveToMyPosition
 TEST_F(WaitingFrameTest, My_LowRepeats_Idle_SimMy_CallsMoveToMyPosition) {
-    shade.setFlags(static_cast<uint8_t>(somfy_flags_t::SimMy));
+    shade.flags.setSimMy(true);
     armFrame(somfy_commands::My, /*repeats=*/1);
     EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(AnyNumber());
     shade.processWaitingFrame();
@@ -518,7 +518,7 @@ TEST_F(InternalCmdTest, My_Idle_NoMyPos_NoChange) {
 
 // My idle, simMy set → calls moveToMyPosition (via targetSequencer, no crash)
 TEST_F(InternalCmdTest, My_Idle_SimMy_CallsMoveToMyPosition) {
-    shade.setFlags(static_cast<uint8_t>(somfy_flags_t::SimMy));
+    shade.flags.setSimMy(true);
     shade.processInternalCommand(somfy_commands::My, 1);
     // No crash = pass
 }
@@ -759,7 +759,7 @@ TEST_F(InternalCmdTest, Flag_NoSunSensor_ClearsSunFlag) {
 
 // Flag, hasSunSensor → sets isDirty, calls emitState
 TEST_F(InternalCmdTest, Flag_WithSunSensor_SetsIsDirty) {
-    shade.setFlags(static_cast<uint8_t>(somfy_flags_t::SunSensor));
+    shade.flags.setSunSensor(true);
     EXPECT_CALL(shade, emitState(_)).Times(AtLeast(1));
     shade.processInternalCommand(somfy_commands::Flag, 1);
     EXPECT_FALSE(shade.hasSunFlag());
@@ -774,7 +774,7 @@ TEST_F(InternalCmdTest, SunFlag_NoSunSensor_NoChange) {
 
 // SunFlag, hasSunSensor → sets sunFlag, emitState
 TEST_F(InternalCmdTest, SunFlag_WithSunSensor_SetsSunFlag) {
-    shade.setFlags(static_cast<uint8_t>(somfy_flags_t::SunSensor));
+    shade.flags.setSunSensor(true);
     EXPECT_CALL(shade, emitState(_)).Times(AtLeast(1));
     shade.processInternalCommand(somfy_commands::SunFlag, 1);
     EXPECT_TRUE(shade.hasSunFlag());
@@ -782,8 +782,8 @@ TEST_F(InternalCmdTest, SunFlag_WithSunSensor_SetsSunFlag) {
 
 // SunFlag, sunny+sunDone → sets target to myPos or 100
 TEST_F(InternalCmdTest, SunFlag_SunSensor_Sunny_SunDone_SetsTarget) {
-    shade.setFlags(static_cast<uint8_t>(somfy_flags_t::SunSensor) |
-                   static_cast<uint8_t>(somfy_flags_t::Sunny));
+    shade.flags.setSunny(true);
+    shade.flags.setSunSensor(true);
     shade.setSunDone(true);
     shade.targetSequencer.myPos = 70.0f;
     shade.processInternalCommand(somfy_commands::SunFlag, 1);
@@ -792,7 +792,7 @@ TEST_F(InternalCmdTest, SunFlag_SunSensor_Sunny_SunDone_SetsTarget) {
 
 // SunFlag, not sunny+noSunDone → sets target to 0
 TEST_F(InternalCmdTest, SunFlag_SunSensor_NotSunny_NoSunDone_SetsTargetZero) {
-    shade.setFlags(static_cast<uint8_t>(somfy_flags_t::SunSensor));
+    shade.flags.setSunSensor(true);
     shade.setNoSunDone(true);
     shade.processInternalCommand(somfy_commands::SunFlag, 1);
     EXPECT_FLOAT_EQ(shade.target, 0.0f);

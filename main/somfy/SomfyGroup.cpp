@@ -80,8 +80,8 @@ bool SomfyGroup::hasShadeId(uint8_t shadeId) {
 
 void SomfyGroup::updateFlags() {
   ESP_LOGD(TAG, "Updating group flags based on linked shades.");
-  uint8_t oldFlags = this->flags;
-  this->flags = 0;
+  SomfyFlag oldFlags = this->flags;
+  this->flags.resetFlags();
   for(uint8_t i = 0; i < SOMFY_MAX_GROUPED_SHADES; i++) {
     if(this->linkedShades[i] != 0) {
       SomfyShade *shade = somfy.getShadeById(this->linkedShades[i]);
@@ -105,7 +105,7 @@ void SomfyGroup::emitState(const char *evt) { this->emitState(255, evt); }
 
 void SomfyGroup::emitState(uint8_t num, const char *evt) {
   ESP_LOGD(TAG, "Emitting group state with num %d and event %s.", num, evt);
-  uint8_t flags = 0;
+  SomfyFlag flags = SomfyFlag();
   JsonSockEvent *json = sockEmit.beginEmit(evt);
   json->beginObject();
   json->addElem("groupId", this->groupId);
@@ -123,7 +123,7 @@ void SomfyGroup::emitState(uint8_t num, const char *evt) {
     }
   }
   json->endArray();
-  json->addElem("flags", flags);
+  json->addElem("flags", flags.getFlags());
   json->endObject();
   sockEmit.endEmit(num);
   this->publish();
@@ -196,7 +196,7 @@ void SomfyGroup::toJSON(JsonResponse &json) {
   json.addElem("proto", static_cast<uint8_t>(this->proto));
   json.addElem("sunSensor", this->hasSunSensor());
   json.addElem("flipCommands", this->flipCommands);
-  json.addElem("flags", this->flags);
+  json.addElem("flags", this->flags.getFlags());
   json.addElem("repeats", this->repeats);
   json.addElem("sortOrder", this->sortOrder);
   json.beginArray("linkedShades");
@@ -225,7 +225,7 @@ void SomfyGroup::toJSONRef(JsonResponse &json) {
   json.addElem("proto", static_cast<uint8_t>(this->proto));
   json.addElem("sunSensor", this->hasSunSensor());
   json.addElem("flipCommands", this->flipCommands);
-  json.addElem("flags", this->flags);
+  json.addElem("flags", this->flags.getFlags());
   json.addElem("repeats", this->repeats);
   json.addElem("sortOrder", this->sortOrder);
 }
@@ -235,12 +235,9 @@ void SomfyGroup::publishState() {
     this->publish("direction", this->direction, true);
     this->publish("lastRollingCode", this->lastRollingCode, true);
     this->publish("flipCommands", this->flipCommands, true);
-    const uint8_t sunFlag = !!(this->flags & static_cast<uint8_t>(somfy_flags_t::SunFlag));
-    const uint8_t isSunny = !!(this->flags & static_cast<uint8_t>(somfy_flags_t::Sunny));
-    const uint8_t isWindy = !!(this->flags & static_cast<uint8_t>(somfy_flags_t::Windy));
-    this->publish("sunFlag", sunFlag);
-    this->publish("sunny", isSunny);
-    this->publish("windy", isWindy);
+    this->publish("sunFlag", this->flags.hasSunFlag());
+    this->publish("sunny", this->flags.isSunny());
+    this->publish("windy", this->flags.isWindy());
   }
 }
 
@@ -250,7 +247,7 @@ void SomfyGroup::publish() {
     this->publish("name", this->name, true);
     this->publish("remoteAddress", this->getRemoteAddress(), true);
     this->publish("groupType", static_cast<uint8_t>(this->groupType), true);
-    this->publish("flags", this->flags, true);
+    this->publish("flags", this->flags.getFlags(), true);
     this->publish("sunSensor", this->hasSunSensor(), true);
     this->publishState();
   }

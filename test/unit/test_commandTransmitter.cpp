@@ -74,67 +74,58 @@ protected:
 // A. sendCommand() — Up
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST_F(CommandTransmitterTest, SendCommand_Up_Normal_SetsTargetZero) {
-    shade.tiltType = tilt_types::none;
-    shade.sendCommand(somfy_commands::Up);
-    EXPECT_FLOAT_EQ(shade.getTarget(), 0.0f);
-    EXPECT_EQ(shade.getLastFrame().cmd, somfy_commands::Up);
-}
-
-TEST_F(CommandTransmitterTest, SendCommand_Up_Integrated_SetsTiltTargetZero) {
-    shade.tiltType = tilt_types::integrated;
-    shade.sendCommand(somfy_commands::Up);
-    EXPECT_FLOAT_EQ(shade.getTarget(), 0.0f);
-    EXPECT_FLOAT_EQ(shade.getTiltTarget(), 0.0f);
-}
-
-TEST_F(CommandTransmitterTest, SendCommand_Up_TiltOnly_SetsPositionAndTiltTargets) {
-    shade.tiltType   = tilt_types::tiltonly;
-    shade.currentPos = 50.0f;
-    shade.sendCommand(somfy_commands::Up);
-    // tiltonly Up: p_target(100), p_tiltTarget(0), p_currentPos(100)
-    EXPECT_FLOAT_EQ(shade.getTarget(), 100.0f);
-    EXPECT_FLOAT_EQ(shade.getTiltTarget(), 0.0f);
-}
-
-TEST_F(CommandTransmitterTest, SendCommand_Up_Euromode_UsesTiltRepeats) {
-    shade.tiltType = tilt_types::euromode;
-    shade.sendCommand(somfy_commands::Up);
-    EXPECT_EQ(shade.getLastFrame().repeats, TILT_REPEATS);
-    EXPECT_FLOAT_EQ(shade.getTarget(), 0.0f);
+TEST_F(CommandTransmitterTest, SendCommand_Up_TiltTypeVariants) {
+    struct Case {
+        tilt_types  tilt;
+        float       expectedTarget;
+        float       expectedTiltTarget;  // < 0 = don't check
+        uint8_t     expectedRepeats;     // 0 = don't check
+    };
+    const Case cases[] = {
+        { tilt_types::none,       0.0f,   -1.0f, 0             },
+        { tilt_types::integrated, 0.0f,    0.0f, 0             },
+        { tilt_types::tiltonly,   100.0f,  0.0f, 0             },
+        { tilt_types::euromode,   0.0f,   -1.0f, TILT_REPEATS  },
+    };
+    for (auto &c : cases) {
+        shade.tiltType   = c.tilt;
+        shade.currentPos = 50.0f;
+        shade.sendCommand(somfy_commands::Up);
+        EXPECT_FLOAT_EQ(shade.getTarget(), c.expectedTarget) << "tiltType=" << (int)c.tilt;
+        if (c.expectedTiltTarget >= 0.0f)
+            EXPECT_FLOAT_EQ(shade.getTiltTarget(), c.expectedTiltTarget) << "tiltType=" << (int)c.tilt;
+        if (c.expectedRepeats)
+            EXPECT_EQ(shade.getLastFrame().repeats, c.expectedRepeats) << "tiltType=" << (int)c.tilt;
+    }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
 // B. sendCommand() — Down
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST_F(CommandTransmitterTest, SendCommand_Down_Normal_SetsTargetHundred) {
-    shade.tiltType = tilt_types::none;
-    shade.sendCommand(somfy_commands::Down);
-    EXPECT_FLOAT_EQ(shade.getTarget(), 100.0f);
-    EXPECT_EQ(shade.getLastFrame().cmd, somfy_commands::Down);
-}
-
-TEST_F(CommandTransmitterTest, SendCommand_Down_Integrated_SetsTiltTargetHundred) {
-    shade.tiltType = tilt_types::integrated;
-    shade.sendCommand(somfy_commands::Down);
-    EXPECT_FLOAT_EQ(shade.getTarget(), 100.0f);
-    EXPECT_FLOAT_EQ(shade.getTiltTarget(), 100.0f);
-}
-
-TEST_F(CommandTransmitterTest, SendCommand_Down_TiltOnly_SetsAllToHundred) {
-    shade.tiltType   = tilt_types::tiltonly;
-    shade.currentPos = 50.0f;
-    shade.sendCommand(somfy_commands::Down);
-    EXPECT_FLOAT_EQ(shade.getTarget(), 100.0f);
-    EXPECT_FLOAT_EQ(shade.getTiltTarget(), 100.0f);
-}
-
-TEST_F(CommandTransmitterTest, SendCommand_Down_Euromode_UsesTiltRepeats) {
-    shade.tiltType = tilt_types::euromode;
-    shade.sendCommand(somfy_commands::Down);
-    EXPECT_EQ(shade.getLastFrame().repeats, TILT_REPEATS);
-    EXPECT_FLOAT_EQ(shade.getTarget(), 100.0f);
+TEST_F(CommandTransmitterTest, SendCommand_Down_TiltTypeVariants) {
+    struct Case {
+        tilt_types  tilt;
+        float       expectedTarget;
+        float       expectedTiltTarget;  // < 0 = don't check
+        uint8_t     expectedRepeats;     // 0 = don't check
+    };
+    const Case cases[] = {
+        { tilt_types::none,       100.0f, -1.0f, 0             },
+        { tilt_types::integrated, 100.0f, 100.0f, 0            },
+        { tilt_types::tiltonly,   100.0f, 100.0f, 0            },
+        { tilt_types::euromode,   100.0f, -1.0f, TILT_REPEATS  },
+    };
+    for (auto &c : cases) {
+        shade.tiltType   = c.tilt;
+        shade.currentPos = 50.0f;
+        shade.sendCommand(somfy_commands::Down);
+        EXPECT_FLOAT_EQ(shade.getTarget(), c.expectedTarget) << "tiltType=" << (int)c.tilt;
+        if (c.expectedTiltTarget >= 0.0f)
+            EXPECT_FLOAT_EQ(shade.getTiltTarget(), c.expectedTiltTarget) << "tiltType=" << (int)c.tilt;
+        if (c.expectedRepeats)
+            EXPECT_EQ(shade.getLastFrame().repeats, c.expectedRepeats) << "tiltType=" << (int)c.tilt;
+    }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -230,45 +221,29 @@ TEST_F(CommandTransmitterTest, SendCommand_Stop_Fallthrough_SendsStopCommand) {
 // F. sendTiltCommand()
 // ══════════════════════════════════════════════════════════════════════════════
 
-TEST_F(CommandTransmitterTest, SendTiltCommand_Up_SetsTiltTargetZero) {
-    shade.tiltType   = tilt_types::integrated;
-    shade.currentTiltPos = 60.0f;
-    shade.sendTiltCommand(somfy_commands::Up);
-    EXPECT_EQ(shade.getLastFrame().cmd, somfy_commands::Up);
-    EXPECT_FLOAT_EQ(shade.getTiltTarget(), 0.0f);
-}
-
-TEST_F(CommandTransmitterTest, SendTiltCommand_Up_TiltMotor_UsesTiltRepeats) {
-    shade.tiltType = tilt_types::tiltmotor;
-    shade.sendTiltCommand(somfy_commands::Up);
-    EXPECT_EQ(shade.getLastFrame().repeats, TILT_REPEATS);
-}
-
-TEST_F(CommandTransmitterTest, SendTiltCommand_Down_SetsTiltTargetHundred) {
+TEST_F(CommandTransmitterTest, SendTiltCommand_Integrated_TargetBehavior) {
+    // Up → tiltTarget=0, Down → tiltTarget=100, My → tiltTarget=currentTiltPos
+    struct Case { somfy_commands cmd; float currentTilt; float expectedTiltTarget; };
+    const Case cases[] = {
+        { somfy_commands::Up,   60.0f, 0.0f  },
+        { somfy_commands::Down, 60.0f, 100.0f },
+        { somfy_commands::My,   33.0f, 33.0f  },
+    };
     shade.tiltType = tilt_types::integrated;
-    shade.sendTiltCommand(somfy_commands::Down);
-    EXPECT_EQ(shade.getLastFrame().cmd, somfy_commands::Down);
-    EXPECT_FLOAT_EQ(shade.getTiltTarget(), 100.0f);
+    for (auto &c : cases) {
+        shade.currentTiltPos = c.currentTilt;
+        shade.sendTiltCommand(c.cmd);
+        EXPECT_EQ(shade.getLastFrame().cmd, c.cmd) << "cmd=" << (int)c.cmd;
+        EXPECT_FLOAT_EQ(shade.getTiltTarget(), c.expectedTiltTarget) << "cmd=" << (int)c.cmd;
+    }
 }
 
-TEST_F(CommandTransmitterTest, SendTiltCommand_Down_TiltMotor_UsesTiltRepeats) {
+TEST_F(CommandTransmitterTest, SendTiltCommand_TiltMotor_AllCmdsUseTiltRepeats) {
     shade.tiltType = tilt_types::tiltmotor;
-    shade.sendTiltCommand(somfy_commands::Down);
-    EXPECT_EQ(shade.getLastFrame().repeats, TILT_REPEATS);
-}
-
-TEST_F(CommandTransmitterTest, SendTiltCommand_My_SetsTiltTargetToCurrentTiltPos) {
-    shade.tiltType       = tilt_types::integrated;
-    shade.currentTiltPos = 33.0f;
-    shade.sendTiltCommand(somfy_commands::My);
-    EXPECT_EQ(shade.getLastFrame().cmd, somfy_commands::My);
-    EXPECT_FLOAT_EQ(shade.getTiltTarget(), 33.0f);
-}
-
-TEST_F(CommandTransmitterTest, SendTiltCommand_My_TiltMotor_UsesTiltRepeats) {
-    shade.tiltType = tilt_types::tiltmotor;
-    shade.sendTiltCommand(somfy_commands::My);
-    EXPECT_EQ(shade.getLastFrame().repeats, TILT_REPEATS);
+    for (auto cmd : { somfy_commands::Up, somfy_commands::Down, somfy_commands::My }) {
+        shade.sendTiltCommand(cmd);
+        EXPECT_EQ(shade.getLastFrame().repeats, TILT_REPEATS) << "cmd=" << (int)cmd;
+    }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
