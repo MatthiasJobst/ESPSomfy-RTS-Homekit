@@ -11,7 +11,6 @@
 #include <WebServer.h>
 #include <LittleFS.h>
 #include <Update.h>
-#include <esp_task_wdt.h>
 #include <esp_log.h>
 #include "ConfigSettings.h"
 #include "ShadeConfigFile.h"
@@ -106,7 +105,6 @@ void Web::handleRestore(WebServer &server) {
   }
 }
 void Web::handleRestoreUpload(WebServer &server) {
-  esp_task_wdt_reset();
   HTTPUpload& upload = server.upload();
   if (upload.status == UPLOAD_FILE_START) {
     webServer.uploadSuccess = false;
@@ -165,7 +163,6 @@ void Web::handleUpdateFirmwareUpload(WebServer &server) {
       ESP_LOGE(TAG, "Update failed");
     }
   }
-  esp_task_wdt_reset();
 }
 void Web::handleUpdateShadeConfig(WebServer &server) {
   if(git.lockFS) {
@@ -238,6 +235,5 @@ void Web::handleUpdateApplicationUpload(WebServer &server) {
       Update.printError(Serial);
     }
   }
-  esp_task_wdt_reset();
 }
 

@@ -111,7 +111,6 @@ int16_t GitRepo::getReleases(uint8_t num) {
   HTTPClient https;
   https.setReuse(false);
   if(https.begin(sclient, url)) {
-    esp_task_wdt_reset();
     int httpCode = https.GET();
     ESP_LOGI(TAG, "[HTTPS] GET... code: %d", httpCode);
     if(httpCode > 0) {
@@ -132,7 +131,6 @@ int16_t GitRepo::getReleases(uint8_t num) {
         while(https.connected() && (len > 0 || len == -1) && ndx < count) {
           size_t size = stream->available();
           if(size) {
-            esp_task_wdt_reset();
             int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
             ESP_LOGD(TAG, "%.*s", c, buff);
             if(len > 0) len -= c;
@@ -375,15 +373,12 @@ int GitUpdater::checkInternet() {
   WiFiClientSecure sclient;
   sclient.setInsecure();
   sclient.setHandshakeTimeout(3);
-  esp_task_wdt_reset();
   HTTPClient https;
   https.setReuse(false);
   if(https.begin(sclient, "https://github.com/" GIT_REPO)) {
     https.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
     https.setTimeout(3000);
-    esp_task_wdt_reset();
     int httpCode = https.sendRequest("HEAD");
-    esp_task_wdt_reset();
     if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY || httpCode == HTTP_CODE_FOUND) {
       err = 0;
       ESP_LOGI(TAG, "Internet is Available: %ldms", millis() - t);
@@ -397,7 +392,6 @@ int GitUpdater::checkInternet() {
     https.end();
     sclient.stop();
   }
-  esp_task_wdt_reset();
   return err;
 }
 void GitUpdater::emitDownloadProgress(size_t total, size_t loaded, const char *evt) { this->emitDownloadProgress(255, total, loaded, evt); }
@@ -499,7 +493,6 @@ int8_t GitUpdater::downloadFile() {
   char url[196];
   sprintf(url, "%s%s", this->baseUrl, this->currentFile);
   ESP_LOGI(TAG, "%s", url);
-  esp_task_wdt_reset();
   if(https.begin(sclient, url)) {
     https.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
     ESP_LOGI(TAG, "[HTTPS] GET...");
@@ -598,10 +591,9 @@ int8_t GitUpdater::downloadFile() {
     else {
       ESP_LOGE(TAG, "Invalid HTTP Code: %d", httpCode);
     }
-    https.end(); 
-    sclient.stop(); 
+    https.end();
+    sclient.stop();
     ESP_LOGI(TAG, "End update %s", this->currentFile);
   }
-  esp_task_wdt_reset();
   return 0;
 }

@@ -3,7 +3,6 @@
 // aggregation, repeater management, loop tick (movement check, auto-commit).
 #include "compat/preferences.h"
 #include <WebServer.h>
-#include <esp_task_wdt.h>
 #include <esp_chip_info.h>
 #include "esp_log.h"
 #include "Utils.h"
@@ -173,7 +172,6 @@ bool SomfyShadeController::begin() {
 
 void SomfyShadeController::commit() {
   if(git.lockFS) return;
-  esp_task_wdt_reset(); // Make sure we don't reset inadvertently.
   ShadeConfigFile file;
   file.begin();
   file.save(this);
@@ -184,7 +182,6 @@ void SomfyShadeController::commit() {
 
 void SomfyShadeController::writeBackup() {
   if(git.lockFS) return;
-  esp_task_wdt_reset(); // Make sure we don't reset inadvertently.
   ShadeConfigFile file;
   file.begin("/controller.backup", false);
   file.backup(this);
@@ -582,7 +579,6 @@ void SomfyShadeController::sendFrame(somfy_frame_t &frame, uint8_t repeat) {
     // silence.
     if(frame.bitLength == 80) frame.encode80BitFrame(&frm[0], i + 1);
     this->transceiver.sendFrame(frm, frame.bitLength == 56 ? 7 : 6, frame.bitLength);
-    esp_task_wdt_reset();
   }
   this->transceiver.endTransmit();
 }

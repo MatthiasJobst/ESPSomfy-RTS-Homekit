@@ -2,7 +2,6 @@
 #include <WebServer.h>
 #include <LittleFS.h>
 #include <Update.h>
-#include <esp_task_wdt.h>
 #include "esp_log.h"
 #include "mbedtls/md.h"
 #include "ConfigSettings.h"
@@ -202,7 +201,6 @@ void Web::handleStreamFile(WebServer &server, const char *filename, const char *
     server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Filesystem update in progress\"}"));
     return;
   }
-  esp_task_wdt_reset();
   // Load the index html page from the data directory.
   ESP_LOGI(TAG, "Loading file %s", filename);
   File file = LittleFS.open(filename, "r");
@@ -221,7 +219,6 @@ void Web::handleStreamFile(WebServer &server, const char *filename, const char *
   while (file.available() && server.client().connected()) {
     int n = file.read(streamBuf, sizeof(streamBuf));
     if (n > 0) server.sendContent((const char *)streamBuf, n);
-    esp_task_wdt_reset();
     if (++chunkCount == 4) {
       chunkCount = 0;
       sockEmit.loop();

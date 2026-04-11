@@ -75,7 +75,6 @@ void Web::handleShadeSortOrder(WebServer &server) {
 }
 
 void Web::handleScanAPs(WebServer &server) {
-  esp_task_wdt_reset();
   esp_task_wdt_delete(NULL);
   if(net.softAPOpened) WiFi.disconnect(false);
   int n = WiFi.scanNetworks(false, true);

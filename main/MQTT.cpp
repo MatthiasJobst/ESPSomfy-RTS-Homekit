@@ -41,7 +41,6 @@ void MQTTClass::reset() {
 }
 bool MQTTClass::loop() {
   if(settings.MQTT.enabled && !rebootDelay.reboot && !this->suspended && !mqttClient.connected() && !this->connecting) {
-    esp_task_wdt_reset();
     if(!this->connected() && net.connected()) {
       // Offload the blocking TCP connect to a background task so the main loop
       // (and sockServer.loop()) is never stalled waiting for the broker.
@@ -57,12 +56,10 @@ bool MQTTClass::loop() {
       }, "mqttConnect", 8192, this, 1, NULL);
     }
   }
-  esp_task_wdt_reset();
   if(settings.MQTT.enabled && !this->connecting) mqttClient.loop();
   return true;
 }
 void MQTTClass::receive(const char *topic, byte*payload, uint32_t length) {
-  esp_task_wdt_reset(); // Make sure we do not reboot here.
   ESP_LOGI(TAG, "MQTT Topic: %s", topic);
   ESP_LOGI(TAG, "MQTT Payload: %.*s", length, payload);
 
@@ -193,10 +190,8 @@ void MQTTClass::receive(const char *topic, byte*payload, uint32_t length) {
       }
     }
   }
-  esp_task_wdt_reset(); // Make sure we do not reboot here.
 }
 bool MQTTClass::connect() {
-  esp_task_wdt_reset(); // Make sure we do not reboot here.
   if(mqttClient.connected()) {
     if(!settings.MQTT.enabled || this->suspended)
       return this->disconnect();
@@ -212,7 +207,6 @@ bool MQTTClass::connect() {
       char lwtTopic[128] = "status";
       if(strlen(settings.MQTT.rootTopic) > 0)
         snprintf(lwtTopic, sizeof(lwtTopic), "%s/status", settings.MQTT.rootTopic);
-      esp_task_wdt_reset();
       if(mqttClient.connect(this->clientId, settings.MQTT.username, settings.MQTT.password, lwtTopic, 0, true, "offline")) {
         ESP_LOGI(TAG, "Successfully connected MQTT client %s", this->clientId);
         this->publish("status", "online", true);
@@ -238,7 +232,6 @@ bool MQTTClass::connect() {
         this->subscribe("groups/+/windy/set");
         mqttClient.setCallback(MQTTClass::receive);
         ESP_LOGI(TAG, "MQTT Startup Completed");
-        esp_task_wdt_reset();
         this->lastConnect = millis();
         return true;
       }
@@ -288,7 +281,6 @@ bool MQTTClass::unsubscribe(const char *topic) {
 }
 bool MQTTClass::subscribe(const char *topic) {
   if(mqttClient.connected()) {
-    esp_task_wdt_reset(); // Make sure we do not reboot here.
     char top[128];
     if(strlen(settings.MQTT.rootTopic) > 0)
       snprintf(top, sizeof(top), "%s/%s", settings.MQTT.rootTopic, topic);
@@ -306,7 +298,6 @@ bool MQTTClass::publish(const char *topic, const char *payload, bool retain) {
       snprintf(top, sizeof(top), "%s/%s", settings.MQTT.rootTopic, topic);
     else
       strlcpy(top, topic, sizeof(top));
-    esp_task_wdt_reset(); // Make sure we do not reboot here.
     mqttClient.publish(top, payload, retain);
     ESP_LOGI(TAG, "MQTT Published to: %s", top);
     ESP_LOGI(TAG, "MQTT Payload: %s", payload);
@@ -326,7 +317,6 @@ bool MQTTClass::unpublish(const char *topic) {
       snprintf(top, sizeof(top), "%s/%s", settings.MQTT.rootTopic, topic);
     else
       strlcpy(top, topic, sizeof(top));
-    esp_task_wdt_reset(); // Make sure we do not reboot here.
     mqttClient.publish(top, (const uint8_t *)"", 0, true);
     ESP_LOGI(TAG, "MQTT Unpublished from: %s", top);
     return true;
@@ -342,7 +332,6 @@ bool MQTTClass::publishBuffer(const char *topic, uint8_t *data, uint16_t len, bo
   uint16_t offset = 0;
   uint16_t to_write = len;
   uint16_t buff_len;
-  esp_task_wdt_reset(); // Make sure we do not reboot here.
   mqttClient.beginPublish(topic, len, retain);
   do { 
     buff_len = to_write;

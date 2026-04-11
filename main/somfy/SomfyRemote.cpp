@@ -1,7 +1,6 @@
 // SomfyRemote.cpp — SomfyRemote: rolling-code management, command dispatch,
 // GPIO relay/remote handling, frame send and repeat. SomfyLinkedRemote constructor.
 #include "compat/preferences.h"
-#include <esp_task_wdt.h>
 #include "esp_log.h"
 #include "GitOTA.h"
 #include "SomfyRemote.h"
@@ -151,7 +150,6 @@ void SomfyRemote::repeatFrame(uint8_t repeat) {
     this->lastFrame.repeats++;
     if(this->lastFrame.bitLength == 80) this->lastFrame.encode80BitFrame(&frm[0], this->lastFrame.repeats);
     somfy.transceiver.sendFrame(frm, this->bitLength == 56 ? 7 : 6, this->bitLength);
-    esp_task_wdt_reset();
   }
   somfy.transceiver.endTransmit();
 }

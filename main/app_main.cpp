@@ -60,6 +60,8 @@ static void mainLoop(void*) {
   esp_log_level_set("Sockets", ESP_LOG_DEBUG);
   esp_log_level_set("ControllerNetwork", ESP_LOG_DEBUG);
 
+  uint32_t iterMaxMs = 0;
+  uint32_t iterMaxReportedAt = 0;
   while(true) {
     if(rebootDelay.reboot && millis() > rebootDelay.rebootTime) {
       ESP_LOGI(TAG, "Rebooting after %d ms", rebootDelay.rebootTime - (millis() - rebootDelay.rebootTime));
@@ -67,37 +69,41 @@ static void mainLoop(void*) {
       esp_restart();
       return;
     }
-    uint32_t timing = millis();
+    uint32_t iterStart = millis();
+    uint32_t timing = iterStart;
 
     net.loop();
     if(millis() - timing > 100) ESP_LOGI(TAG, "Timing Net: %ldms", millis() - timing);
     timing = millis();
-    esp_task_wdt_reset();
     somfy.loop();
     if(millis() - timing > 100) ESP_LOGI(TAG, "Timing Somfy: %ldms", millis() - timing);
     timing = millis();
-    esp_task_wdt_reset();
     if(net.connected() || net.softAPOpened) {
       if(!rebootDelay.reboot && net.connected() && !net.softAPOpened) {
         git.loop();
-        esp_task_wdt_reset();
       }
       webServer.loop();
-      esp_task_wdt_reset();
       if(millis() - timing > 100) ESP_LOGI(TAG, "Timing WebServer: %ldms", millis() - timing);
-      esp_task_wdt_reset();
     }
     // Poll WebSocket unconditionally — must run every iteration regardless of
     // WiFi/AP state so the HTTP-101 upgrade handshake is never starved.
     timing = millis();
     sockEmit.loop();
     if(millis() - timing > 100) ESP_LOGI(TAG, "Timing Socket: %ldms", millis() - timing);
-    esp_task_wdt_reset();
     if(rebootDelay.reboot && millis() > rebootDelay.rebootTime) {
       net.end();
       esp_restart();
     }
     esp_task_wdt_reset();
+
+    uint32_t iterMs = millis() - iterStart;
+    if(iterMs > iterMaxMs) iterMaxMs = iterMs;
+    if(iterMs > 2000) ESP_LOGW(TAG, "Main loop iteration took %lums (net+somfy+git+web+sock)", iterMs);
+    if(millis() - iterMaxReportedAt > 60000) {
+      ESP_LOGI(TAG, "Main loop iteration max over last 60s: %lums", iterMaxMs);
+      iterMaxMs = 0;
+      iterMaxReportedAt = millis();
+    }
   }
 }
 

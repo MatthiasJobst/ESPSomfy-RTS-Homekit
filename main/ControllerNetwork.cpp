@@ -1,7 +1,6 @@
 #include <ETH.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
-#include <esp_task_wdt.h>
 #include <esp_wifi.h>
 #include "esp_log.h"
 #include "HomeKit.h"
@@ -28,14 +27,6 @@ static bool _apScanning = false;
 static uint32_t _lastMaxHeap = 0;
 static uint32_t _lastHeap = 0;
 int connectRetries = 0;
-
-// esp_task_wdt_reset() must only be called from tasks subscribed to the
-// watchdog (via esp_task_wdt_add). When setConnected() runs from a WiFi event
-// callback it executes in the arduino_events task which is NOT subscribed,
-// producing "task not found" errors. This wrapper silences those.
-static inline void safe_wdt_reset() {
-  if(esp_task_wdt_status(NULL) == ESP_OK) esp_task_wdt_reset();
-}
 
 void ControllerNetwork::end() {
   SSDP.end();
@@ -158,7 +149,6 @@ void ControllerNetwork ::loop() {
       this->emitSockets();
       this->lastEmit = millis();
     }
-    safe_wdt_reset(); // Make sure we do not reboot here.
   }
   
   //sockEmit.loop();
@@ -171,7 +161,6 @@ void ControllerNetwork ::loop() {
 }
 
 bool ControllerNetwork::changeAP(const uint8_t *bssid, const int32_t channel) {
-  safe_wdt_reset(); // Make sure we do not reboot here.
   if(SSDP.isStarted) SSDP.end();
   mqtt.disconnect();
   //sockEmit.end();
@@ -239,7 +228,6 @@ void ControllerNetwork::emitSockets(uint8_t num) {
   this->emitHeap(num);
 }
 void ControllerNetwork::setConnected(conn_types_t connType) {
-  safe_wdt_reset();
   this->connType = connType;
   this->connectTime = millis();
   connectRetries = 0;
@@ -269,8 +257,7 @@ void ControllerNetwork::setConnected(conn_types_t connType) {
   }
   // NET: Begin this in the startup.
   //sockEmit.begin();
-  safe_wdt_reset();
-  
+
   if(this->connectAttempts == 1) {
     if(this->connType == conn_types_t::wifi) {
       ESP_LOGI(TAG, "Successfully Connected to WiFi!!!!");
@@ -298,7 +285,6 @@ void ControllerNetwork::setConnected(conn_types_t connType) {
         settings.IP.dns1 = ETH.dnsIP(0);
         settings.IP.dns2 = ETH.dnsIP(1);
       }
-      safe_wdt_reset();
       JsonSockEvent *json = sockEmit.beginEmit("ethernet");
       json->beginObject();
       json->addElem("connected", this->connected());
@@ -306,7 +292,6 @@ void ControllerNetwork::setConnected(conn_types_t connType) {
       json->addElem("fullduplex", ETH.fullDuplex());
       json->endObject();
       sockEmit.endEmit();
-      safe_wdt_reset();
     }
   }
   else {
@@ -343,7 +328,6 @@ void ControllerNetwork::setConnected(conn_types_t connType) {
   SSDP.setManufacturerURL(0, SSDP_MANUFACTURER_URL);
   SSDP.setURL(0, SSDP_PRESENTATION_URL);
   SSDP.setActive(0, true);
-  safe_wdt_reset();
   if(MDNS.begin(settings.hostname)) {
     ESP_LOGI(TAG, "MDNS Responder Started: serverId=%s", settings.serverId);
     MDNS.addService("http", "tcp", APP_HTTP_PORT);
@@ -352,11 +336,9 @@ void ControllerNetwork::setConnected(conn_types_t connType) {
   // reconnect. ESP-IDF mDNS re-announces _hap._tcp automatically on WiFi reconnect.
   homekit.begin();
   if(settings.ssdpBroadcast) {
-    safe_wdt_reset();
     SSDP.begin();
   }
   else if(SSDP.isStarted) SSDP.end();
-  safe_wdt_reset();
   this->emitSockets();
   settings.printAvailHeap();
   this->needsBroadcast = true;
@@ -513,7 +495,6 @@ bool ControllerNetwork::connectWiFi(const uint8_t *bssid, const int32_t channel)
 }
 
 bool ControllerNetwork::connect(conn_types_t ctype) {
-  safe_wdt_reset();
   if(this->connecting()) return true;
   if(this->disconnectTime == 0) this->disconnectTime = millis();
   if(ctype == conn_types_t::ethernet && this->connType != conn_types_t::ethernet) {
@@ -553,7 +534,6 @@ bool ControllerNetwork::getStrongestAP(const char *ssid, uint8_t *bssid, int32_t
   int32_t chan = -1;
   memset(bssid, 0x00, 6);
   int16_t n = WiFi.scanComplete();
-  esp_task_wdt_reset();
   for(int16_t i = 0; i < n; i++) {
     if(WiFi.SSID(i).compareTo(ssid) == 0) {
       if(WiFi.RSSI(i) > strength) { 
@@ -572,7 +552,6 @@ bool ControllerNetwork::openSoftAP() {
   if(this->connected()) WiFi.disconnect(false);
   this->openingSoftAP = true;
   ESP_LOGI(TAG,"Turning the HotSpot On");
-  safe_wdt_reset(); // Make sure we do not reboot here.
   WiFi.softAP(strlen(settings.hostname) > 0 ? settings.hostname : "ESPSomfy RTS", "");
   delay(200);
   return true;

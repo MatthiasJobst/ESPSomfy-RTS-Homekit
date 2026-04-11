@@ -5,7 +5,6 @@
 #include "compat/preferences.h"
 #include <ELECHOUSE_CC1101_SRC_DRV.h>
 #include <SPI.h>
-#include <esp_task_wdt.h>
 #include <esp_chip_info.h>
 #include "esp_rom_sys.h"
 #include "esp_log.h"

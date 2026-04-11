@@ -7,6 +7,11 @@ NOTE: THIS HAS BEEN CREATED WITH THE HELP OF AI.
 
 For all technical details like how to build the appropriate device, please refer to [ESPSomfy-RTS](https://github.com/rstrouse/ESPSomfy-RTS). This project has followed the same approach.
 
+## Contributors and upstream projects
+
+- **[rstrouse](https://github.com/rstrouse/ESPSomfy-RTS)** — original ESPSomfy-RTS firmware; this fork is based entirely on that work.
+- **[Tsury](https://github.com/Tsury/ESPSomfy-RTS)** — RF noise detection and command execution queue, ported in v0.2.0.
+
 ## Hardware requirements
 
 ### Flash size

@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <WebSocketsServer.h>
-#include <esp_task_wdt.h>
 #include "esp_log.h"
 #include "Sockets.h"
 #include "AppConfig.h"
@@ -97,7 +96,6 @@ void SocketEmitter::initClients() {
     if(num != 255) {
       if(sockServer.clientIsConnected(num)) {
         ESP_LOGI(TAG, "Initializing Socket Client %u", num);
-        esp_task_wdt_reset();
         ESP_LOGD(TAG, "initClients[%u]: emitSockets", num);
         settings.emitSockets(num);
         ESP_LOGD(TAG, "initClients[%u]: emitState", num);
@@ -107,7 +105,6 @@ void SocketEmitter::initClients() {
         ESP_LOGD(TAG, "initClients[%u]: net.emitSockets", num);
         net.emitSockets(num);
         ESP_LOGD(TAG, "initClients[%u]: done", num);
-        esp_task_wdt_reset();
       }
       this->newClients[i] = 255;
     }
