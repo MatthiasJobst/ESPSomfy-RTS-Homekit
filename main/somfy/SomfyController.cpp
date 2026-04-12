@@ -5,6 +5,10 @@
 #include <WebServer.h>
 #include <esp_chip_info.h>
 #include "esp_log.h"
+#ifdef SOMFY_TX_RMT
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#endif
 #include "Utils.h"
 #include "ConfigSettings.h"
 #include "SomfyController.h"
@@ -570,17 +574,24 @@ SomfyGroup *SomfyShadeController::addGroup() {
 }
 
 void SomfyShadeController::sendFrame(somfy_frame_t &frame, uint8_t repeat) {
+#ifdef SOMFY_TX_RMT
+  // Wait for any in-progress RMT burst to finish before starting a new one.
+  // In normal operation (command queue, 50 ms drain) this should never block.
+  while(this->transceiver.txBusy()) vTaskDelay(1);
+  this->transceiver.beginTransmit();
+  this->transceiver.beginFrameTx(frame, repeat);
+  // endTransmit() is deferred: Transceiver::loop() calls it when txBusy() clears.
+#else
   somfy.transceiver.beginTransmit();
   byte frm[10];
   frame.encodeFrame(frm);
   this->transceiver.sendFrame(frm, frame.bitLength == 56 ? 2 : 12, frame.bitLength);
   for(uint8_t i = 0; i < repeat; i++) {
-    // For each 80-bit frame we need to adjust the byte encoding for the
-    // silence.
     if(frame.bitLength == 80) frame.encode80BitFrame(&frm[0], i + 1);
     this->transceiver.sendFrame(frm, frame.bitLength == 56 ? 7 : 6, frame.bitLength);
   }
   this->transceiver.endTransmit();
+#endif
 }
 
 bool SomfyShadeController::deleteShade(uint8_t shadeId) {
@@ -752,6 +763,9 @@ void SomfyShadeController::toJSONRepeaters(JsonResponse &json) {
 
 void SomfyShadeController::drainCommandQueue() {
   if(this->cmdQueue.empty() || !this->cmdQueue.ready()) return;
+#ifdef SOMFY_TX_RMT
+  if(this->transceiver.txBusy()) return; // Don't block app_main — loop() will drain on the next tick
+#endif
   this->cmdQueue.lastDrain = millis();
   queued_cmd_t c;
   if(!this->cmdQueue.pop(c)) return;

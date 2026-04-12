@@ -15,3 +15,7 @@ project(SomfyController)
 # idf_build_set_property is the correct IDF API to propagate a compile
 # definition into managed components (add_compile_definitions does not work).
 idf_build_set_property(COMPILE_DEFINITIONS "ARDUINO_NETWORK_EVENT_TASK_STACK_SIZE=16384" APPEND)
+
+# Replace the bit-bang RF TX path with the hardware RMT peripheral so the
+# main task is free during the ~0.5–1.5 s transmission window.
+idf_build_set_property(COMPILE_DEFINITIONS "SOMFY_TX_RMT" APPEND)

@@ -2,6 +2,10 @@
 // GPIO relay/remote handling, frame send and repeat. SomfyLinkedRemote constructor.
 #include "compat/preferences.h"
 #include "esp_log.h"
+#ifdef SOMFY_TX_RMT
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#endif
 #include "GitOTA.h"
 #include "SomfyRemote.h"
 #include "SomfyTransceiver.h"
@@ -141,6 +145,12 @@ void SomfyRemote::repeatFrame(uint8_t repeat) {
     this->triggerGPIOs(this->lastFrame);
     return;
   }
+#ifdef SOMFY_TX_RMT
+  while(somfy.transceiver.txBusy()) vTaskDelay(1);
+  somfy.transceiver.beginTransmit();
+  somfy.transceiver.beginFrameTx(this->lastFrame, repeat);
+  // endTransmit() deferred — Transceiver::loop() handles it when txBusy() clears.
+#else
   somfy.transceiver.beginTransmit();
   byte frm[10];
   this->lastFrame.encodeFrame(frm);
@@ -152,6 +162,7 @@ void SomfyRemote::repeatFrame(uint8_t repeat) {
     somfy.transceiver.sendFrame(frm, this->bitLength == 56 ? 7 : 6, this->bitLength);
   }
   somfy.transceiver.endTransmit();
+#endif
 }
 
 uint16_t SomfyRemote::getNextRollingCode() {
