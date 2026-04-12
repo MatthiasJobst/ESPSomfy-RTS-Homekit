@@ -61,7 +61,7 @@ bool ConfigFile::readHeader() {
   //if(this->file.position() != 0) this->file.seek(0, SeekSet);
   ESP_LOGI(TAG, "Reading header at %u", this->file.position());
   this->header.version = this->readUInt8(this->header.version);
-  this->header.length = this->readUInt8(0);
+  this->header.length = static_cast<int8_t>(this->readUInt8(0));
   if(this->header.version >= 19) {
     this->header.roomRecordSize = this->readUInt16(this->header.roomRecordSize);
     this->header.roomRecords = this->readUInt8(this->header.roomRecords);
@@ -97,19 +97,21 @@ bool ConfigFile::readString(char *buff, size_t len) {
       switch(val) {
         case CFG_REC_END:
         case CFG_VALUE_SEP:
-          _rtrim(buff);
+          str_rtrim(buff);
           return true;
+        default:
+          break;
       }
       buff[i++] = val;
       if(i == len) {
-        _rtrim(buff);
+        str_rtrim(buff);
         return true;
       }
     }
     else
       return false;
   }
-  _rtrim(buff);
+  str_rtrim(buff);
   return true;
 }
 bool ConfigFile::skipValue(size_t len) {
@@ -128,6 +130,8 @@ bool ConfigFile::skipValue(size_t len) {
           return true;
         case CFG_TOK_QUOTE:
           quotes++;
+          break;
+        default:
           break;
       }
     }
@@ -148,7 +152,7 @@ bool ConfigFile::readVarString(char *buff, size_t len) {
       switch(val) {
         case CFG_VALUE_SEP:
           if(quotes >= 2) {
-            _rtrim(buff);
+            str_rtrim(buff);
             return true;
           }
           break;
@@ -157,17 +161,19 @@ bool ConfigFile::readVarString(char *buff, size_t len) {
         case CFG_TOK_QUOTE:
           quotes++;
           continue;
+        default:
+          break;
       }
       buff[i++] = val;
       if(i == len) {
-        _rtrim(buff);
+        str_rtrim(buff);
         return true;
       }
     }
     else
       return false;
   }
-  _rtrim(buff);
+  str_rtrim(buff);
   return true;
 }
 bool ConfigFile::writeString(const char *val, size_t len, const char tok) {
@@ -258,7 +264,7 @@ uint32_t ConfigFile::readUInt32(const uint32_t defVal) {
 float ConfigFile::readFloat(const float defVal) {
   char buff[25];
   if(this->readString(buff, sizeof(buff)))
-    return atof(buff);
+    return static_cast<float>(atof(buff));
   return defVal;
 }
 bool ConfigFile::readBool(const bool defVal) {

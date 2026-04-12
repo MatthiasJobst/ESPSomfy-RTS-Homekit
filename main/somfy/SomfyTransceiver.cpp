@@ -48,11 +48,11 @@ static const uint32_t NOISE_COOLDOWN_MS = 30000;
 #define TOLERANCE_MIN 0.7
 #define TOLERANCE_MAX 1.3
 static const uint32_t tempo_wakeup_pulse = 9415;
-static const uint32_t tempo_wakeup_min = 9415 * TOLERANCE_MIN;
-static const uint32_t tempo_wakeup_max = 9415 * TOLERANCE_MAX;
+static const uint32_t tempo_wakeup_min = static_cast<uint32_t>(9415 * TOLERANCE_MIN);
+static const uint32_t tempo_wakeup_max = static_cast<uint32_t>(9415 * TOLERANCE_MAX);
 static const uint32_t tempo_wakeup_silence = 89565;
-static const uint32_t tempo_wakeup_silence_min = 89565 * TOLERANCE_MIN;
-static const uint32_t tempo_wakeup_silence_max = 89565 * TOLERANCE_MAX;
+static const uint32_t tempo_wakeup_silence_min = static_cast<uint32_t>(89565 * TOLERANCE_MIN);
+static const uint32_t tempo_wakeup_silence_max = static_cast<uint32_t>(89565 * TOLERANCE_MAX);
 static const uint32_t tempo_synchro_hw_min = SYMBOL * 4 * TOLERANCE_MIN;
 static const uint32_t tempo_synchro_hw_max = SYMBOL * 4 * TOLERANCE_MAX;
 static const uint32_t tempo_synchro_sw_min = 4850 * TOLERANCE_MIN;
@@ -329,7 +329,7 @@ void IRAM_ATTR Transceiver::handleReceiveISR(void*) { Transceiver::handleReceive
 
 void RECEIVE_ATTR Transceiver::handleReceive() {
     static unsigned long last_time = 0;
-    const long time = micros();
+    const unsigned long time = micros();
     const unsigned int duration = time - last_time;
 
     // RF noise watchdog: count rapid pulses; disable RX if threshold is exceeded.
@@ -698,7 +698,7 @@ void transceiver_config_t::fromJSON(JsonObject& obj) {
     if(obj.containsKey("frequency")) this->frequency = obj["frequency"];  // float
     if(obj.containsKey("deviation")) this->deviation = obj["deviation"];  // float
     if(obj.containsKey("enabled")) this->enabled = obj["enabled"];
-    if(obj.containsKey("txPower")) this->txPower = obj["txPower"];
+    if(obj.containsKey("txPower")) this->txPower = obj["txPower"].as<int8_t>();
     if(obj.containsKey("proto")) this->proto = static_cast<radio_proto>(obj["proto"].as<uint8_t>());
     if(obj.containsKey("noiseDetection")) this->noiseDetection = obj["noiseDetection"];
     /*
@@ -741,7 +741,7 @@ void transceiver_config_t::toJSON(JsonResponse &json) {
     json.addElem("frequency", this->frequency);  // float
     json.addElem("deviation", this->deviation);  // float
     json.addElem("txPower", this->txPower);
-    json.addElem("proto", static_cast<uint8_t>(this->proto));
+    json.addElem("proto", static_cast<int8_t>(this->proto));
     json.addElem("enabled", this->enabled);
     json.addElem("radioInit", this->radioInit);
     json.addElem("noiseDetection", this->noiseDetection);
@@ -763,7 +763,7 @@ void transceiver_config_t::save() {
     pref.putBool("enabled", this->enabled);
     pref.putBool("radioInit", true);
     pref.putChar("txPower", this->txPower);
-    pref.putChar("proto", static_cast<uint8_t>(this->proto));
+    pref.putChar("proto", static_cast<int8_t>(this->proto));
     pref.putBool("noiseDet", this->noiseDetection);
 
     /*
@@ -856,7 +856,7 @@ void transceiver_config_t::load() {
     this->enabled = pref.getBool("enabled", this->enabled);
     this->txPower = pref.getChar("txPower", this->txPower);
     this->rxBandwidth = pref.getFloat("rxBandwidth", this->rxBandwidth);
-    this->proto = static_cast<radio_proto>(pref.getChar("proto", static_cast<uint8_t>(this->proto)));
+    this->proto = static_cast<radio_proto>(pref.getChar("proto", static_cast<int8_t>(this->proto)));
     this->noiseDetection = pref.getBool("noiseDet", this->noiseDetection);
     this->removeNVSKey("internalCCMode");
     this->removeNVSKey("modulationMode");

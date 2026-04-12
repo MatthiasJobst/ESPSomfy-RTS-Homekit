@@ -131,11 +131,11 @@ int16_t GitRepo::getReleases(uint8_t num) {
         while(https.connected() && (len > 0 || len == -1) && ndx < count) {
           size_t size = stream->available();
           if(size) {
-            int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
+            int c = static_cast<int>(stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size)));
             ESP_LOGD(TAG, "%.*s", c, buff);
             if(len > 0) len -= c;
             // Now we should have some data.
-            for(uint8_t i = 0; i < c; i++) {
+            for(int i = 0; i < c; i++) {
               // Read the buffer a byte at a time until we have a key value pair.
               char ch = static_cast<char>(buff[i]);
               if(ch == '[') {
@@ -221,10 +221,10 @@ int16_t GitRepo::getReleases(uint8_t num) {
       else {
         https.end();
         sclient.stop();
-        return httpCode;
+        return static_cast<int16_t>(httpCode);
       }
     }
-    https.end();  
+    https.end();
     sclient.stop();
   }
   settings.printAvailHeap();
@@ -445,13 +445,13 @@ bool GitUpdater::beginUpdate(const char *version) {
   this->partition = U_FLASH;
   this->lockFS = this->cancelled = false;
   this->error = 0;
-  this->error = this->downloadFile();
+  this->error = static_cast<int16_t>(this->downloadFile());
   if(this->error == 0 && !this->cancelled) {
     somfy.commit();
     strcpy(this->currentFile, "SomfyController.littlefs.bin");
     this->partition = U_SPIFFS;
     this->lockFS = true;
-    this->error = this->downloadFile();
+    this->error = static_cast<int16_t>(this->downloadFile());
     this->lockFS = false;
     if(this->error == 0) {
       settings.fwVersion.parse(version);
@@ -472,7 +472,7 @@ bool GitUpdater::recoverFilesystem() {
   this->status = GIT_UPDATING;
   this->partition = U_SPIFFS;
   this->lockFS = true;
-  this->error = this->downloadFile();
+  this->error = static_cast<int16_t>(this->downloadFile());
   this->lockFS = false;
   if(this->error == 0) {
     delay(100);
@@ -508,7 +508,7 @@ int8_t GitUpdater::downloadFile() {
           ESP_LOGI(TAG, "Update Error detected!!!!!");
           Update.printError(Serial);
           https.end();
-          return -(Update.getError() + UPDATE_ERR_OFFSET);
+          return static_cast<int8_t>(-(Update.getError() + UPDATE_ERR_OFFSET));
         }
         uint8_t *buff = (uint8_t *)malloc(MAX_BUFF_SIZE);
         if(buff) {
@@ -523,16 +523,16 @@ int8_t GitUpdater::downloadFile() {
                 Update.abort();
                 free(buff);
                 https.end();
-                return -(Update.getError() + UPDATE_ERR_OFFSET);
+                return static_cast<int8_t>(-(Update.getError() + UPDATE_ERR_OFFSET));
               }
-              int c = stream->readBytes(buff, ((size > MAX_BUFF_SIZE) ? MAX_BUFF_SIZE : size));
+              int c = static_cast<int>(stream->readBytes(buff, ((size > MAX_BUFF_SIZE) ? MAX_BUFF_SIZE : size)));
               total += c;
               if (Update.write(buff, c) != c) {
                 ESP_LOGE(TAG, "Upload of %s aborted invalid size %d", url, c);
                 free(buff);
                 https.end();
                 sclient.stop();
-                return -(Update.getError() + UPDATE_ERR_OFFSET);
+                return static_cast<int8_t>(-(Update.getError() + UPDATE_ERR_OFFSET));
               }
               // Calculate the percentage.
               uint8_t p = (uint8_t)floor(((float)total / (float)len) * 100.0f);
@@ -585,7 +585,7 @@ int8_t GitUpdater::downloadFile() {
       }
       else {
         ESP_LOGE(TAG, "Invalid HTTP Code... %d", httpCode);
-        return httpCode;
+        return static_cast<int8_t>(httpCode);
       }
     }        
     else {

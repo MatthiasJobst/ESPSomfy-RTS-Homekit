@@ -276,20 +276,20 @@ void SomfyCommandProcessor::processStepCommand(somfy_commands cmd, int8_t stepDi
     if(!tiltAtEnd) {
       shade->p_target(shade->currentPos);
       if(shade->getTiltTime() == 0) return;
-      float newTilt = shade->currentTiltPos + stepDir * (100.0f / (shade->getTiltTime() / steps));
+      float newTilt = shade->currentTiltPos + static_cast<float>(stepDir) * (100.0f / (static_cast<float>(shade->getTiltTime()) / steps));
       shade->p_tiltTarget(goingUp ? max(0.0f, newTilt) : min(100.0f, newTilt));
     }
     else {
       shade->p_tiltTarget(shade->currentTiltPos);
       const float time = goingUp ? static_cast<float>(shade->getUpTime()) : static_cast<float>(shade->getDownTime());
       if(time == 0) return;
-      float newPos = shade->currentPos + stepDir * (100.0f / (time / steps));
+      float newPos = shade->currentPos + static_cast<float>(stepDir) * (100.0f / (time / steps));
       shade->p_target(goingUp ? max(0.0f, newPos) : min(100.0f, newPos));
     }
   }
   else if(shade->tiltType == tilt_types::tiltonly) {
     if(shade->getTiltTime() == 0) return;
-    float newTilt = shade->currentTiltPos + stepDir * (100.0f / (shade->getTiltTime() / steps));
+    float newTilt = shade->currentTiltPos + static_cast<float>(stepDir) * (100.0f / (static_cast<float>(shade->getTiltTime()) / steps));
     shade->p_tiltTarget(stepDir < 0 ? max(0.0f, newTilt) : min(100.0f, newTilt));
   }
   else {
@@ -297,7 +297,7 @@ void SomfyCommandProcessor::processStepCommand(somfy_commands cmd, int8_t stepDi
     if(!canMove) return;
     const float time = stepDir < 0 ? static_cast<float>(shade->getUpTime()) : static_cast<float>(shade->getDownTime());
     if(time == 0) return;
-    float newPos = shade->currentPos + stepDir * (100.0f / (time / steps));
+    float newPos = shade->currentPos + static_cast<float>(stepDir) * (100.0f / (time / steps));
     shade->p_target(stepDir < 0 ? max(0.0f, newPos) : min(100.0f, newPos));
   }
   shade->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
@@ -467,21 +467,21 @@ void SomfyCommandProcessor::processInternalCommand(somfy_commands cmd, uint8_t r
         else if(shade->currentTiltPos > 0.0f) {
           shade->p_target(shade->currentPos);
           if(shade->getTiltTime() == 0) return;
-          shade->p_tiltTarget(max(0.0f, shade->currentTiltPos - (100.0f/(static_cast<float>(shade->getTiltTime()/static_cast<float>(shade->getStepSize()))))));
+          shade->p_tiltTarget(max(0.0f, shade->currentTiltPos - (100.0f/(static_cast<float>(shade->getTiltTime())/static_cast<float>(shade->getStepSize())))));
         }
         else {
           if(shade->getUpTime() == 0) return;
           shade->p_tiltTarget(shade->currentTiltPos);
-          shade->p_target(max(0.0f, shade->currentPos - (100.0f/(static_cast<float>(shade->getUpTime()/static_cast<float>(shade->getStepSize()))))));
+          shade->p_target(max(0.0f, shade->currentPos - (100.0f/(static_cast<float>(shade->getUpTime())/static_cast<float>(shade->getStepSize())))));
         }
       }
       else if(shade->tiltType == tilt_types::tiltonly) {
         if(shade->getTiltTime() == 0 || shade->currentTiltPos <= 0.0f) return;
-        shade->p_tiltTarget(max(0.0f, shade->currentTiltPos - (100.0f/(static_cast<float>(shade->getTiltTime()/static_cast<float>(shade->getStepSize()))))));
+        shade->p_tiltTarget(max(0.0f, shade->currentTiltPos - (100.0f/(static_cast<float>(shade->getTiltTime())/static_cast<float>(shade->getStepSize())))));
       }
       else if(shade->currentPos > 0.0f) {
         if(shade->getUpTime() == 0) return;
-        shade->p_target(max(0.0f, shade->currentPos - (100.0f/(static_cast<float>(shade->getUpTime()/static_cast<float>(shade->getStepSize()))))));
+        shade->p_target(max(0.0f, shade->currentPos - (100.0f/(static_cast<float>(shade->getUpTime())/static_cast<float>(shade->getStepSize())))));
       }
       break;
     case somfy_commands::StepDown:
@@ -492,21 +492,21 @@ void SomfyCommandProcessor::processInternalCommand(somfy_commands cmd, uint8_t r
         else if(shade->currentTiltPos < 100.0f) {
           shade->p_target(shade->currentPos);
           if(shade->getTiltTime() == 0) return;
-          shade->p_tiltTarget(min(100.0f, shade->currentTiltPos + (100.0f/(static_cast<float>(shade->getTiltTime()/static_cast<float>(shade->getStepSize()))))));
+          shade->p_tiltTarget(min(100.0f, shade->currentTiltPos + (100.0f/(static_cast<float>(shade->getTiltTime())/static_cast<float>(shade->getStepSize())))));
         }
         else {
           if(shade->getDownTime() == 0) return;
           shade->p_tiltTarget(shade->currentTiltPos);
-          shade->p_target(min(100.0f, shade->currentPos + (100.0f/(static_cast<float>(shade->getDownTime()/static_cast<float>(shade->getStepSize()))))));
+          shade->p_target(min(100.0f, shade->currentPos + (100.0f/(static_cast<float>(shade->getDownTime())/static_cast<float>(shade->getStepSize())))));
         }
       }
       else if(shade->tiltType == tilt_types::tiltonly) {
         if(shade->getTiltTime() == 0 || shade->getStepSize() == 0 || shade->currentTiltPos >= 100.0f) return;
-        shade->p_tiltTarget(min(100.0f, shade->currentTiltPos + (100.0f/(static_cast<float>(shade->getTiltTime()/static_cast<float>(shade->getStepSize()))))));
+        shade->p_tiltTarget(min(100.0f, shade->currentTiltPos + (100.0f/(static_cast<float>(shade->getTiltTime())/static_cast<float>(shade->getStepSize())))));
       }
       else if(shade->currentPos < 100.0f) {
         if(shade->getDownTime() == 0 || shade->getStepSize() == 0) return;
-        shade->p_target(min(100.0f, shade->currentPos + (100.0f/(static_cast<float>(shade->getDownTime()/static_cast<float>(shade->getStepSize()))))));
+        shade->p_target(min(100.0f, shade->currentPos + (100.0f/(static_cast<float>(shade->getDownTime())/static_cast<float>(shade->getStepSize())))));
       }
       break;
     case somfy_commands::Flag:

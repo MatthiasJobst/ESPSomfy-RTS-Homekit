@@ -444,8 +444,8 @@ bool ShadeConfigFile::readGroupRecord(SomfyGroup *group) {
     if(shadeId > 0) group->linkedShades[lsd++] = shadeId;
   }
   if(this->header.version >= 12) group->repeats = this->readUInt8(1);
-  if(this->header.version >= 13) group->sortOrder = this->readUInt8(group->getGroupId() - 1);
-  else group->sortOrder = group->getGroupId() - 1;
+  if(this->header.version >= 13) group->sortOrder = static_cast<int8_t>(this->readUInt8(static_cast<uint8_t>(group->getGroupId() - 1)));
+  else group->sortOrder = static_cast<int8_t>(group->getGroupId() - 1);
   
   if(group->getGroupId() == 255) group->clear();
   else group->compressLinkedShadeIds();
@@ -481,7 +481,7 @@ bool ShadeConfigFile::readRoomRecord(SomfyRoom *room) {
   uint32_t startPos = this->file.position();
   room->roomId = this->readUInt8(0);
   this->readString(room->name, sizeof(room->name));
-  room->sortOrder = this->readUInt8(room->roomId - 1);
+  room->sortOrder = static_cast<int8_t>(this->readUInt8(static_cast<uint8_t>(room->roomId - 1)));
   if(this->file.position() != startPos + this->header.roomRecordSize) {
     ESP_LOGI(TAG, "Reading to end of room record");
     this->seekChar(CFG_REC_END);
@@ -546,8 +546,8 @@ bool ShadeConfigFile::readShadeRecord(SomfyShade *shade) {
   if(this->header.version >= 9) shade->flipCommands = this->readBool(false);
   if(this->header.version >= 10) shade->setFlipPosition(this->readBool(false));
   if(this->header.version >= 12) shade->repeats = this->readUInt8(1);
-  if(this->header.version >= 13) shade->sortOrder = this->readUInt8(shade->getShadeId() - 1);
-  else shade->sortOrder = shade->getShadeId() - 1;
+  if(this->header.version >= 13) shade->sortOrder = static_cast<int8_t>(this->readUInt8(static_cast<uint8_t>(shade->getShadeId() - 1)));
+  else shade->sortOrder = static_cast<int8_t>(shade->getShadeId() - 1);
   if(this->header.version > 14) {
     shade->gpioControl.gpioUp = this->readUInt8(shade->gpioControl.gpioUp);
     shade->gpioControl.gpioDown = this->readUInt8(shade->gpioControl.gpioDown);

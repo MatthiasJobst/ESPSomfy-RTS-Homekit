@@ -23,7 +23,7 @@ namespace util {
 }
 */
 
-static void _ltrim(char *str) {
+static void str_ltrim(char *str) {
   int s = 0, j, k = 0;
   int e = strlen(str);
   while(s < e && (str[s] == ' ' || str[s] == '\n' || str[s] == '\r' || str[s] == '\t' || str[s] == '"')) s++;
@@ -36,14 +36,14 @@ static void _ltrim(char *str) {
   }
   //if(s > 0) strcpy(str, &str[s]);
 }
-static void _rtrim(char *str) {
+static void str_rtrim(char *str) {
   int e = strlen(str) - 1;
   while(e >= 0 && (str[e] == ' ' || str[e] == '\n' || str[e] == '\r' || str[e] == '\t' || str[e] == '"')) {str[e] = '\0'; e--;}
 }
-[[maybe_unused]] static void _trim(char *str) { _ltrim(str); _rtrim(str); }
+[[maybe_unused]] static void str_trim(char *str) { str_ltrim(str); str_rtrim(str); }
 struct rebootDelay_t {
   bool reboot = false;
-  int rebootTime = 0;
+  unsigned long rebootTime = 0;
   bool closed = false;
 };
 [[maybe_unused]] static bool toBoolean(const char *str, bool def) {

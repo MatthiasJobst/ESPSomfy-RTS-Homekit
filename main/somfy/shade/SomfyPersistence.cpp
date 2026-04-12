@@ -39,7 +39,7 @@ void SomfyPersistence::commitMyPosition() {
     snprintf(shadeKey, sizeof(shadeKey), "SomfyShade%u", shade->getShadeId());
     ESP_LOGI(PERSIST_TAG, "Writing my shade position: %d%%", (int)shade->getMyPos());
     pref.begin(shadeKey);
-    pref.putUShort("myPos", shade->getMyPos());
+    pref.putUShort("myPos", static_cast<uint16_t>(shade->getMyPos()));
     pref.end();
   }
   #endif
@@ -68,7 +68,7 @@ bool SomfyPersistence::save() {
     snprintf(shadeKey, sizeof(shadeKey), "SomfyShade%u", shade->getShadeId());
     pref.begin(shadeKey);
     pref.clear();
-    pref.putChar("shadeType",     static_cast<uint8_t>(shade->shadeType));
+    pref.putChar("shadeType",     static_cast<int8_t>(shade->shadeType));
     pref.putUInt("remoteAddress", shade->getRemoteAddress());
     pref.putString("name",        shade->name);
     pref.putBool("hasTilt",       shade->tiltType != tilt_types::none);
@@ -128,9 +128,9 @@ void SomfyPersistence::load() {
   shade->setRemoteAddress(pref.getUInt("remoteAddress", 0));
   shade->currentPos    = pref.getFloat("currentPos", 0);
   shade->target        = floor(shade->currentPos);
-  shade->p_myPos(static_cast<float>(pref.getUShort("myPos", shade->getMyPos())));
+  shade->p_myPos(static_cast<float>(pref.getUShort("myPos", static_cast<uint16_t>(shade->getMyPos()))));
   shade->tiltType      = pref.getBool("hasTilt", false) ? tilt_types::none : tilt_types::tiltmotor;
-  shade->shadeType     = static_cast<shade_types>(pref.getChar("shadeType", static_cast<uint8_t>(shade->shadeType)));
+  shade->shadeType     = static_cast<shade_types>(pref.getChar("shadeType", static_cast<int8_t>(shade->shadeType)));
   shade->currentTiltPos = pref.getFloat("currentTiltPos", 0);
   shade->tiltTarget    = floor(shade->currentTiltPos);
   pref.getBytes("linkedAddr", linkedAddresses, sizeof(linkedAddresses));

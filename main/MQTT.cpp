@@ -133,11 +133,11 @@ void MQTTClass::receive(const char *topic, byte*payload, uint32_t length) {
       }
       else if(strncmp(command, "mypos", sizeof(command)) == 0) {
         if(val >= 0 && val <= 100)
-          shade->setMyPosition(val);
+          shade->setMyPosition(static_cast<int8_t>(val));
       }
       else if(strncmp(command, "myTiltPos", sizeof(command)) == 0) {
         if(val >= 0 && val <= 100)
-          shade->setMyPosition(shade->getMyPos(), val);
+          shade->setMyPosition(shade->getMyPos(), static_cast<int8_t>(val));
       }
       else if(strncmp(command, "sunFlag", sizeof(command)) == 0) {
         if(val > 0) somfy.enqueueShadeCommand(shadeId, somfy_commands::SunFlag, shade->repeats);
@@ -156,10 +156,10 @@ void MQTTClass::receive(const char *topic, byte*payload, uint32_t length) {
         }
       }
       else if(strncmp(command, "sunny", sizeof(command)) == 0) {
-        if(val >= 0) somfy.enqueueShadeSensor(shadeId, -1, val, shade->repeats);
+        if(val >= 0) somfy.enqueueShadeSensor(shadeId, int8_t{-1}, static_cast<int8_t>(val), shade->repeats);
       }
       else if(strncmp(command, "windy", sizeof(command)) == 0) {
-        if(val >= 0) somfy.enqueueShadeSensor(shadeId, val, -1, shade->repeats);
+        if(val >= 0) somfy.enqueueShadeSensor(shadeId, static_cast<int8_t>(val), int8_t{-1}, shade->repeats);
       }
     }
   }
@@ -183,10 +183,10 @@ void MQTTClass::receive(const char *topic, byte*payload, uint32_t length) {
           somfy.enqueueGroupCommand(groupId, somfy_commands::SunFlag, group->repeats);
       }
       else if(strncmp(command, "sunny", sizeof(command)) == 0) {
-        if(val >= 0) somfy.enqueueGroupSensor(groupId, -1, val, group->repeats);
+        if(val >= 0) somfy.enqueueGroupSensor(groupId, int8_t{-1}, static_cast<int8_t>(val), group->repeats);
       }
       else if(strncmp(command, "windy", sizeof(command)) == 0) {
-        if(val >= 0) somfy.enqueueGroupSensor(groupId, val, -1, group->repeats);
+        if(val >= 0) somfy.enqueueGroupSensor(groupId, static_cast<int8_t>(val), int8_t{-1}, group->repeats);
       }
     }
   }

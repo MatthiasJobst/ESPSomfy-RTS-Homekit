@@ -232,7 +232,7 @@ bool ConfigSettings::getAppVersion() {
   memset(app, 0x00, sizeof(app));
   f.read((uint8_t *)app, sizeof(app) - 1);
   f.close();
-  _trim(app);
+  str_trim(app);
   this->appVersion.parse(app);
   return true;
 }
@@ -240,7 +240,7 @@ bool ConfigSettings::save() {
   pref.begin("CFG");
   pref.putString("hostname", this->hostname);
   pref.putBool("ssdpBroadcast", this->ssdpBroadcast);
-  pref.putChar("connType", static_cast<uint8_t>(this->connType));
+  pref.putChar("connType", static_cast<int8_t>(this->connType));
   pref.putBool("checkForUpdate", this->checkForUpdate);
   pref.end();
   return true;
@@ -353,7 +353,7 @@ bool MQTTSettings::save() {
   pref.clear();
   pref.putString("protocol", this->protocol);
   pref.putString("hostname", this->hostname);
-  pref.putShort("port", this->port);
+  pref.putShort("port", static_cast<int16_t>(this->port));
   pref.putString("username", this->username);
   pref.putString("password", this->password);
   pref.putString("rootTopic", this->rootTopic);
@@ -543,11 +543,11 @@ void SecuritySettings::toJSON(JsonResponse &json) {
 bool SecuritySettings::save() {
   pref.begin("SEC");
   pref.clear();
-  pref.putChar("type", static_cast<uint8_t>(this->type));
+  pref.putChar("type", static_cast<int8_t>(this->type));
   pref.putString("username", this->username);
   pref.putString("password", this->password);
   pref.putString("pin", this->pin);
-  pref.putChar("permissions", this->permissions);
+  pref.putChar("permissions", static_cast<int8_t>(this->permissions));
   pref.end();
   return true;
 }
@@ -557,7 +557,7 @@ bool SecuritySettings::load() {
   if(pref.isKey("username")) pref.getString("username", this->username, sizeof(this->username));
   if(pref.isKey("password")) pref.getString("password", this->password, sizeof(this->password));
   if(pref.isKey("pin")) pref.getString("pin", this->pin, sizeof(this->pin));
-  if(pref.isKey("permissions")) this->permissions = pref.getChar("permissions", this->permissions);
+  if(pref.isKey("permissions")) this->permissions = static_cast<uint8_t>(pref.getChar("permissions", static_cast<int8_t>(this->permissions)));
   pref.end();
   return true;
 }
@@ -627,6 +627,8 @@ String WifiSettings::mapEncryptionType(int type) {
       return "WPA/WPA2/PSK";
     case WIFI_AUTH_WPA2_ENTERPRISE:
       return "WPA/Enterprise";
+    default:
+      break;
   }
   return "Unknown";
 }
@@ -661,8 +663,8 @@ bool EthernetSettings::begin() {
   return true;
 }
 bool EthernetSettings::fromJSON(JsonObject &obj) {
-  if(obj.containsKey("boardType")) this->boardType = obj["boardType"];
-  if(obj.containsKey("phyAddress")) this->phyAddress = obj["phyAddress"];
+  if(obj.containsKey("boardType")) this->boardType = obj["boardType"].as<int8_t>();
+  if(obj.containsKey("phyAddress")) this->phyAddress = obj["phyAddress"].as<int8_t>();
 #if CONFIG_ETH_USE_ESP32_EMAC
   if(obj.containsKey("CLKMode")) this->CLKMode = static_cast<eth_clock_mode_t>(obj["CLKMode"]);
   if(obj.containsKey("phyType")) this->phyType = static_cast<eth_phy_type_t>(obj["phyType"]);
@@ -670,9 +672,9 @@ bool EthernetSettings::fromJSON(JsonObject &obj) {
   if(obj.containsKey("CLKMode")) this->CLKMode = obj["CLKMode"];
   if(obj.containsKey("phyType")) this->phyType = obj["phyType"];
 #endif
-  if(obj.containsKey("PWRPin")) this->PWRPin = obj["PWRPin"];
-  if(obj.containsKey("MDCPin")) this->MDCPin = obj["MDCPin"];
-  if(obj.containsKey("MDIOPin")) this->MDIOPin = obj["MDIOPin"];
+  if(obj.containsKey("PWRPin")) this->PWRPin = obj["PWRPin"].as<int8_t>();
+  if(obj.containsKey("MDCPin")) this->MDCPin = obj["MDCPin"].as<int8_t>();
+  if(obj.containsKey("MDIOPin")) this->MDIOPin = obj["MDIOPin"].as<int8_t>();
   return true;
 }
 bool EthernetSettings::toJSON(JsonObject &obj) {
@@ -699,33 +701,33 @@ bool EthernetSettings::usesPin(uint8_t pin) {
   if((this->CLKMode == 0 || this->CLKMode == 1) && pin == 0) return true;
   else if(this->CLKMode == 2 && pin == 16) return true;
   else if(this->CLKMode == 3 && pin == 17) return true;
-  else if(this->PWRPin == pin) return true;
-  else if(this->MDCPin == pin) return true;
-  else if(this->MDIOPin == pin) return true;
+  else if(this->PWRPin == static_cast<int8_t>(pin)) return true;
+  else if(this->MDCPin == static_cast<int8_t>(pin)) return true;
+  else if(this->MDIOPin == static_cast<int8_t>(pin)) return true;
   return false;  
 }
 bool EthernetSettings::save() {
   pref.begin("ETH");
   pref.clear();
-  pref.putChar("boardType", this->boardType);
-  pref.putChar("phyAddress", this->phyAddress);
-  pref.putChar("phyType", static_cast<uint8_t>(this->phyType));
-  pref.putChar("CLKMode", static_cast<uint8_t>(this->CLKMode));
-  pref.putChar("PWRPin", this->PWRPin);
-  pref.putChar("MDCPin", this->MDCPin);
-  pref.putChar("MDIOPin", this->MDIOPin);
+  pref.putChar("boardType", static_cast<int8_t>(this->boardType));
+  pref.putChar("phyAddress", static_cast<int8_t>(this->phyAddress));
+  pref.putChar("phyType", static_cast<int8_t>(this->phyType));
+  pref.putChar("CLKMode", static_cast<int8_t>(this->CLKMode));
+  pref.putChar("PWRPin", static_cast<int8_t>(this->PWRPin));
+  pref.putChar("MDCPin", static_cast<int8_t>(this->MDCPin));
+  pref.putChar("MDIOPin", static_cast<int8_t>(this->MDIOPin));
   pref.end();
   return true;
 }
 bool EthernetSettings::load() {
   pref.begin("ETH");
-  this->boardType = pref.getChar("boardType", this->boardType);
+  this->boardType = static_cast<uint8_t>(pref.getChar("boardType", static_cast<int8_t>(this->boardType)));
 #if CONFIG_ETH_USE_ESP32_EMAC
   this->phyType = static_cast<eth_phy_type_t>(pref.getChar("phyType", ETH_PHY_LAN8720));
   this->CLKMode = static_cast<eth_clock_mode_t>(pref.getChar("CLKMode", ETH_CLOCK_GPIO0_IN));
 #else
-  this->phyType = pref.getChar("phyType", this->phyType);
-  this->CLKMode = pref.getChar("CLKMode", this->CLKMode);
+  this->phyType = static_cast<uint8_t>(pref.getChar("phyType", static_cast<int8_t>(this->phyType)));
+  this->CLKMode = static_cast<uint8_t>(pref.getChar("CLKMode", static_cast<int8_t>(this->CLKMode)));
 #endif
   this->phyAddress = pref.getChar("phyAddress", this->phyAddress);
   this->PWRPin = pref.getChar("PWRPin", this->PWRPin);

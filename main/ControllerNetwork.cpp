@@ -202,7 +202,7 @@ void ControllerNetwork::emitSockets(uint8_t num) {
         json->addElem("channel", (int32_t)this->channel);
         json->endObject();
         sockEmit.endEmit(num);
-        this->lastRSSI = WiFi.RSSI();
+        this->lastRSSI = static_cast<int>(WiFi.RSSI());
         this->lastChannel = WiFi.channel();
       }
       else {
@@ -240,7 +240,7 @@ void ControllerNetwork::setConnected(conn_types_t connType) {
     this->_connecting = false;
     this->ssid = WiFi.SSID();
     this->mac = WiFi.BSSIDstr();
-    this->strength = WiFi.RSSI();
+    this->strength = static_cast<int>(WiFi.RSSI());
     this->channel = WiFi.channel();
     this->connectAttempts++;
     esp_wifi_set_ps(WIFI_PS_NONE);  // Disable modem sleep to prevent DELBA/frame-drop issues

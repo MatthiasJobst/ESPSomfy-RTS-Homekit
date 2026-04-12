@@ -30,15 +30,15 @@ extern MQTTClass mqtt;
 
 #define WEB_MAX_RESPONSE 4096
 extern char g_content[WEB_MAX_RESPONSE];
-extern const char _encoding_text[];
-extern const char _encoding_json[];
+extern const char g_encoding_text[];
+extern const char g_encoding_json[];
 
 static const char *TAG = "WebOTA";
 
 void Web::handleDownloadFirmware(WebServer &server) {
   GitRepo repo;
   GitRelease *rel = nullptr;
-  int8_t err = repo.getReleases();
+  int8_t err = static_cast<int8_t>(repo.getReleases());
   ESP_LOGI(TAG, "downloadFirmware called...");
   if(err == 0) {
     if(server.hasArg("ver")) {
@@ -65,13 +65,13 @@ void Web::handleDownloadFirmware(WebServer &server) {
         git.status = GIT_AWAITING_UPDATE;
       }
       else
-        server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Release not found in repo.\"}"));
+        server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Release not found in repo.\"}"));
     }
     else
-      server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Release version not supplied.\"}"));
+      server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Release version not supplied.\"}"));
   }
   else {
-      server.send(err, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Error communicating with Github.\"}"));
+      server.send(err, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Error communicating with Github.\"}"));
   }
 }
 
@@ -79,7 +79,7 @@ void Web::handleRestore(WebServer &server) {
   server.sendHeader("Connection", "close");
   if(webServer.uploadSuccess) {
     ESP_LOGI(TAG, "Restoring Shade settings");
-    server.send(200, _encoding_json, "{\"status\":\"Success\",\"desc\":\"Restoring Shade settings\"}");
+    server.send(200, g_encoding_json, "{\"status\":\"Success\",\"desc\":\"Restoring Shade settings\"}");
     restore_options_t opts;
     if(server.hasArg("data")) {
       ESP_LOGI(TAG, "Restore data: %s", server.arg("data").c_str());
@@ -123,9 +123,9 @@ void Web::handleRestoreUpload(WebServer &server) {
 }
 void Web::handleUpdateFirmware(WebServer &server) {
   if (Update.hasError())
-    server.send(500, _encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Error updating firmware: \"}");
+    server.send(500, g_encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Error updating firmware: \"}");
   else
-    server.send(200, _encoding_json, "{\"status\":\"SUCCESS\",\"desc\":\"Successfully updated firmware\"}");
+    server.send(200, g_encoding_json, "{\"status\":\"SUCCESS\",\"desc\":\"Successfully updated firmware\"}");
   rebootDelay.reboot = true;
   rebootDelay.rebootTime = millis() + 500;
 }
@@ -166,11 +166,11 @@ void Web::handleUpdateFirmwareUpload(WebServer &server) {
 }
 void Web::handleUpdateShadeConfig(WebServer &server) {
   if(git.lockFS) {
-    server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Filesystem update in progress\"}"));
+    server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Filesystem update in progress\"}"));
     return;
   }
   server.sendHeader("Connection", "close");
-  server.send(200, _encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Updating Shade Config: \"}");
+  server.send(200, g_encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Updating Shade Config: \"}");
 }
 void Web::handleUpdateShadeConfigUpload(WebServer &server) {
   HTTPUpload& upload = server.upload();
@@ -193,9 +193,9 @@ void Web::handleUpdateShadeConfigUpload(WebServer &server) {
 void Web::handleUpdateApplication(WebServer &server) {
   server.sendHeader("Connection", "close");
   if (Update.hasError())
-    server.send(500, _encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Error updating application: \"}");
+    server.send(500, g_encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Error updating application: \"}");
   else
-    server.send(200, _encoding_json, "{\"status\":\"SUCCESS\",\"desc\":\"Successfully updated application\"}");
+    server.send(200, g_encoding_json, "{\"status\":\"SUCCESS\",\"desc\":\"Successfully updated application\"}");
   rebootDelay.reboot = true;
   rebootDelay.rebootTime = millis() + 500;
 }

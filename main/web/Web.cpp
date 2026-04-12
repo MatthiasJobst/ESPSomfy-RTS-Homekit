@@ -35,13 +35,13 @@ char g_content[WEB_MAX_RESPONSE];
 static const char *TAG = "Web";
 
 // General responses
-extern const char _response_404[] = "404: Service Not Found";
+extern const char g_response_404[] = "404: Service Not Found";
 
 
 // Encodings
-extern const char _encoding_text[] = "text/plain";
-extern const char _encoding_html[] = "text/html";
-extern const char _encoding_json[] = "application/json";
+extern const char g_encoding_text[] = "text/plain";
+extern const char g_encoding_html[] = "text/html";
+extern const char g_encoding_json[] = "application/json";
 
 WebServer apiServer(APP_API_PORT);
 WebServer server(APP_HTTP_PORT);
@@ -63,13 +63,13 @@ void Web::end() {
 void Web::handleDeserializationError(WebServer &server, DeserializationError &err) {
     switch (err.code()) {
     case DeserializationError::InvalidInput:
-      server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Invalid JSON payload\"}"));
+      server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Invalid JSON payload\"}"));
       break;
     case DeserializationError::NoMemory:
-      server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Out of memory parsing JSON\"}"));
+      server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Out of memory parsing JSON\"}"));
       break;
     default:
-      server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"General JSON Deserialization failed\"}"));
+      server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"General JSON Deserialization failed\"}"));
       break;
     }
 }
@@ -95,10 +95,10 @@ bool Web::isAuthenticated(WebServer &server, bool cfg) {
   }
   return true;
 }
-bool Web::createAPIPinToken(const IPAddress ipAddress, const char *pin, char *token) {
+bool Web::createAPIPinToken(const IPAddress& ipAddress, const char *pin, char *token) {
   return this->createAPIToken((String(pin) + ":" + ipAddress.toString()).c_str(), token);
 }
-bool Web::createAPIPasswordToken(const IPAddress ipAddress, const char *username, const char *password, char *token) {
+bool Web::createAPIPasswordToken(const IPAddress& ipAddress, const char *username, const char *password, char *token) {
   return this->createAPIToken((String(username) + ":" + String(password) + ":" + ipAddress.toString()).c_str(), token);
 }
 bool Web::createAPIToken(const char *payload, char *token) {
@@ -119,7 +119,7 @@ bool Web::createAPIToken(const char *payload, char *token) {
     ESP_LOGI(TAG, "Token: %s", token);
     return true;
 }
-bool Web::createAPIToken(const IPAddress ipAddress, char *token) {
+bool Web::createAPIToken(const IPAddress& ipAddress, char *token) {
     String payload;
     if(settings.Security.type == security_types::Password) createAPIPasswordToken(ipAddress, settings.Security.username, settings.Security.password, token);
     else if(settings.Security.type == security_types::PinEntry) createAPIPinToken(ipAddress, settings.Security.pin, token);
@@ -145,7 +145,7 @@ void Web::handleLogin(WebServer &server) {
       obj["msg"] = "Success";
       obj["success"] = true;
       serializeJson(doc, g_content);
-      server.send(200, _encoding_json, g_content);
+      server.send(200, g_encoding_json, g_content);
       return;
     }
     ESP_LOGI(TAG, "Web logging in...");
@@ -193,12 +193,12 @@ void Web::handleLogin(WebServer &server) {
       }
     }
     serializeJson(doc, g_content);
-    server.send(200, _encoding_json, g_content);
+    server.send(200, g_encoding_json, g_content);
     return;
 }
 void Web::handleStreamFile(WebServer &server, const char *filename, const char *encoding) {
   if(git.lockFS) {
-    server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Filesystem update in progress\"}"));
+    server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Filesystem update in progress\"}"));
     return;
   }
   // Load the index html page from the data directory.
@@ -206,7 +206,7 @@ void Web::handleStreamFile(WebServer &server, const char *filename, const char *
   File file = LittleFS.open(filename, "r");
   if (!file) {
     ESP_LOGE(TAG, "Error opening %s", filename);
-    server.send(500, _encoding_text, "Error opening file");
+    server.send(500, g_encoding_text, "Error opening file");
     return;
   }
   // Stream the file in 1 KB chunks. Poll the WebSocket server every 4 chunks
@@ -217,7 +217,7 @@ void Web::handleStreamFile(WebServer &server, const char *filename, const char *
   static uint8_t streamBuf[1024];
   uint8_t chunkCount = 0;
   while (file.available() && server.client().connected()) {
-    int n = file.read(streamBuf, sizeof(streamBuf));
+    int n = static_cast<int>(file.read(streamBuf, sizeof(streamBuf)));
     if (n > 0) server.sendContent((const char *)streamBuf, n);
     if (++chunkCount == 4) {
       chunkCount = 0;
@@ -260,7 +260,7 @@ void Web::handleController(WebServer &server) {
     resp.endObject();
     resp.endResponse();
   }
-  else server.send(404, _encoding_text, _response_404);
+  else server.send(404, g_encoding_text, g_response_404);
 }
 void Web::handleHomeKit(WebServer &server) {
   if(server.method() == HTTP_GET) {
@@ -271,15 +271,15 @@ void Web::handleHomeKit(WebServer &server) {
     resp.endObject();
     resp.endResponse();
   }
-  else server.send(404, _encoding_text, _response_404);
+  else server.send(404, g_encoding_text, g_response_404);
 }
 
 void Web::handleHomeKitResetPairings(WebServer &server) {
   if(server.method() == HTTP_POST) {
     homekit.resetPairings();
-    server.send(200, _encoding_json, F("{\"status\":\"OK\"}"));
+    server.send(200, g_encoding_json, F("{\"status\":\"OK\"}"));
   }
-  else server.send(404, _encoding_text, _response_404);
+  else server.send(404, g_encoding_text, g_response_404);
 }
 
 void Web::handleLoginContext(WebServer &server) {
@@ -307,8 +307,8 @@ void Web::handleRepeatCommand(WebServer& server) {
     if(server.hasArg("shadeId")) shadeId = atoi(server.arg("shadeId").c_str());
     else if(server.hasArg("groupId")) groupId = atoi(server.arg("groupId").c_str());
     if(server.hasArg("command")) command = translateSomfyCommand(server.arg("command"));
-    if(server.hasArg("repeat")) repeat = atoi(server.arg("repeat").c_str());
-    if(server.hasArg("stepSize")) stepSize = atoi(server.arg("stepSize").c_str());
+    if(server.hasArg("repeat")) repeat = static_cast<int8_t>(atoi(server.arg("repeat").c_str()));
+    if(server.hasArg("stepSize")) stepSize = static_cast<uint8_t>(atoi(server.arg("stepSize").c_str()));
     if(shadeId == 255 && groupId == 255 && server.hasArg("plain")) {
       JsonDocument doc; JsonObject obj;
       if (!parseBody(server, doc, obj)) return;
@@ -326,7 +326,7 @@ void Web::handleRepeatCommand(WebServer& server) {
     if(shadeId != 255) {
       SomfyShade *shade = somfy.getShadeById(shadeId);
       if(!shade) {
-        server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Shade reference could not be found.\"}"));
+        server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Shade reference could not be found.\"}"));
         return;        
       }
       if(shade->shadeType == shade_types::garage1 && command == somfy_commands::Prog) command = somfy_commands::Toggle;
@@ -347,7 +347,7 @@ void Web::handleRepeatCommand(WebServer& server) {
     else if(groupId != 255) {
       SomfyGroup * group = somfy.getGroupById(groupId);
       if(!group) {
-        server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group reference could not be found.\"}"));
+        server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group reference could not be found.\"}"));
         return;        
       }
       if(!group->isLastCommand(command)) {
@@ -365,11 +365,11 @@ void Web::handleRepeatCommand(WebServer& server) {
         
       //group->toJSON(sobj);
       //serializeJson(sdoc, g_content);
-      //server.send(200, _encoding_json, g_content);
+      //server.send(200, g_encoding_json, g_content);
     }
   }
   else {
-    server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
+    server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
   }
 }
 void Web::handleGroupCommand(WebServer &server) {
@@ -381,7 +381,7 @@ void Web::handleGroupCommand(WebServer &server) {
     if (server.hasArg("groupId")) {
       groupId = atoi(server.arg("groupId").c_str());
       if (server.hasArg("command")) command = translateSomfyCommand(server.arg("command"));
-      if(server.hasArg("repeat")) repeat = atoi(server.arg("repeat").c_str());
+      if(server.hasArg("repeat")) repeat = static_cast<int8_t>(atoi(server.arg("repeat").c_str()));
     }
     else if (server.hasArg("plain")) {
       ESP_LOGI(TAG, "Sending Group Command");
@@ -389,7 +389,7 @@ void Web::handleGroupCommand(WebServer &server) {
       if (!parseBody(server, doc, obj)) return;
       if (obj.containsKey("groupId")) groupId = obj["groupId"];
       else {
-        server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group id was supplied.\"}"));
+        server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group id was supplied.\"}"));
         return;
       }
       if (obj.containsKey("command")) {
@@ -398,7 +398,7 @@ void Web::handleGroupCommand(WebServer &server) {
       }
       if(obj.containsKey("repeat")) repeat = obj["repeat"].as<uint8_t>();
     }
-    else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group object supplied.\"}"));
+    else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group object supplied.\"}"));
     SomfyGroup * group = somfy.getGroupById(groupId);
     if (group) {
       ESP_LOGI(TAG, "Received: %s", server.arg("plain").c_str());
@@ -411,11 +411,11 @@ void Web::handleGroupCommand(WebServer &server) {
       resp.endResponse();
     }
     else {
-      server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group with the specified id not found.\"}"));
+      server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group with the specified id not found.\"}"));
     }
   }
   else
-    server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
+    server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
 }
 void Web::handleDiscovery(WebServer &server) {
   HTTPMethod method = apiServer.method();
@@ -458,7 +458,7 @@ void Web::handleDiscovery(WebServer &server) {
     net.needsBroadcast = true;
   }
   else
-    server.send(500, _encoding_text, "Invalid http method");
+    server.send(500, g_encoding_text, "Invalid http method");
 }
 void Web::handleBackup(WebServer &server, bool attach) {
   if(server.hasArg("attach")) attach = toBoolean(server.arg("attach").c_str(), attach);
@@ -476,6 +476,8 @@ void Web::handleBackup(WebServer &server, bool attach) {
         case ':':
           iso[i] = '_';
           break;
+        default:
+          break;
       }
     }
     snprintf(filename, sizeof(filename), "attachment; filename=\"ESPSomfyRTS %s.backup\"", iso);
@@ -488,18 +490,18 @@ void Web::handleBackup(WebServer &server, bool attach) {
   File file = LittleFS.open("/controller.backup", "r");
   if (!file) {
     ESP_LOGE(TAG, "Error opening shades.cfg");
-    server.send(500, _encoding_text, "shades.cfg");
+    server.send(500, g_encoding_text, "shades.cfg");
     return;
   }
-  server.streamFile(file, _encoding_text);
+  server.streamFile(file, g_encoding_text);
   file.close();
 }
 void Web::handleSetSensor(WebServer &server) {
-  uint8_t shadeId = (server.hasArg("shadeId")) ? atoi(server.arg("shadeId").c_str()) : 255;
-  uint8_t groupId = (server.hasArg("groupId")) ? atoi(server.arg("groupId").c_str()) : 255;
-  int8_t sunny = (server.hasArg("sunny")) ? toBoolean(server.arg("sunny").c_str(), false) ? 1 : 0 : -1;
-  int8_t windy = (server.hasArg("windy")) ? atoi(server.arg("windy").c_str()) : -1;
-  int8_t repeat = (server.hasArg("repeat")) ? atoi(server.arg("repeat").c_str()) : -1;
+  uint8_t shadeId = (server.hasArg("shadeId")) ? static_cast<uint8_t>(atoi(server.arg("shadeId").c_str())) : 255;
+  uint8_t groupId = (server.hasArg("groupId")) ? static_cast<uint8_t>(atoi(server.arg("groupId").c_str())) : 255;
+  int8_t sunny = static_cast<int8_t>((server.hasArg("sunny")) ? toBoolean(server.arg("sunny").c_str(), false) ? 1 : 0 : -1);
+  int8_t windy = (server.hasArg("windy")) ? static_cast<int8_t>(atoi(server.arg("windy").c_str())) : int8_t{-1};
+  int8_t repeat = (server.hasArg("repeat")) ? static_cast<int8_t>(atoi(server.arg("repeat").c_str())) : int8_t{-1};
   if(server.hasArg("plain")) {
     JsonDocument doc; JsonObject obj;
     if (!parseBody(server, doc, obj)) return;
@@ -532,7 +534,7 @@ void Web::handleSetSensor(WebServer &server) {
       resp.endResponse();
     }
     else
-      server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"An invalid shadeId was provided\"}"));
+      server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"An invalid shadeId was provided\"}"));
       
   }
   else if(groupId != 255) {
@@ -548,10 +550,10 @@ void Web::handleSetSensor(WebServer &server) {
       resp.endResponse();
     }
     else
-      server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"An invalid groupId was provided\"}"));
+      server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"An invalid groupId was provided\"}"));
   }
   else {
-    server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"shadeId was not provided\"}"));
+    server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"shadeId was not provided\"}"));
   }
 }
 void Web::handleNotFound(WebServer &server) {
@@ -577,7 +579,7 @@ void Web::handleNotFound(WebServer &server) {
 
     }
     snprintf(g_content, sizeof(g_content), "404 Service Not Found: %s", server.uri().c_str());
-    server.send(404, _encoding_text, g_content);
+    server.send(404, g_encoding_text, g_content);
 }
 void Web::handleReboot(WebServer &server) {
   HTTPMethod method = server.method();
@@ -588,7 +590,7 @@ void Web::handleReboot(WebServer &server) {
     server.send(200, "application/json", "{\"status\":\"OK\",\"desc\":\"Successfully started reboot\"}");
   }
   else {
-    server.send(201, _encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
+    server.send(201, g_encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
   }
 }
 void Web::begin() {
@@ -627,11 +629,11 @@ void Web::begin() {
   server.on("/setPositions",       []() { webServer.handleSetPositions(server); });
   server.on("/setSensor",          []() { webServer.handleSetSensor(server); });
   server.on("/upnp.xml",           []() { SSDP.schema(server.client()); });
-  server.on("/",                   []() { webServer.handleStreamFile(server, "/index.html", _encoding_html); });
+  server.on("/",                   []() { webServer.handleStreamFile(server, "/index.html", g_encoding_html); });
   server.on("/login",              []() { webServer.handleLogin(server); });
   server.on("/loginContext",       []() { webServer.handleLoginContext(server); });
-  server.on("/shades.cfg",         []() { webServer.handleStreamFile(server, "/shades.cfg", _encoding_text); });
-  server.on("/shades.tmp",         []() { webServer.handleStreamFile(server, "/shades.tmp", _encoding_text); });
+  server.on("/shades.cfg",         []() { webServer.handleStreamFile(server, "/shades.cfg", g_encoding_text); });
+  server.on("/shades.tmp",         []() { webServer.handleStreamFile(server, "/shades.tmp", g_encoding_text); });
   server.on("/getReleases",        []() { webServer.handleGetReleases(server); });
   server.on("/downloadFirmware",   []() { webServer.handleDownloadFirmware(server); });
   server.on("/cancelFirmware",     []() { webServer.handleCancelFirmware(server); });

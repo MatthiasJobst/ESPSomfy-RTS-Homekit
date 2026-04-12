@@ -21,7 +21,7 @@ bool SomfyRoom::save() { somfy.commit(); return true; }
 
 bool SomfyRoom::fromJSON(JsonObject &obj) {
   if(obj.containsKey("name")) strlcpy(this->name, obj["name"], sizeof(this->name));
-  if(obj.containsKey("sortOrder")) this->sortOrder = obj["sortOrder"];
+  if(obj.containsKey("sortOrder")) this->sortOrder = obj["sortOrder"].as<int8_t>();
   return true;
 }
 

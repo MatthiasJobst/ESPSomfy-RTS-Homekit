@@ -20,9 +20,9 @@ extern Web webServer;
 
 #define WEB_MAX_RESPONSE 4096
 extern char g_content[WEB_MAX_RESPONSE];
-extern const char _encoding_text[];
-extern const char _encoding_json[];
-extern const char _response_404[];
+extern const char g_encoding_text[];
+extern const char g_encoding_json[];
+extern const char g_response_404[];
 
 static const char* TAG = "WebRooms";
 
@@ -36,7 +36,7 @@ void Web::handleGetRooms(WebServer &server) {
       resp.endArray();
       resp.endResponse();
     }
-    else server.send(404, _encoding_text, _response_404);
+    else server.send(404, g_encoding_text, g_response_404);
 }
 
 void Web::handleRoom(WebServer &server) {
@@ -53,10 +53,10 @@ void Web::handleRoom(WebServer &server) {
         resp.endObject();
         resp.endResponse();
       }
-      else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Room Id not found.\"}"));
+      else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Room Id not found.\"}"));
     }
     else {
-      server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"You must supply a valid room id.\"}"));
+      server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"You must supply a valid room id.\"}"));
     }
   }
   else if (method == HTTP_PUT || method == HTTP_POST) {
@@ -86,18 +86,18 @@ void Web::handleRoom(WebServer &server) {
             }
             else {
               snprintf(g_content, sizeof(g_content), "{\"status\":\"DATA\",\"desc\":\"Data Error.\", \"code\":%d}", err);
-              server.send(500, _encoding_json, g_content);
+              server.send(500, g_encoding_json, g_content);
             }
           }
-          else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Room Id not found.\"}"));
+          else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Room Id not found.\"}"));
         }
-        else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No room id was supplied.\"}"));
+        else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No room id was supplied.\"}"));
       }
     }
-    else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No room object supplied.\"}"));
+    else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No room object supplied.\"}"));
   }
   else
-    server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
+    server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
 }
 
 void Web::handleGetNextRoom(WebServer &server) {
@@ -153,14 +153,14 @@ void Web::handleAddRoom(WebServer &server) {
       JsonObject obj = doc.as<JsonObject>();
       ESP_LOGI(TAG, "Counting rooms");
       if (somfy.roomCount() > SOMFY_MAX_ROOMS) {
-        server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Maximum number of rooms exceeded.\"}"));
+        server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Maximum number of rooms exceeded.\"}"));
         return;
       }
       else {
         ESP_LOGI(TAG, "Adding room");
         room = somfy.addRoom(obj);
         if (!room) {
-          server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Error adding room.\"}"));
+          server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Error adding room.\"}"));
           return;
         }
       }
@@ -175,7 +175,7 @@ void Web::handleAddRoom(WebServer &server) {
     resp.endResponse();
   }
   else {
-    server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Error saving Somfy Room.\"}"));
+    server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Error saving Somfy Room.\"}"));
   }
 }
 
@@ -204,12 +204,12 @@ void Web::handleSaveRoom(WebServer &server) {
             resp.endObject();
             resp.endResponse();
           }
-          else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Room Id not found.\"}"));
+          else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Room Id not found.\"}"));
         }
-        else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No room id was supplied.\"}"));
+        else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No room id was supplied.\"}"));
       }
     }
-    else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No room object supplied.\"}"));
+    else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No room object supplied.\"}"));
   }
 }
 
@@ -231,16 +231,16 @@ void Web::handleDeleteRoom(WebServer &server) {
       else {
         JsonObject obj = doc.as<JsonObject>();
         if (obj.containsKey("roomId")) roomId = obj["roomId"];
-        else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No room id was supplied.\"}"));
+        else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No room id was supplied.\"}"));
       }
     }
-    else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No room object supplied.\"}"));
+    else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No room object supplied.\"}"));
   }
   SomfyRoom* room = somfy.getRoomById(roomId);
-  if (!room) server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Room with the specified id not found.\"}"));
+  if (!room) server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Room with the specified id not found.\"}"));
   else {
     somfy.deleteRoom(roomId);
-    server.send(200, _encoding_json, F("{\"status\":\"SUCCESS\",\"desc\":\"Room deleted.\"}"));
+    server.send(200, g_encoding_json, F("{\"status\":\"SUCCESS\",\"desc\":\"Room deleted.\"}"));
   }
 }
 

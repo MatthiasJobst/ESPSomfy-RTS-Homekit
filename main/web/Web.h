@@ -97,10 +97,10 @@ class Web {
     void loop();
     void end();
     // Web Handlers
-    bool createAPIToken(const IPAddress ipAddress, char *token);
+    bool createAPIToken(const IPAddress& ipAddress, char *token);
     bool createAPIToken(const char *payload, char *token);
-    bool createAPIPinToken(const IPAddress ipAddress, const char *pin, char *token);
-    bool createAPIPasswordToken(const IPAddress ipAddress, const char *username, const char *password, char *token);
+    bool createAPIPinToken(const IPAddress& ipAddress, const char *pin, char *token);
+    bool createAPIPasswordToken(const IPAddress& ipAddress, const char *username, const char *password, char *token);
     bool isAuthenticated(WebServer &server, bool cfg = false);
 
     //void chunkRoomsResponse(WebServer &server, const char *elem = nullptr);

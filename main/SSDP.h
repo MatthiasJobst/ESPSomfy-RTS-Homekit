@@ -65,11 +65,11 @@ class UPNPDeviceType {
   public:
     UPNPDeviceType();
     UPNPDeviceType(const char *deviceType);
-    UPNPDeviceType(const String& deviceType) { UPNPDeviceType(deviceType.c_str()); }
+    UPNPDeviceType(const String& deviceType) : UPNPDeviceType(deviceType.c_str()) {}
     UPNPDeviceType(const String& deviceType, const String& uuid);
     UPNPDeviceType(const char *deviceType, const char *uuid, const char *friendlyName);
     UPNPDeviceType(const char *deviceType, const char *uuid);
-    UPNPDeviceType(const String& deviceType, const String& uuid, const String& friendlyName) { UPNPDeviceType(deviceType.c_str(), uuid.c_str(), friendlyName.c_str()); }
+    UPNPDeviceType(const String& deviceType, const String& uuid, const String& friendlyName) : UPNPDeviceType(deviceType.c_str(), uuid.c_str(), friendlyName.c_str()) {}
     unsigned long lastNotified;
     char schemaURL[SSDP_SCHEMA_URL_SIZE];
     char uuid[SSDP_UUID_SIZE];
@@ -128,8 +128,8 @@ class SSDPClass {
     void _sendByeBye(UPNPDeviceType *d, bool root);
     void _sendByeBye(const char *);
     void _sendQueuedResponses();
-    void _sendResponse(IPAddress addr, uint16_t port, UPNPDeviceType *d, const char *st, response_types_t responseType);
-    void _sendResponse(IPAddress addr, uint16_t port, const char *msg);
+    void _sendResponse(const IPAddress& addr, uint16_t port, UPNPDeviceType *d, const char *st, response_types_t responseType);
+    void _sendResponse(const IPAddress& addr, uint16_t port, const char *msg);
     AsyncUDP _server;
     hw_timer_t* _timer = nullptr;
     uint16_t _port = SSDP_HTTP_PORT;
@@ -139,7 +139,7 @@ class SSDPClass {
     void _parsePacket(ssdp_packet_t *pkt, AsyncUDPPacket &p);
     void _printPacket(ssdp_packet_t *pkt);
     bool _startsWith(const char* pre, const char* str);
-    void _addToSendQueue(IPAddress addr, uint16_t port, UPNPDeviceType *d, const char *st, response_types_t responseType, uint8_t sec);
+    void _addToSendQueue(const IPAddress& addr, uint16_t port, UPNPDeviceType *d, const char *st, response_types_t responseType, uint8_t sec);
    
   public:
     SSDPClass();
@@ -159,7 +159,7 @@ class SSDPClass {
     void setHTTPPort(uint16_t port);
     void setTTL(uint8_t ttl);
     void setInterval(uint32_t interval);
-    void schema(WiFiClient client) { schema((Print&)std::ref(client)); }
+    void schema(WiFiClient& client) { schema((Print&)client); }
     void schema(Print &print);
 
     void setDeviceType(uint8_t ndx, UPNPDeviceType *dt);

@@ -28,7 +28,7 @@ extern ControllerNetwork net;
 
 #define WEB_MAX_RESPONSE 4096
 extern char g_content[WEB_MAX_RESPONSE];
-extern const char _encoding_json[];
+extern const char g_encoding_json[];
 
 static const char* TAG = "WebUtils";
 
@@ -136,10 +136,10 @@ void Web::handleSendRemoteCommand(WebServer &server) {
     }
     if (frame.remoteAddress > 0 && frame.rollingCode > 0) {
       somfy.sendFrame(frame, repeats);
-      server.send(200, _encoding_json, F("{\"status\":\"SUCCESS\",\"desc\":\"Command Sent\"}"));
+      server.send(200, g_encoding_json, F("{\"status\":\"SUCCESS\",\"desc\":\"Command Sent\"}"));
     }
     else
-      server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No address or rolling code provided\"}"));
+      server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No address or rolling code provided\"}"));
   }
 }
 

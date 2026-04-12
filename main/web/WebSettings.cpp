@@ -32,8 +32,8 @@ extern ControllerNetwork net;
 
 #define WEB_MAX_RESPONSE 4096
 extern char g_content[WEB_MAX_RESPONSE];
-extern const char _encoding_html[];
-extern const char _encoding_json[];
+extern const char g_encoding_html[];
+extern const char g_encoding_json[];
 
 static const char *TAG = "WebSettings";
 
@@ -64,7 +64,7 @@ void Web::handleCancelFirmware(WebServer &server) {
     git.cancelled = true;
   }
   else {
-    server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Cannot cancel during filesystem update.\"}"));
+    server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Cannot cancel during filesystem update.\"}"));
   }
 }
 void Web::handleSaveSecurity(WebServer &server) {
@@ -73,7 +73,7 @@ void Web::handleSaveSecurity(WebServer &server) {
   if (err) {
     ESP_LOGE(TAG, "Error parsing JSON %s", err.c_str());
     String msg = err.c_str();
-    server.send(400, _encoding_html, "Error parsing JSON body<br>" + msg);
+    server.send(400, g_encoding_html, "Error parsing JSON body<br>" + msg);
   }
   else {
     JsonObject obj = doc.as<JsonObject>();
@@ -88,7 +88,7 @@ void Web::handleSaveSecurity(WebServer &server) {
       JsonObject sobj = sdoc.to<JsonObject>();
       settings.Security.toJSON(sobj);
       serializeJson(sdoc, g_content);
-      server.send(200, _encoding_json, g_content);
+      server.send(200, g_encoding_json, g_content);
     }
     else {
       server.send(201, "application/json", "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
@@ -100,7 +100,7 @@ void Web::handleGetSecurity(WebServer &server) {
   JsonObject obj = doc.to<JsonObject>();
   settings.Security.toJSON(obj);
   serializeJson(doc, g_content);
-  server.send(200, _encoding_json, g_content);
+  server.send(200, g_encoding_json, g_content);
 }
 void Web::handleSaveRadio(WebServer &server) {
   JsonDocument doc;
@@ -108,7 +108,7 @@ void Web::handleSaveRadio(WebServer &server) {
   if (err) {
     ESP_LOGE(TAG, "Error parsing JSON %s", err.c_str());
     String msg = err.c_str();
-    server.send(400, _encoding_html, "Error parsing JSON body<br>" + msg);
+    server.send(400, g_encoding_html, "Error parsing JSON body<br>" + msg);
   }
   else {
     JsonObject obj = doc.as<JsonObject>();
@@ -165,7 +165,7 @@ void Web::handleSetNetwork(WebServer &server) {
   if (err) {
     ESP_LOGE(TAG, "Error parsing JSON %s", err.c_str());
     String msg = err.c_str();
-    server.send(400, _encoding_html, "Error parsing JSON body<br>" + msg);
+    server.send(400, g_encoding_html, "Error parsing JSON body<br>" + msg);
   }
   else {
     JsonObject obj = doc.as<JsonObject>();
@@ -220,7 +220,7 @@ void Web::handleSetIP(WebServer &server) {
     server.send(200, "application/json", "{\"status\":\"OK\",\"desc\":\"Successfully set Network Settings\"}");
   }
   else {
-    server.send(201, _encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
+    server.send(201, g_encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
   }
 }
 void Web::handleConnectWifi(WebServer &server) {
@@ -237,14 +237,14 @@ void Web::handleConnectWifi(WebServer &server) {
     if (ssid.compareTo(settings.WIFI.ssid) != 0) reboot = true;
     if (passphrase.compareTo(settings.WIFI.passphrase) != 0) reboot = true;
     if (!settings.WIFI.ssidExists(ssid.c_str()) && ssid.length() > 0) {
-      server.send(400, _encoding_json, "{\"status\":\"ERROR\",\"desc\":\"WiFi Network Does not exist\"}");
+      server.send(400, g_encoding_json, "{\"status\":\"ERROR\",\"desc\":\"WiFi Network Does not exist\"}");
     }
     else {
       SETCHARPROP(settings.WIFI.ssid, ssid.c_str(), sizeof(settings.WIFI.ssid));
       SETCHARPROP(settings.WIFI.passphrase, passphrase.c_str(), sizeof(settings.WIFI.passphrase));
       settings.WIFI.save();
       settings.WIFI.print();
-      server.send(201, _encoding_json, "{\"status\":\"OK\",\"desc\":\"Successfully set server connection\"}");
+      server.send(201, g_encoding_json, "{\"status\":\"OK\",\"desc\":\"Successfully set server connection\"}");
       if (reboot) {
         ESP_LOGI(TAG, "Rebooting ESP for new WiFi settings...");
         rebootDelay.reboot = true;
@@ -253,7 +253,7 @@ void Web::handleConnectWifi(WebServer &server) {
     }
   }
   else {
-    server.send(201, _encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
+    server.send(201, g_encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
   }
 }
 void Web::handleModuleSettings(WebServer &server) {

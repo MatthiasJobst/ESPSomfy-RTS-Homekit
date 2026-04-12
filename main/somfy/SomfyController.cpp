@@ -76,19 +76,19 @@ bool SomfyShadeController::loadLegacy() {
   pref.begin("Shades", true);
   pref.getBytes("shadeIds", this->m_shadeIds, sizeof(this->m_shadeIds));
   pref.end();
-  for(uint8_t i = 0; i < sizeof(this->m_shadeIds); i++) {
+  for(size_t i = 0; i < sizeof(this->m_shadeIds); i++) {
     ESP_LOGD(TAG, "%d,", this->m_shadeIds[i]);
   }
   ESP_LOGD(TAG, "\n");
   sortArray<uint8_t>(this->m_shadeIds, sizeof(this->m_shadeIds));
-  for(uint8_t i = 0; i < sizeof(this->m_shadeIds); i++) {
+  for(size_t i = 0; i < sizeof(this->m_shadeIds); i++) {
     if(i != 0) ESP_LOGD(TAG, ",");
     ESP_LOGD(TAG, "%d,", this->m_shadeIds[i]);
   }
   ESP_LOGD(TAG, "\n");
 
   uint8_t id = 0;
-  for(uint8_t i = 0; i < sizeof(this->m_shadeIds); i++) {
+  for(size_t i = 0; i < sizeof(this->m_shadeIds); i++) {
     if(this->m_shadeIds[i] == id) this->m_shadeIds[i] = 255;
     id = this->m_shadeIds[i];
     SomfyShade *shade = &this->shades[i];
@@ -137,7 +137,7 @@ bool SomfyShadeController::begin() {
       pref.clear(); // Delete all the keys.
     }
     pref.end();
-    for(uint8_t i = 0; i < sizeof(this->m_shadeIds); i++) {
+    for(size_t i = 0; i < sizeof(this->m_shadeIds); i++) {
       // Start deleting the keys for the shades.
       if(this->m_shadeIds[i] == 255) continue;
       char shadeKey[15];
@@ -442,12 +442,12 @@ SomfyShade *SomfyShadeController::addShade() {
   SomfyShade *shade = &this->shades[shadeId - 1];
   if(shade) {
     shade->setShadeId(shadeId);
-    shade->sortOrder = this->getMaxShadeOrder() + 1;
+    shade->sortOrder = static_cast<int8_t>(this->getMaxShadeOrder() + 1);
     ESP_LOGI(TAG, "Sort order set to %d", shade->sortOrder);
     this->isDirty = true;
     #ifdef USE_NVS
     if(this->useNVS()) {
-      for(uint8_t i = 0; i < sizeof(this->m_shadeIds); i++) {
+      for(size_t i = 0; i < sizeof(this->m_shadeIds); i++) {
         this->m_shadeIds[i] = this->shades[i].getShadeId();
       }
       sortArray<uint8_t>(this->m_shadeIds, sizeof(this->m_shadeIds));
@@ -457,7 +457,7 @@ SomfyShade *SomfyShadeController::addShade() {
       // value == the current value.  Set it to 255 then sort the array again.
       // 1,1,2,2,3,3,255...
       bool hadDups = false;
-      for(uint8_t i = 0; i < sizeof(this->m_shadeIds); i++) {
+      for(size_t i = 0; i < sizeof(this->m_shadeIds); i++) {
         if(this->m_shadeIds[i] == 255) break;
         if(id == this->m_shadeIds[i]) {
           id = this->m_shadeIds[i];
@@ -474,7 +474,7 @@ SomfyShade *SomfyShadeController::addShade() {
       int x = pref.putBytes("shadeIds", this->m_shadeIds, sizeof(this->m_shadeIds));
       ESP_LOGI(TAG, "WROTE %d bytes to shadeIds", x);
       pref.end();
-      for(uint8_t i = 0; i < sizeof(this->m_shadeIds); i++) {
+      for(size_t i = 0; i < sizeof(this->m_shadeIds); i++) {
         if(i != 0) ESP_LOGI(TAG, ",");
         else ESP_LOGI(TAG, "Shade Ids: ");
         ESP_LOGI(TAG, "%d", this->m_shadeIds[i]);
@@ -485,7 +485,7 @@ SomfyShade *SomfyShadeController::addShade() {
       ESP_LOGI(TAG, "LENGTH:");
       ESP_LOGI(TAG, "%d", pref.getBytesLength("shadeIds"));
       pref.end();
-      for(uint8_t i = 0; i < sizeof(this->m_shadeIds); i++) {
+      for(size_t i = 0; i < sizeof(this->m_shadeIds); i++) {
         if(i != 0) ESP_LOGI(TAG, ",");
         else ESP_LOGI(TAG, "Shade Ids: ");
         ESP_LOGI(TAG, "%d", this->m_shadeIds[i]);
@@ -540,7 +540,7 @@ SomfyRoom *SomfyShadeController::addRoom() {
   SomfyRoom *room = &this->rooms[roomId - 1];
   if(room) {
     room->roomId = roomId;
-    room->sortOrder = this->getMaxRoomOrder() + 1;
+    room->sortOrder = static_cast<int8_t>(this->getMaxRoomOrder() + 1);
     this->isDirty = true;
   }
   return room;
@@ -567,7 +567,7 @@ SomfyGroup *SomfyShadeController::addGroup() {
   SomfyGroup *group = &this->groups[groupId - 1];
   if(group) {
     group->setGroupId(groupId);
-    group->sortOrder = this->getMaxGroupOrder() + 1;
+    group->sortOrder = static_cast<int8_t>(this->getMaxGroupOrder() + 1);
     this->isDirty = true;
   }
   return group;
@@ -605,7 +605,7 @@ bool SomfyShadeController::deleteShade(uint8_t shadeId) {
   }
   #ifdef USE_NVS
   if(this->useNVS()) {
-    for(uint8_t i = 0; i < sizeof(this->m_shadeIds) - 1; i++) {
+    for(size_t i = 0; i < sizeof(this->m_shadeIds) - 1; i++) {
       if(this->m_shadeIds[i] == shadeId) {
         this->m_shadeIds[i] = 255;
       }

@@ -23,9 +23,9 @@ extern Web webServer;
 
 #define WEB_MAX_RESPONSE 4096
 extern char g_content[WEB_MAX_RESPONSE];
-extern const char _encoding_text[];
-extern const char _encoding_json[];
-extern const char _response_404[];
+extern const char g_encoding_text[];
+extern const char g_encoding_json[];
+extern const char g_response_404[];
 
 static const char *TAG = "WebGroups";
 
@@ -39,7 +39,7 @@ void Web::handleGetGroups(WebServer &server) {
       resp.endArray();
       resp.endResponse();
     }
-    else server.send(404, _encoding_text, _response_404);
+    else server.send(404, g_encoding_text, g_response_404);
 }
 
 void Web::handleGroup(WebServer &server) {
@@ -56,10 +56,10 @@ void Web::handleGroup(WebServer &server) {
         resp.endObject();
         resp.endResponse();
       }
-      else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group Id not found.\"}"));
+      else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group Id not found.\"}"));
     }
     else {
-      server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"You must supply a valid shade id.\"}"));
+      server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"You must supply a valid shade id.\"}"));
     }
   }
   else if (method == HTTP_PUT || method == HTTP_POST) {
@@ -80,14 +80,14 @@ void Web::handleGroup(WebServer &server) {
           resp.endObject();
           resp.endResponse();
         }
-        else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group Id not found.\"}"));
+        else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group Id not found.\"}"));
       }
-      else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group id was supplied.\"}"));
+      else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group id was supplied.\"}"));
     }
-    else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group object supplied.\"}"));
+    else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group object supplied.\"}"));
   }
   else
-    server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
+    server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
 }
 
 void Web::handleGetNextGroup(WebServer &server) {
@@ -144,14 +144,14 @@ void Web::handleAddGroup(WebServer &server) {
     if (!parseBody(server, doc, obj)) return;
     ESP_LOGI(TAG, "Counting shades");
     if (somfy.groupCount() > SOMFY_MAX_GROUPS) {
-      server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Maximum number of groups exceeded.\"}"));
+      server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Maximum number of groups exceeded.\"}"));
       return;
     }
     else {
       ESP_LOGI(TAG, "Adding group");
       group = somfy.addGroup(obj);
       if (!group) {
-        server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Error adding group.\"}"));
+        server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Error adding group.\"}"));
         return;
       }
     }
@@ -165,7 +165,7 @@ void Web::handleAddGroup(WebServer &server) {
     resp.endResponse();
   }
   else {
-    server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Error saving Somfy Group.\"}"));
+    server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Error saving Somfy Group.\"}"));
   }
 }
 
@@ -188,11 +188,11 @@ void Web::handleSaveGroup(WebServer &server) {
           resp.endObject();
           resp.endResponse();
         }
-        else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group Id not found.\"}"));
+        else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group Id not found.\"}"));
       }
-      else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group id was supplied.\"}"));
+      else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group id was supplied.\"}"));
     }
-    else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group object supplied.\"}"));
+    else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group object supplied.\"}"));
   }
 }
 
@@ -229,10 +229,10 @@ void Web::handleGroupOptions(WebServer &server) {
         resp.endObject();
         resp.endResponse();
       }
-      else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group Id not found.\"}"));
+      else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group Id not found.\"}"));
     }
     else {
-      server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"You must supply a valid group id.\"}"));
+      server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"You must supply a valid group id.\"}"));
     }
   }
 }
@@ -249,15 +249,15 @@ void Web::handleDeleteGroup(WebServer &server) {
       JsonDocument doc; JsonObject obj;
       if (!parseBody(server, doc, obj)) return;
       if (obj.containsKey("groupId")) groupId = obj["groupId"];
-      else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group id was supplied.\"}"));
+      else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group id was supplied.\"}"));
     }
-    else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group object supplied.\"}"));
+    else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No group object supplied.\"}"));
   }
   SomfyGroup * group = somfy.getGroupById(groupId);
-  if (!group) server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group with the specified id not found.\"}"));
+  if (!group) server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group with the specified id not found.\"}"));
   else {
     somfy.deleteGroup(groupId);
-    server.send(200, _encoding_json, F("{\"status\":\"SUCCESS\",\"desc\":\"Group deleted.\"}"));
+    server.send(200, g_encoding_json, F("{\"status\":\"SUCCESS\",\"desc\":\"Group deleted.\"}"));
   }
 }
 
@@ -270,12 +270,12 @@ void Web::handleLinkToGroup(WebServer &server) {
       if (!parseBody(server, doc, obj)) return;
       uint8_t shadeId = obj.containsKey("shadeId") ? obj["shadeId"] : 0;
       uint8_t groupId = obj.containsKey("groupId") ? obj["groupId"] : 0;
-      if(groupId == 0) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group id not provided.\"}")); return; }
-      if(shadeId == 0) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Shade id not provided.\"}")); return; }
+      if(groupId == 0) { server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group id not provided.\"}")); return; }
+      if(shadeId == 0) { server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Shade id not provided.\"}")); return; }
       SomfyGroup * group = somfy.getGroupById(groupId);
-      if(!group) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group id not found.\"}")); return; }
+      if(!group) { server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group id not found.\"}")); return; }
       SomfyShade * shade = somfy.getShadeById(shadeId);
-      if(!shade) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Shade id not found.\"}")); return; }
+      if(!shade) { server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Shade id not found.\"}")); return; }
       group->linkShade(shadeId);
       JsonResponse resp;
       resp.beginResponse(&server, g_content, sizeof(g_content));
@@ -284,7 +284,7 @@ void Web::handleLinkToGroup(WebServer &server) {
       resp.endObject();
       resp.endResponse();
     }
-    else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No linking object supplied.\"}"));
+    else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No linking object supplied.\"}"));
   }
 }
 
@@ -297,12 +297,12 @@ void Web::handleUnlinkFromGroup(WebServer &server) {
       if (!parseBody(server, doc, obj)) return;
       uint8_t shadeId = obj.containsKey("shadeId") ? obj["shadeId"] : 0;
       uint8_t groupId = obj.containsKey("groupId") ? obj["groupId"] : 0;
-      if(groupId == 0) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group id not provided.\"}")); return; }
-      if(shadeId == 0) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Shade id not provided.\"}")); return; }
+      if(groupId == 0) { server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group id not provided.\"}")); return; }
+      if(shadeId == 0) { server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Shade id not provided.\"}")); return; }
       SomfyGroup * group = somfy.getGroupById(groupId);
-      if(!group) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group id not found.\"}")); return; }
+      if(!group) { server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Group id not found.\"}")); return; }
       SomfyShade * shade = somfy.getShadeById(shadeId);
-      if(!shade) { server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Shade id not found.\"}")); return; }
+      if(!shade) { server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Shade id not found.\"}")); return; }
       group->unlinkShade(shadeId);
       JsonResponse resp;
       resp.beginResponse(&server, g_content, sizeof(g_content));
@@ -311,7 +311,7 @@ void Web::handleUnlinkFromGroup(WebServer &server) {
       resp.endObject();
       resp.endResponse();
     }
-    else server.send(500, _encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No unlinking object supplied.\"}"));
+    else server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No unlinking object supplied.\"}"));
   }
 }
 

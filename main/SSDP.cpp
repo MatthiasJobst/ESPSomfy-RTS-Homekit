@@ -231,7 +231,7 @@ void SSDPClass::_parsePacket(ssdp_packet_t *pkt, AsyncUDPPacket &p) {
     char c = p.read();
     if(pkt->method == NONE) {
       if(c == ' ') {
-        _trim(buffer);
+        str_trim(buffer);
         pos = 0;
         if(strcmp(buffer, "M-SEARCH") == 0) pkt->method = SEARCH;
         else if(strcmp(buffer, "NOTIFY") == 0) pkt->method = NOTIFY;
@@ -245,7 +245,7 @@ void SSDPClass::_parsePacket(ssdp_packet_t *pkt, AsyncUDPPacket &p) {
     }
     else {
       if(c == '\r' || c == '\n') {
-        _trim(buffer);
+        str_trim(buffer);
         if(strcasecmp(buffer, "* HTTP/1.1") != 0) pkt->valid = false;
         break;
       }
@@ -271,7 +271,7 @@ void SSDPClass::_parsePacket(ssdp_packet_t *pkt, AsyncUDPPacket &p) {
       char c = p.read();
       if(keys == KEY) {      
         if(c == ':') {
-          _trim(buffer);
+          str_trim(buffer);
           if(strcasecmp(buffer, "MAN") == 0) keys = MAN;
           else if(strcasecmp(buffer, "ST") == 0) keys = ST; 
           else if(strcasecmp(buffer, "MX") == 0) keys = MX;
@@ -303,7 +303,7 @@ void SSDPClass::_parsePacket(ssdp_packet_t *pkt, AsyncUDPPacket &p) {
       else {
         // We are reading a value
         if(c == '\r' || c == '\n') {
-          _trim(buffer);
+          str_trim(buffer);
           switch(keys) {
             case HOST:
               if(strcasecmp(buffer, "239.255.255.250:1900") == 0) pkt->type = MULTICAST;
@@ -371,7 +371,7 @@ IPAddress SSDPClass::localIP()
     }
     return WiFi.localIP();
 }    
-void SSDPClass::_sendResponse(IPAddress addr, uint16_t port, UPNPDeviceType *d, const char *st, response_types_t responseType) {
+void SSDPClass::_sendResponse(const IPAddress& addr, uint16_t port, UPNPDeviceType *d, const char *st, response_types_t responseType) {
   char buffer[1460];
   IPAddress ip = this->localIP();
   char *pbuff = (char *)malloc(strlen_P(_ssdp_response_template)+1);
@@ -394,7 +394,7 @@ void SSDPClass::_sendResponse(IPAddress addr, uint16_t port, UPNPDeviceType *d, 
   this->_sendResponse(addr, port, buffer);
   free(pbuff);
 }
-void SSDPClass::_sendResponse(IPAddress addr, uint16_t port, const char *buff) {
+void SSDPClass::_sendResponse(const IPAddress& addr, uint16_t port, const char *buff) {
   ESP_LOGD(TAG, "Sending Response to %s:%u", IPAddress(addr).toString().c_str(), port);
   ESP_LOGD(TAG, "%s", buff);
 
@@ -536,7 +536,7 @@ void SSDPClass::_sendByeBye(UPNPDeviceType *d, bool root) {
                        d->getUSN(response_types_t::deviceType), this->bootId, this->configId);
    this->_sendNotify(buffer);
 }
-void SSDPClass::_addToSendQueue(IPAddress addr, uint16_t port, UPNPDeviceType *d, const char *st, response_types_t responseType, uint8_t sec) {
+void SSDPClass::_addToSendQueue(const IPAddress& addr, uint16_t port, UPNPDeviceType *d, const char *st, response_types_t responseType, uint8_t sec) {
   /*
   typedef struct ssdp_response_t {
     IPAddress address;

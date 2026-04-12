@@ -24,14 +24,14 @@ WebSocketsServer sockServer = WebSocketsServer(socketsPort);
 static char g_response[MAX_SOCK_RESPONSE];
 
 bool room_t::isJoined(uint8_t num) {
-  for(uint8_t i = 0; i < sizeof(this->clients); i++) { 
+  for(size_t i = 0; i < sizeof(this->clients); i++) { 
     if(this->clients[i] == num) return true; 
   } 
   return false; 
 }
 bool room_t::join(uint8_t num) {
   if(this->isJoined(num)) return true; 
-  for(uint8_t i = 0; i < sizeof(this->clients); i++) { 
+  for(size_t i = 0; i < sizeof(this->clients); i++) { 
     if(this->clients[i] == 255) { 
       this->clients[i] = num; 
       return true; 
@@ -41,7 +41,7 @@ bool room_t::join(uint8_t num) {
 }
 bool room_t::leave(uint8_t num) { 
   if(!this->isJoined(num)) return false; 
-  for(uint8_t i = 0; i < sizeof(this->clients); i++) { 
+  for(size_t i = 0; i < sizeof(this->clients); i++) { 
     if(this->clients[i] == num) this->clients[i] = 255; 
   } 
   return true;
@@ -51,7 +51,7 @@ void room_t::clear() {
 }
 uint8_t room_t::activeClients() {
   uint8_t n = 0;
-  for(uint8_t i = 0; i < sizeof(this->clients); i++) {
+  for(size_t i = 0; i < sizeof(this->clients); i++) {
     if(this->clients[i] != 255) n++;
   }
   return n;
@@ -81,7 +81,7 @@ void SocketEmitter::endEmit(uint8_t num) { this->json.endEvent(num); sockServer.
 void SocketEmitter::endEmitRoom(uint8_t room) {
   if(room < SOCK_MAX_ROOMS) {
     room_t *r = &this->rooms[room];
-    for(uint8_t i = 0; i < sizeof(r->clients); i++) {
+    for(size_t i = 0; i < sizeof(r->clients); i++) {
       if(r->clients[i] != 255) this->json.endEvent(r->clients[i]);
     }
   }
@@ -91,7 +91,7 @@ uint8_t SocketEmitter::activeClients(uint8_t room) {
   return 0;
 }
 void SocketEmitter::initClients() {
-  for(uint8_t i = 0; i < sizeof(this->newClients); i++) {
+  for(size_t i = 0; i < sizeof(this->newClients); i++) {
     uint8_t num = this->newClients[i];
     if(num != 255) {
       if(sockServer.clientIsConnected(num)) {
@@ -111,7 +111,7 @@ void SocketEmitter::initClients() {
   }
 }
 void SocketEmitter::delayInit(uint8_t num) {
-  for(uint8_t i=0; i < sizeof(this->newClients); i++) {
+  for(size_t i=0; i < sizeof(this->newClients); i++) {
     if(this->newClients[i] == num) break;
     else if(this->newClients[i] == 255) {
       this->newClients[i] = num;

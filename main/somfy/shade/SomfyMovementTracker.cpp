@@ -9,11 +9,11 @@
 static const char *TAG = "SomfyMovementTracker";
 
 bool SomfyMovementTracker::computeDirections() {
-  shade->p_direction(shade->currentPos == shade->target ? 0 : shade->currentPos > shade->target ? -1 : 1);
+  shade->p_direction(static_cast<int8_t>(shade->currentPos == shade->target ? 0 : shade->currentPos > shade->target ? -1 : 1));
   bool tilt_first = shade->tiltType == tilt_types::integrated &&
                     ((shade->direction == -1 && shade->currentTiltPos != 0.0f) ||
                      (shade->direction ==  1 && shade->currentTiltPos != 100.0f));
-  shade->p_tiltDirection(shade->currentTiltPos == shade->tiltTarget ? 0 : shade->currentTiltPos > shade->tiltTarget ? -1 : 1);
+  shade->p_tiltDirection(static_cast<int8_t>(shade->currentTiltPos == shade->tiltTarget ? 0 : shade->currentTiltPos > shade->tiltTarget ? -1 : 1));
   if(tilt_first) shade->p_tiltDirection(shade->direction);
   else if(shade->direction != 0) shade->p_tiltDirection(0);
   return tilt_first;
@@ -32,7 +32,7 @@ void SomfyMovementTracker::tickFlagTimers(uint64_t curTime) {
 
 float SomfyMovementTracker::calcInterpolatedPos(float startPct, uint64_t elapsed, int32_t totalTime, int8_t dir) {
   // msFromStart: distance already travelled in ms, clamped to [0, totalTime]
-  int32_t msFromStart = (int32_t)floor((startPct / 100.0f) * totalTime);
+  int32_t msFromStart = (int32_t)floor((startPct / 100.0f) * static_cast<float>(totalTime));
   if(dir < 0) msFromStart = totalTime - msFromStart;  // up: invert so 0 = "just started from 100"
   msFromStart = min(totalTime, msFromStart + (int32_t)elapsed);
   float ratio = min(max(0.0f, (float)msFromStart / (float)totalTime), 1.0f);
