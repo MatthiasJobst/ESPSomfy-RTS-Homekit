@@ -1178,12 +1178,15 @@ void Transceiver::beginFrameTx(somfy_frame_t &frame, uint8_t repeats) {
     s_enc->copy_enc->reset(s_enc->copy_enc);
 
     rmt_transmit_config_t tx_cfg = {};
-    tx_cfg.loop_count       = 0;
-    tx_cfg.flags.eot_level  = 0; // TX line goes LOW after last symbol
+    tx_cfg.loop_count              = 0;
+    tx_cfg.flags.eot_level         = 0; // TX line goes LOW after last symbol
+    tx_cfg.flags.queue_nonblocking = 1; // Never block the calling task — skip if queue full
     s_txDone = false;
     ESP_LOGI(TAG, "RMT beginFrameTx: bitlen=%d repeats=%d", s_enc->bit_length, s_enc->rep_total);
     ESP_ERROR_CHECK(rmt_transmit(s_rmtTxChan, &s_enc->base, s_enc->frame, 10, &tx_cfg));
+
     s_rmtBusy = true;
+    ESP_LOGI(TAG, "RMT beginFrameTx: queued OK");
 }
 
 // Raw variant used by the repeater path: pre-encoded bytes, single frame, no
@@ -1201,8 +1204,9 @@ void Transceiver::beginRawFrameTx(byte *payload, uint8_t sync, uint8_t bitLength
     s_enc->copy_enc->reset(s_enc->copy_enc);
 
     rmt_transmit_config_t tx_cfg = {};
-    tx_cfg.loop_count      = 0;
-    tx_cfg.flags.eot_level = 0;
+    tx_cfg.loop_count              = 0;
+    tx_cfg.flags.eot_level         = 0;
+    tx_cfg.flags.queue_nonblocking = 1; // Never block the calling task — skip if queue full
     s_txDone = false;
     ESP_ERROR_CHECK(rmt_transmit(s_rmtTxChan, &s_enc->base, s_enc->frame, 10, &tx_cfg));
     s_rmtBusy = true;

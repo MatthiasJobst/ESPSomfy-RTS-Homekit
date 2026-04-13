@@ -146,7 +146,10 @@ void SomfyRemote::repeatFrame(uint8_t repeat) {
     return;
   }
 #ifdef SOMFY_TX_RMT
-  while(somfy.transceiver.txBusy()) vTaskDelay(1);
+  if(somfy.transceiver.txBusy()) {
+    ESP_LOGW(TAG, "repeatFrame: TX busy — skipping repeat to avoid blocking app_main");
+    return;
+  }
   somfy.transceiver.beginTransmit();
   somfy.transceiver.beginFrameTx(this->lastFrame, repeat);
   // endTransmit() deferred — Transceiver::loop() handles it when txBusy() clears.

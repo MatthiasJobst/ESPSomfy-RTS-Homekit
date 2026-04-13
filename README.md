@@ -41,6 +41,11 @@ This project targets **ESP-IDF v5.5** with **arduino-esp32 v3.x** embedded as a 
 idf.py build
 idf.py -p /dev/cu.usbmodem<PORT> flash monitor
 ```
+```
+idf.py clang-check \
+  --exclude-paths components \
+  --run-clang-tidy-options '-header-filter=.*/SomfyController/main/.*'
+```
 
 ### CC1101 driver notes (arduino-esp32 v3.x)
 

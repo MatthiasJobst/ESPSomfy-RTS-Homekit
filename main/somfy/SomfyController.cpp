@@ -575,9 +575,13 @@ SomfyGroup *SomfyShadeController::addGroup() {
 
 void SomfyShadeController::sendFrame(somfy_frame_t &frame, uint8_t repeat) {
 #ifdef SOMFY_TX_RMT
-  // Wait for any in-progress RMT burst to finish before starting a new one.
-  // In normal operation (command queue, 50 ms drain) this should never block.
-  while(this->transceiver.txBusy()) vTaskDelay(1);
+  // drainCommandQueue() guards with txBusy() before calling here, so this
+  // should never be true. If it is, skip rather than blocking app_main and
+  // triggering the task watchdog.
+  if(this->transceiver.txBusy()) {
+    ESP_LOGW(TAG, "sendFrame: TX busy — skipping frame to avoid blocking app_main");
+    return;
+  }
   this->transceiver.beginTransmit();
   this->transceiver.beginFrameTx(frame, repeat);
   // endTransmit() is deferred: Transceiver::loop() calls it when txBusy() clears.
