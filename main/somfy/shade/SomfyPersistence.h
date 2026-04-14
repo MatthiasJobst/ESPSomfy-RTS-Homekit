@@ -10,8 +10,7 @@ class SomfyPersistence {
 public:
     SomfyShade *shade = nullptr; // set by SomfyShade() constructor
 
-    // Marks somfy as dirty and (when USE_NVS && useNVS()) flushes individual
-    // position fields to NVS without a full save().
+    // Marks somfy as dirty.
     void commitShadePosition();
     void commitMyPosition();
     void commitTiltPosition();
@@ -19,11 +18,6 @@ public:
     // Delegates to SomfyShadeController::commit() (marks dirty + schedules save).
     void commit();
 
-    // Full NVS write of all shade fields, then commit + publish.
+    // Commit + publish (config file write is scheduled separately via commit()).
     bool save();
-
-#ifdef USE_NVS
-    // Reads all fields back from NVS into the shade (called at boot).
-    void load();
-#endif
 };

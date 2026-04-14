@@ -33,9 +33,6 @@ class SomfyShade : public SomfyRemote {
     int8_t sortOrder = 0;
     shade_types shadeType = shade_types::roller;
     tilt_types tiltType = tilt_types::none;
-    #ifdef USE_NVS
-    void load();
-    #endif
     float currentPos = 0.0f;
     float currentTiltPos = 0.0f;
     int8_t direction = 0; // 0 = stopped, 1=down, -1=up.

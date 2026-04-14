@@ -18,12 +18,10 @@
 
 class SomfyShadeController {
   protected:
-    uint8_t m_shadeIds[SOMFY_MAX_SHADES];
     uint32_t lastCommit = 0;
     SomfyCommandQueue cmdQueue;
     void drainCommandQueue();
   public:
-    bool useNVS();
     bool isDirty = false;
     uint32_t startingAddress;
     uint8_t getNextRoomId();
@@ -83,8 +81,5 @@ class SomfyShadeController {
     void commit();
     void writeBackup();
     bool loadShadesFile(const char *filename);
-    #ifdef USE_NVS
-    bool loadLegacy();
-    #endif
 };
 

@@ -30,12 +30,9 @@ static const char *TAG = "SomfyController";
 void SomfyShadeController::end() { this->transceiver.disableReceive(); }
 
 SomfyShadeController::SomfyShadeController() {
-  memset(this->m_shadeIds, 255, sizeof(this->m_shadeIds));
   uint64_t mac = ESP.getEfuseMac();
   this->startingAddress = mac & 0x0FFFFF;
 }
-
-bool SomfyShadeController::useNVS() { return !(settings.appVersion.major > 1 || settings.appVersion.minor >= 4); };
 
 SomfyShade *SomfyShadeController::findShadeByRemoteAddress(uint32_t address) {
   for(uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
@@ -69,94 +66,17 @@ void SomfyShadeController::updateGroupFlags() {
     }
   }
 }
-#ifdef USE_NVS
-
-bool SomfyShadeController::loadLegacy() {
-  ESP_LOGI(TAG, "Loading Legacy shades using NVS");
-  pref.begin("Shades", true);
-  pref.getBytes("shadeIds", this->m_shadeIds, sizeof(this->m_shadeIds));
-  pref.end();
-  for(size_t i = 0; i < sizeof(this->m_shadeIds); i++) {
-    ESP_LOGD(TAG, "%d,", this->m_shadeIds[i]);
-  }
-  ESP_LOGD(TAG, "\n");
-  sortArray<uint8_t>(this->m_shadeIds, sizeof(this->m_shadeIds));
-  for(size_t i = 0; i < sizeof(this->m_shadeIds); i++) {
-    if(i != 0) ESP_LOGD(TAG, ",");
-    ESP_LOGD(TAG, "%d,", this->m_shadeIds[i]);
-  }
-  ESP_LOGD(TAG, "\n");
-
-  uint8_t id = 0;
-  for(size_t i = 0; i < sizeof(this->m_shadeIds); i++) {
-    if(this->m_shadeIds[i] == id) this->m_shadeIds[i] = 255;
-    id = this->m_shadeIds[i];
-    SomfyShade *shade = &this->shades[i];
-    shade->setShadeId(id);
-    if(id == 255) {
-      continue;
-    }
-    shade->load();
-  }
-
-  for(uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
-    ESP_LOGD(TAG, "%d:%d,", this->shades[i].getShadeId(), this->m_shadeIds[i]);
-  }
-  ESP_LOGD(TAG, "\n");
-
-  #ifdef USE_NVS
-  if(!this->useNVS()) {
-    pref.begin("Shades");
-    pref.putBytes("shadeIds", this->m_shadeIds, sizeof(this->m_shadeIds));
-    pref.end();
-  }
-  #endif
-  this->commit();
-  return true;
-}
-#endif
 
 bool SomfyShadeController::begin() {
   // Load up all the configuration data.
   //ShadeConfigFile::getAppVersion(this->appVersion);
   ESP_LOGI(TAG, "App Version:%u.%u.%u", settings.appVersion.major, settings.appVersion.minor, settings.appVersion.build);
-  #ifdef USE_NVS
-  if(!this->useNVS()) {  // At 1.4 we started using the configuration file.  If the file doesn't exist then booh.
-    // We need to remove all the extraeneous data from NVS for the shades.  From here on out we
-    // will rely on the shade configuration.
-    ESP_LOGI(TAG, "No longer using NVS");
-    if(ShadeConfigFile::exists()) {
-      ShadeConfigFile::load(this);
-    }
-    else {
-      this->loadLegacy();
-    }
-    pref.begin("Shades");
-    if(pref.isKey("shadeIds")) {
-      pref.getBytes("shadeIds", this->m_shadeIds, sizeof(this->m_shadeIds));
-      pref.clear(); // Delete all the keys.
-    }
-    pref.end();
-    for(size_t i = 0; i < sizeof(this->m_shadeIds); i++) {
-      // Start deleting the keys for the shades.
-      if(this->m_shadeIds[i] == 255) continue;
-      char shadeKey[15];
-      sprintf(shadeKey, "SomfyShade%u", this->m_shadeIds[i]);
-      pref.begin(shadeKey);
-      pref.clear();
-      pref.end();
-    }
-  }
-  #endif
   if(ShadeConfigFile::exists()) {
     ESP_LOGI(TAG, "shades.cfg exists so we are using that");
     ShadeConfigFile::load(this);
   }
   else {
     ESP_LOGI(TAG, "Starting clean");
-    #ifdef USE_NVS
-    this->loadLegacy();
-    #endif
   }
   this->transceiver.begin();
 
@@ -445,54 +365,6 @@ SomfyShade *SomfyShadeController::addShade() {
     shade->sortOrder = static_cast<int8_t>(this->getMaxShadeOrder() + 1);
     ESP_LOGI(TAG, "Sort order set to %d", shade->sortOrder);
     this->isDirty = true;
-    #ifdef USE_NVS
-    if(this->useNVS()) {
-      for(size_t i = 0; i < sizeof(this->m_shadeIds); i++) {
-        this->m_shadeIds[i] = this->shades[i].getShadeId();
-      }
-      sortArray<uint8_t>(this->m_shadeIds, sizeof(this->m_shadeIds));
-      uint8_t id = 0;
-      // This little diddy is about a bug I had previously that left duplicates in the
-      // sorted array.  So we will walk the sorted array until we hit a duplicate where the previous
-      // value == the current value.  Set it to 255 then sort the array again.
-      // 1,1,2,2,3,3,255...
-      bool hadDups = false;
-      for(size_t i = 0; i < sizeof(this->m_shadeIds); i++) {
-        if(this->m_shadeIds[i] == 255) break;
-        if(id == this->m_shadeIds[i]) {
-          id = this->m_shadeIds[i];
-          this->m_shadeIds[i] = 255;
-          hadDups = true;
-        }
-        else {
-          id = this->m_shadeIds[i];
-        }
-      }
-      if(hadDups) sortArray<uint8_t>(this->m_shadeIds, sizeof(this->m_shadeIds));
-      pref.begin("Shades");
-      pref.remove("shadeIds");
-      int x = pref.putBytes("shadeIds", this->m_shadeIds, sizeof(this->m_shadeIds));
-      ESP_LOGI(TAG, "WROTE %d bytes to shadeIds", x);
-      pref.end();
-      for(size_t i = 0; i < sizeof(this->m_shadeIds); i++) {
-        if(i != 0) ESP_LOGI(TAG, ",");
-        else ESP_LOGI(TAG, "Shade Ids: ");
-        ESP_LOGI(TAG, "%d", this->m_shadeIds[i]);
-      }
-      ESP_LOGI(TAG, "\n");
-      pref.begin("Shades");
-      pref.getBytes("shadeIds", this->m_shadeIds, sizeof(this->m_shadeIds));
-      ESP_LOGI(TAG, "LENGTH:");
-      ESP_LOGI(TAG, "%d", pref.getBytesLength("shadeIds"));
-      pref.end();
-      for(size_t i = 0; i < sizeof(this->m_shadeIds); i++) {
-        if(i != 0) ESP_LOGI(TAG, ",");
-        else ESP_LOGI(TAG, "Shade Ids: ");
-        ESP_LOGI(TAG, "%d", this->m_shadeIds[i]);
-      }
-      ESP_LOGI(TAG, "\n");
-    }
-    #endif
   }
   return shade;
 }
@@ -607,22 +479,6 @@ bool SomfyShadeController::deleteShade(uint8_t shadeId) {
       this->shades[i].clear();
     }
   }
-  #ifdef USE_NVS
-  if(this->useNVS()) {
-    for(size_t i = 0; i < sizeof(this->m_shadeIds) - 1; i++) {
-      if(this->m_shadeIds[i] == shadeId) {
-        this->m_shadeIds[i] = 255;
-      }
-    }
-    
-    //qsort(this->m_shadeIds, sizeof(this->m_shadeIds)/sizeof(this->m_shadeIds[0]), sizeof(this->m_shadeIds[0]), sort_asc);
-    sortArray<uint8_t>(this->m_shadeIds, sizeof(this->m_shadeIds));
-    
-    pref.begin("Shades");
-    pref.putBytes("shadeIds", this->m_shadeIds, sizeof(this->m_shadeIds));
-    pref.end();
-  }
-  #endif
   this->commit();
   return true;
 }

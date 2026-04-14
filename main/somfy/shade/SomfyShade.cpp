@@ -90,9 +90,6 @@ void SomfyShade::triggerGPIOs(somfy_frame_t &frame) {
 }
 
 void SomfyShade::checkMovement() { movementTracker.checkMovement(); }
-#ifdef USE_NVS
-void SomfyShade::load() { persistence.load(); }
-#endif
 
 void SomfyShade::publishState() { mqttPublisher.publishState(); }
 
