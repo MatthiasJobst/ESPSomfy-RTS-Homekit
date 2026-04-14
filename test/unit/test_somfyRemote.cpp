@@ -14,7 +14,7 @@
 
 #include "SomfyRemote.h"
 #include "nvs.h"
-#include "SomfyController.h"
+#include "SomfyShadeController.h"
 #include <gtest/gtest.h>
 
 class SomfyRemoteTest : public ::testing::Test {

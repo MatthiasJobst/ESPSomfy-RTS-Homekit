@@ -5,7 +5,7 @@
 #include "SomfyCommandProcessor.h"
 #include "SomfyShade.h"
 #include "SomfyTransceiver.h"
-#include "SomfyController.h"
+#include "SomfyShadeController.h"
 
 static const char *TAG = "SomfyCommandProcessor";
 

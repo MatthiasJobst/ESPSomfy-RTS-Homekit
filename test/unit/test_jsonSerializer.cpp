@@ -10,7 +10,7 @@
 #include "TestableShade.h"
 #include "nvs.h"
 #include "MQTT.h"
-#include "SomfyController.h"
+#include "SomfyShadeController.h"
 #include <ArduinoJson.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>

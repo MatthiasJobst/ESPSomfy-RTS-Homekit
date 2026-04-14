@@ -15,7 +15,7 @@
 #include "ConfigSettings.h"
 #include "ShadeConfigFile.h"
 #include "Utils.h"
-#include "SomfyController.h"
+#include "SomfyShadeController.h"
 #include "WResp.h"
 #include "Web.h"
 #include "GitOTA.h"

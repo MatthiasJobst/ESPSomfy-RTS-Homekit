@@ -10,7 +10,7 @@
 #include "SomfyRemote.h"
 #include "SomfyTransceiver.h"
 #include "SomfyShade.h"
-#include "SomfyController.h"
+#include "SomfyShadeController.h"
 #include "Sockets.h"
 #include "MQTT.h"
 

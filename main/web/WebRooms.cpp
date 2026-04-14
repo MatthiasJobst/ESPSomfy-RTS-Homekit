@@ -11,7 +11,7 @@
 #include <esp_log.h>
 #include "ConfigSettings.h"
 #include "Utils.h"
-#include "SomfyController.h"
+#include "SomfyShadeController.h"
 #include "WResp.h"
 #include "Web.h"
 

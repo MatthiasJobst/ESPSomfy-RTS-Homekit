@@ -1,4 +1,4 @@
-// SomfyController.h — Top-level shade controller: SomfyShadeController aggregates all
+// SomfyShadeController.h — Top-level shade controller: SomfyShadeController aggregates all
 // shades, groups, rooms and the transceiver.  Owns NVS load/save, OTA commit, frame
 // dispatch, MQTT/socket state broadcasting and HomeKit bridge lifecycle.
 #pragma once
@@ -32,7 +32,7 @@ class SomfyShadeController {
     int8_t getMaxGroupOrder();
     uint32_t getNextRemoteAddress(uint8_t shadeId);
     SomfyShadeController();
-    Transceiver transceiver;
+    SomfyTransceiver transceiver;
     SomfyRoom *addRoom();
     SomfyRoom *addRoom(JsonObject &obj);
     SomfyShade *addShade();

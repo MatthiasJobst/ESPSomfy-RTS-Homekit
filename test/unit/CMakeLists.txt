@@ -57,7 +57,7 @@ add_executable(shade_tests
 # ── Include path order is critical ─────────────────────────────────────────
 # 1. stubs/        — intercepts Arduino/ESP-IDF/heavy project headers
 # 2. main/         — real project headers not in main/somfy/
-# 3. main/somfy/   — core Somfy headers (SomfyController.h, SomfyRemote.h etc.)
+# 3. main/somfy/   — core Somfy headers (SomfyShadeController.h, SomfyRemote.h etc.)
 # 4. main/somfy/shade/ — shade-specific headers (SomfyShade.h etc.)
 # 5. ArduinoJson   — real library (header-only, works on Linux)
 target_include_directories(shade_tests PRIVATE

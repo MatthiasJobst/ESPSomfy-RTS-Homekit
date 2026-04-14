@@ -1,4 +1,4 @@
-// SomfyController.cpp — SomfyShadeController implementation: startup/shutdown, NVS
+// SomfyShadeController.cpp — SomfyShadeController implementation: startup/shutdown, NVS
 // persistence (load/save/backup/legacy migration), frame processing, group-flag
 // aggregation, repeater management, loop tick (movement check, auto-commit).
 #include "compat/preferences.h"
@@ -11,7 +11,7 @@
 #endif
 #include "Utils.h"
 #include "ConfigSettings.h"
-#include "SomfyController.h"
+#include "SomfyShadeController.h"
 #include "Sockets.h"
 #include "MQTT.h"
 #include "HomeKit.h"

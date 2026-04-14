@@ -7,7 +7,7 @@
 #include "esp_log.h"
 #include "ConfigSettings.h"
 #include "MQTT.h"
-#include "SomfyController.h"
+#include "SomfyShadeController.h"
 #include "ControllerNetwork.h"
 #include "Utils.h"
 

@@ -1,6 +1,6 @@
 // SomfyCommandTransmitter.cpp — Outbound RF command and linked-remote implementations.
 #include "SomfyShade.h"
-#include "SomfyController.h"
+#include "SomfyShadeController.h"
 #include "SomfyCommandTransmitter.h"
 #include "SomfyTransceiver.h"
 #include "compat/preferences.h"

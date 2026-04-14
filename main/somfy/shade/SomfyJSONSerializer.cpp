@@ -1,6 +1,6 @@
 // SomfyJSONSerializer.cpp — JSON validation, deserialization, and serialization for SomfyShade.
 #include "SomfyShade.h"
-#include "SomfyController.h"
+#include "SomfyShadeController.h"
 #include "SomfyJSONSerializer.h"
 #include "driver/gpio.h"
 #include "esp_log.h"

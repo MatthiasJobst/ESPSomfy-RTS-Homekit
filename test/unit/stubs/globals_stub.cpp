@@ -34,9 +34,9 @@ uint64_t test_clock_ms = 0;
 #include "GitOTA.h"
 #include "HomeKit.h"
 
-// SomfyController.h lives in main/somfy/ so it can't be stubbed via stubs dir.
+// SomfyShadeController.h lives in main/somfy/ so it can't be stubbed via stubs dir.
 // We include it directly — its method bodies are provided below.
-#include "../../main/somfy/SomfyController.h"
+#include "../../main/somfy/SomfyShadeController.h"
 
 // ── Global instances ────────────────────────────────────────────────────────
 // Must be defined AFTER their types are complete.
@@ -106,29 +106,29 @@ bool SomfyShadeController::loadShadesFile(const char *) { return false; }
 // ── Transceiver stub implementations ───────────────────────────────────────
 #include "../../main/somfy/SomfyTransceiver.h"
 
-bool Transceiver::begin()  { return false; }
-void Transceiver::loop()   {}
-bool Transceiver::end()    { return false; }
-bool Transceiver::receive(somfy_rx_t *) { return false; }
-void Transceiver::clearReceived()       {}
-void Transceiver::enableReceive()       {}
-void Transceiver::disableReceive()      {}
-somfy_frame_t &Transceiver::lastFrame() { static somfy_frame_t f; return f; }
-void Transceiver::sendFrame(byte *, uint8_t, uint8_t) {}
-void Transceiver::beginTransmit()  {}
-void Transceiver::endTransmit()    {}
-void Transceiver::emitFrame(somfy_frame_t *, somfy_rx_t *) {}
-void Transceiver::beginFrequencyScan()  {}
-void Transceiver::endFrequencyScan()    {}
-void Transceiver::processFrequencyScan(bool) {}
-void Transceiver::emitFrequencyScan(uint8_t) {}
+bool SomfyTransceiver::begin()  { return false; }
+void SomfyTransceiver::loop()   {}
+bool SomfyTransceiver::end()    { return false; }
+bool SomfyTransceiver::receive(somfy_rx_t *) { return false; }
+void SomfyTransceiver::clearReceived()       {}
+void SomfyTransceiver::enableReceive()       {}
+void SomfyTransceiver::disableReceive()      {}
+somfy_frame_t &SomfyTransceiver::lastFrame() { static somfy_frame_t f; return f; }
+void SomfyTransceiver::sendFrame(byte *, uint8_t, uint8_t) {}
+void SomfyTransceiver::beginTransmit()  {}
+void SomfyTransceiver::endTransmit()    {}
+void SomfyTransceiver::emitFrame(somfy_frame_t *, somfy_rx_t *) {}
+void SomfyTransceiver::beginFrequencyScan()  {}
+void SomfyTransceiver::endFrequencyScan()    {}
+void SomfyTransceiver::processFrequencyScan(bool) {}
+void SomfyTransceiver::emitFrequencyScan(uint8_t) {}
 bool transceiver_stub_uses_pin = false;
-bool Transceiver::usesPin(uint8_t) { return transceiver_stub_uses_pin; }
-bool Transceiver::save()           { return false; }
-bool Transceiver::fromJSON(JsonObject &) { return false; }
-void Transceiver::toJSON(JsonResponse &) {}
-void Transceiver::handleReceive()   {}
-void Transceiver::handleReceiveISR(void *) {}
+bool SomfyTransceiver::usesPin(uint8_t) { return transceiver_stub_uses_pin; }
+bool SomfyTransceiver::save()           { return false; }
+bool SomfyTransceiver::fromJSON(JsonObject &) { return false; }
+void SomfyTransceiver::toJSON(JsonResponse &) {}
+void SomfyTransceiver::handleReceive()   {}
+void SomfyTransceiver::handleReceiveISR(void *) {}
 void transceiver_config_t::fromJSON(JsonObject &) {}
 void transceiver_config_t::toJSON(JsonResponse &) {}
 void transceiver_config_t::save()   {}

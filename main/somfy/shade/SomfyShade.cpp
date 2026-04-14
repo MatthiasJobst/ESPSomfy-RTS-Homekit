@@ -7,7 +7,7 @@
 #include "GitOTA.h"
 #include "SomfyShade.h"
 #include "SomfyTransceiver.h"
-#include "SomfyController.h"
+#include "SomfyShadeController.h"
 #include "ConfigFile.h"
 
 extern SomfyShadeController somfy;

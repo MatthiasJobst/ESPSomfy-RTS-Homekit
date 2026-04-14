@@ -1,7 +1,7 @@
 // SomfyMQTTPublisher.cpp — MQTT and socket-emit implementations for SomfyShade.
 // All methods read shade state via the back-pointer set by the SomfyShade() constructor.
 #include "SomfyShade.h"
-#include "SomfyController.h"
+#include "SomfyShadeController.h"
 #include "Sockets.h"
 #include "MQTT.h"
 #include "HomeKit.h"

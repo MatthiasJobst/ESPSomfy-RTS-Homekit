@@ -1,5 +1,5 @@
 // SomfyTransceiver.cpp — CC1101 transceiver implementation: interrupt handler (IRAM),
-// frame receive/decode pipeline, frequency scan, all Transceiver::* and
+// frame receive/decode pipeline, frequency scan, all SomfyTransceiver::* and
 // transceiver_config_t::* method bodies (send, apply, load/save NVS, JSON I/O).
 // Module-local state: rxmode, bit_length, somfy_rx, rx_queue, tx_queue, freq scan vars.
 #include "compat/preferences.h"
@@ -14,13 +14,13 @@
 #include "freertos/task.h"
 #endif
 #include "SomfyTransceiver.h"
-#include "SomfyController.h"
+#include "SomfyShadeController.h"
 #include "Sockets.h"
 #include "MQTT.h"
 #include "GitOTA.h"
 
 static const char *TAG = "SomfyTransceiver";
-// Module-level state (Transceiver private)
+// Module-level state (SomfyTransceiver private)
 uint8_t rxmode = 0;   // 0=off 1=receive 3=frequency-scan
 uint8_t bit_length = 56;  // current protocol frame width; set by apply(), read by sendCommand()
 static int interruptPin = 0;
@@ -259,7 +259,7 @@ static bool IRAM_ATTR rmt_tx_done_cb(rmt_channel_handle_t chan,
 #endif // SOMFY_TX_RMT
 // ─────────────────────────────────────────────────────────────────────────────
 
-void Transceiver::sendFrame(byte *frame, uint8_t sync, uint8_t bitLength) {
+void SomfyTransceiver::sendFrame(byte *frame, uint8_t sync, uint8_t bitLength) {
   if(!this->config.enabled) return;
   uint32_t pin = 1 << this->config.TXPin;
   if (sync == 2 || sync == 12) {  // Only with the first frame.  Repeats do not get a wakeup pulse.
@@ -325,9 +325,9 @@ void Transceiver::sendFrame(byte *frame, uint8_t sync, uint8_t bitLength) {
   }
 }
 
-void IRAM_ATTR Transceiver::handleReceiveISR(void*) { Transceiver::handleReceive(); }
+void IRAM_ATTR SomfyTransceiver::handleReceiveISR(void*) { SomfyTransceiver::handleReceive(); }
 
-void RECEIVE_ATTR Transceiver::handleReceive() {
+void RECEIVE_ATTR SomfyTransceiver::handleReceive() {
     static unsigned long last_time = 0;
     const unsigned long time = micros();
     const unsigned int duration = time - last_time;
@@ -478,7 +478,7 @@ void RECEIVE_ATTR Transceiver::handleReceive() {
     }
 }
 
-void Transceiver::beginFrequencyScan() {
+void SomfyTransceiver::beginFrequencyScan() {
   if(this->config.enabled) {
     this->disableReceive();
     this->config.apply();
@@ -492,12 +492,12 @@ void Transceiver::beginFrequencyScan() {
     ELECHOUSE_cc1101.setMHZ(currFreq);
     ESP_LOGI(TAG, "Begin frequency scan on Pin #%d", this->config.RXPin);
     gpio_set_intr_type((gpio_num_t)interruptPin, GPIO_INTR_ANYEDGE);
-    gpio_isr_handler_add((gpio_num_t)interruptPin, Transceiver::handleReceiveISR, NULL);
+    gpio_isr_handler_add((gpio_num_t)interruptPin, SomfyTransceiver::handleReceiveISR, NULL);
     this->emitFrequencyScan();
   }
 }
 
-void Transceiver::processFrequencyScan(bool received) {
+void SomfyTransceiver::processFrequencyScan(bool received) {
   if(this->config.enabled && rxmode == 3) {
     if(received) {
       currRSSI = ELECHOUSE_cc1101.getRssi();
@@ -525,7 +525,7 @@ void Transceiver::processFrequencyScan(bool received) {
   }
 }
 
-void Transceiver::endFrequencyScan() {
+void SomfyTransceiver::endFrequencyScan() {
   if(rxmode == 3) {
     rxmode = 0;
     if(interruptPin > 0) gpio_isr_handler_remove((gpio_num_t)interruptPin);
@@ -535,7 +535,7 @@ void Transceiver::endFrequencyScan() {
   }
 }
 
-void Transceiver::emitFrequencyScan(uint8_t num) {
+void SomfyTransceiver::emitFrequencyScan(uint8_t num) {
   JsonSockEvent *json = sockEmit.beginEmit("frequencyScan");
   json->beginObject();
   json->addElem("scanning", rxmode == 3);
@@ -553,7 +553,7 @@ void Transceiver::emitFrequencyScan(uint8_t num) {
   */
 }
 
-bool Transceiver::receive(somfy_rx_t *rx) {
+bool SomfyTransceiver::receive(somfy_rx_t *rx) {
     // Check to see if there is anything in the buffer
     if(rx_queue.length > 0) {
       ESP_LOGD(TAG, "Processing receive %d", rx_queue.length);
@@ -565,7 +565,7 @@ bool Transceiver::receive(somfy_rx_t *rx) {
     return false;
 }
 
-void Transceiver::emitFrame(somfy_frame_t *frame, somfy_rx_t *rx) {
+void SomfyTransceiver::emitFrame(somfy_frame_t *frame, somfy_rx_t *rx) {
   if(sockEmit.activeClients(ROOM_EMIT_FRAME) > 0) {
     JsonSockEvent *json = sockEmit.beginEmit("remoteFrame");
     json->beginObject();
@@ -623,14 +623,14 @@ void Transceiver::emitFrame(somfy_frame_t *frame, somfy_rx_t *rx) {
   }
 }
 
-void Transceiver::clearReceived(void) {
+void SomfyTransceiver::clearReceived(void) {
     //packet_received = false;
     //memset(receive_buffer, 0x00, sizeof(receive_buffer));
     if(this->config.enabled)
-      gpio_isr_handler_add((gpio_num_t)interruptPin, Transceiver::handleReceiveISR, NULL);
+      gpio_isr_handler_add((gpio_num_t)interruptPin, SomfyTransceiver::handleReceiveISR, NULL);
 }
 
-void Transceiver::enableReceive(void) {
+void SomfyTransceiver::enableReceive(void) {
     uint32_t timing = millis();
     if(rxmode > 0) return;
     if(this->config.enabled) {
@@ -641,24 +641,24 @@ void Transceiver::enableReceive(void) {
       gpio_set_intr_type((gpio_num_t)interruptPin, GPIO_INTR_ANYEDGE);
       gpio_uninstall_isr_service();
       gpio_install_isr_service(0);
-      gpio_isr_handler_add((gpio_num_t)interruptPin, Transceiver::handleReceiveISR, NULL);
+      gpio_isr_handler_add((gpio_num_t)interruptPin, SomfyTransceiver::handleReceiveISR, NULL);
       ESP_LOGI(TAG, "Enabled receive on Pin #%d Timing: %ld", this->config.RXPin, millis() - timing);
     }
 }
 
-void Transceiver::disableReceive(void) {
+void SomfyTransceiver::disableReceive(void) {
   rxmode = 0;
   if(interruptPin > 0) gpio_isr_handler_remove((gpio_num_t)interruptPin);
   interruptPin = 0;
 }
 
-void Transceiver::toJSON(JsonResponse& json) {
+void SomfyTransceiver::toJSON(JsonResponse& json) {
     json.beginObject("config");
     this->config.toJSON(json);
     json.endObject();
 }
 
-bool Transceiver::fromJSON(JsonObject& obj) {
+bool SomfyTransceiver::fromJSON(JsonObject& obj) {
     if (obj.containsKey("config")) {
       JsonObject objConfig = obj["config"];
       this->config.fromJSON(objConfig);
@@ -666,7 +666,7 @@ bool Transceiver::fromJSON(JsonObject& obj) {
     return true;
 }
 
-bool Transceiver::usesPin(uint8_t pin) {
+bool SomfyTransceiver::usesPin(uint8_t pin) {
   if(this->config.enabled) {
     if(this->config.SCKPin == pin ||
       this->config.TXPin == pin ||
@@ -679,7 +679,7 @@ bool Transceiver::usesPin(uint8_t pin) {
   return false;  
 }
 
-bool Transceiver::save() {
+bool SomfyTransceiver::save() {
     this->config.save();
     this->config.apply();
     return true;
@@ -1016,7 +1016,7 @@ void transceiver_config_t::apply() {
     //somfy.transceiver.printBuffer = this->printBuffer;
 }
 
-bool Transceiver::begin() {
+bool SomfyTransceiver::begin() {
     this->config.load();
     // Clear any radioInit=false guard left by a previous crash so that apply()
     // doesn't skip init on the first boot after a watchdog reset.
@@ -1056,7 +1056,7 @@ bool Transceiver::begin() {
     return true;
 }
 
-bool Transceiver::end() {
+bool SomfyTransceiver::end() {
     this->disableReceive();
 #ifdef SOMFY_TX_RMT
     if(s_rmtTxChan) {
@@ -1075,7 +1075,7 @@ bool Transceiver::end() {
     return true;
 }
 
-void Transceiver::loop() {
+void SomfyTransceiver::loop() {
   // RF noise watchdog: re-enable RX after cooldown period.
   if(noiseDetected) {
     static uint32_t noiseDisabledAt = 0;
@@ -1159,13 +1159,13 @@ void Transceiver::loop() {
   }
 }
 
-somfy_frame_t& Transceiver::lastFrame() { return this->frame; }
+somfy_frame_t& SomfyTransceiver::lastFrame() { return this->frame; }
 
 #ifdef SOMFY_TX_RMT
 // Load the encoder with a fully described frame burst and kick off RMT.
 // beginTransmit() must be called first. endTransmit() is deferred: it will
-// be called by Transceiver::loop() once txBusy() returns false.
-void Transceiver::beginFrameTx(somfy_frame_t &frame, uint8_t repeats) {
+// be called by SomfyTransceiver::loop() once txBusy() returns false.
+void SomfyTransceiver::beginFrameTx(somfy_frame_t &frame, uint8_t repeats) {
     frame.encodeFrame(s_enc->frame);
     s_enc->src        = &frame;
     s_enc->bit_length = frame.bitLength;
@@ -1191,7 +1191,7 @@ void Transceiver::beginFrameTx(somfy_frame_t &frame, uint8_t repeats) {
 
 // Raw variant used by the repeater path: pre-encoded bytes, single frame, no
 // per-repeat re-encoding needed.
-void Transceiver::beginRawFrameTx(byte *payload, uint8_t sync, uint8_t bitLength) {
+void SomfyTransceiver::beginRawFrameTx(byte *payload, uint8_t sync, uint8_t bitLength) {
     memcpy(s_enc->frame, payload, 10);
     s_enc->src        = nullptr;
     s_enc->bit_length = bitLength;
@@ -1212,12 +1212,12 @@ void Transceiver::beginRawFrameTx(byte *payload, uint8_t sync, uint8_t bitLength
     s_rmtBusy = true;
 }
 
-bool Transceiver::txBusy() {
+bool SomfyTransceiver::txBusy() {
     return s_rmtBusy;
 }
 #endif // SOMFY_TX_RMT
 
-void Transceiver::beginTransmit() {
+void SomfyTransceiver::beginTransmit() {
     if(this->config.enabled) {
       this->disableReceive();
 #ifndef SOMFY_TX_RMT
@@ -1232,7 +1232,7 @@ void Transceiver::beginTransmit() {
     }
 }
 
-void Transceiver::endTransmit() {
+void SomfyTransceiver::endTransmit() {
     if(this->config.enabled) {
       ELECHOUSE_cc1101.setSidle();
       //delay(100);

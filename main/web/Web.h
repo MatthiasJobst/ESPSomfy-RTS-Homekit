@@ -1,5 +1,5 @@
 #include <WebServer.h>
-#include "SomfyController.h"
+#include "SomfyShadeController.h"
 #ifndef webserver_h
 #define webserver_h
 class Web {

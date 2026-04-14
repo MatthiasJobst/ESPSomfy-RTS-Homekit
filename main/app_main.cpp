@@ -16,7 +16,7 @@
 #include "Web.h"
 #include "Sockets.h"
 #include "Utils.h"
-#include "SomfyController.h"
+#include "SomfyShadeController.h"
 #include "MQTT.h"
 #include "GitOTA.h"
 #include "HomeKit.h"

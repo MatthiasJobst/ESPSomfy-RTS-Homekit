@@ -1,5 +1,5 @@
 // SomfyTransceiver.h — CC1101 radio transceiver layer: transceiver_config_t (pin mapping,
-// frequency, deviation, NVS persistence) and the Transceiver class (interrupt-driven
+// frequency, deviation, NVS persistence) and the SomfyTransceiver class (interrupt-driven
 // receive, frame transmission, frequency scanning, GPIO management).  Also defines the
 // SYMBOL, SETMY_REPEATS and TILT_REPEATS macros and the bit_length extern used by the
 // send-command path.
@@ -87,7 +87,7 @@ struct transceiver_config_t {
     void apply();
     void removeNVSKey(const char *key);
 };
-class Transceiver {
+class SomfyTransceiver {
   private:
     static void handleReceive();
     static void handleReceiveISR(void*);

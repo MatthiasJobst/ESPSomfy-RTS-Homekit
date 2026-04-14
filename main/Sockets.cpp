@@ -5,7 +5,7 @@
 #include "Sockets.h"
 #include "AppConfig.h"
 #include "ConfigSettings.h"
-#include "SomfyController.h"
+#include "SomfyShadeController.h"
 #include "ControllerNetwork.h"
 #include "GitOTA.h"
 

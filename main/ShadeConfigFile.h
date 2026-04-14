@@ -5,7 +5,7 @@
 #ifndef shadeconfigfile_h
 #define shadeconfigfile_h
 #include "ConfigFile.h"
-#include "SomfyController.h"
+#include "SomfyShadeController.h"
 
 class ShadeConfigFile : public ConfigFile {
   protected:

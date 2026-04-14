@@ -2,7 +2,7 @@
 // flag aggregation, JSON serialisation, MQTT publishing and socket-emit.
 #include "SomfyGroup.h"
 #include "SomfyShade.h"
-#include "SomfyController.h"
+#include "SomfyShadeController.h"
 #include "Sockets.h"
 #include "MQTT.h"
 #include "esp_log.h"

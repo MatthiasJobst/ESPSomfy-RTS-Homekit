@@ -11,7 +11,7 @@
 #include "GitOTA.h"
 #include "Utils.h"
 #include "Sockets.h"
-#include "SomfyController.h"
+#include "SomfyShadeController.h"
 #include "Web.h"
 #include "WResp.h"
 #include "ControllerNetwork.h"

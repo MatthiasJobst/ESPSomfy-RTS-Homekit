@@ -1,7 +1,7 @@
 // SomfyRoom.cpp — SomfyRoom: NVS persistence, JSON serialisation, MQTT
 // publishing and socket-emit for named rooms.
 #include "SomfyRoom.h"
-#include "SomfyController.h"
+#include "SomfyShadeController.h"
 #include "Sockets.h"
 #include "MQTT.h"
 #include "esp_log.h"
