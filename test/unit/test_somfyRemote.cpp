@@ -17,8 +17,6 @@
 #include "SomfyController.h"
 #include <gtest/gtest.h>
 
-extern bool nvs_stub_use_nvs;
-
 class SomfyRemoteTest : public ::testing::Test {
 protected:
     SomfyLinkedRemote remote;
@@ -30,7 +28,6 @@ protected:
         remote.flipCommands = false;
         remote.proto        = radio_proto::RTS;
         remote.flags        = SomfyFlag();
-        nvs_stub_use_nvs    = false;
         nvs_stub_reset_all();
     }
 

@@ -56,10 +56,10 @@ bool SomfyShade::linkRemote(uint32_t address, uint16_t rollingCode) {
   return commandTransmitter.linkRemote(address, rollingCode);
 }
 
-void SomfyShade::commit()              { persistence.commit(); }
-void SomfyShade::commitShadePosition() { persistence.commitShadePosition(); }
-void SomfyShade::commitMyPosition()    { persistence.commitMyPosition(); }
-void SomfyShade::commitTiltPosition()  { persistence.commitTiltPosition(); }
+void SomfyShade::commit()              { somfy.commit(); }
+void SomfyShade::commitShadePosition() { somfy.isDirty = true; }
+void SomfyShade::commitMyPosition()    { somfy.isDirty = true; }
+void SomfyShade::commitTiltPosition()  { somfy.isDirty = true; }
 
 bool SomfyShade::unlinkRemote(uint32_t address) {
   return commandTransmitter.unlinkRemote(address);
@@ -281,7 +281,7 @@ void SomfyShade::sendTiltCommand(somfy_commands cmd) { commandTransmitter.sendTi
 void SomfyShade::moveToTiltTarget(float target) { targetSequencer.moveToTiltTarget(target); }
 void SomfyShade::moveToTarget(float pos, float tilt) { targetSequencer.moveToTarget(pos, tilt); }
 
-bool SomfyShade::save() { return persistence.save(); }
+bool SomfyShade::save() { commit(); publish(); return true; }
 
 bool SomfyShade::isToggle() {
   switch(this->shadeType) {

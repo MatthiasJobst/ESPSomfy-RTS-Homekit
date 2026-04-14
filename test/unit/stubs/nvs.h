@@ -26,8 +26,6 @@ struct NvsStore  { std::unordered_map<std::string, NvsEntry> entries; };
 extern std::unordered_map<std::string, NvsStore> nvs_ns_stores;
 extern std::unordered_map<uint32_t, std::string> nvs_handle_ns;
 extern uint32_t nvs_stub_next_handle;
-// Controls SomfyShadeController::useNVS() return value in tests.
-extern bool nvs_stub_use_nvs;
 
 inline void nvs_stub_reset_ns(const char *ns)  { nvs_ns_stores.erase(ns); }
 inline void nvs_stub_reset_all()               { nvs_ns_stores.clear(); nvs_handle_ns.clear(); }

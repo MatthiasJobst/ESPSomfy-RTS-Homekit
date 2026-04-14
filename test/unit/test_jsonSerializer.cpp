@@ -15,7 +15,6 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-extern bool              nvs_stub_use_nvs;
 extern SomfyShadeController somfy;
 extern bool              mqtt_connected_flag;
 extern std::unordered_map<std::string, std::string> mqtt_published;
@@ -55,7 +54,6 @@ protected:
         EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(AnyNumber());
         EXPECT_CALL(shade, emitCommand(_, _, _, _, _)).Times(AnyNumber());
 
-        nvs_stub_use_nvs = false;
         nvs_stub_reset_all();
         mqtt_connected_flag = false;
         mqtt_published.clear();

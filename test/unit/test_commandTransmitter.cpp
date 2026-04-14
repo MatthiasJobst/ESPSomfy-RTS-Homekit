@@ -18,7 +18,6 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-extern bool             nvs_stub_use_nvs;
 extern SomfyShadeController somfy;
 extern bool mqtt_connected_flag;
 extern std::unordered_map<std::string, std::string> mqtt_published;
@@ -52,14 +51,12 @@ protected:
         EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(AnyNumber());
         EXPECT_CALL(shade, emitCommand(_, _, _, _, _)).Times(AnyNumber());
 
-        nvs_stub_use_nvs = false;
         nvs_stub_reset_all();
         mqtt_connected_flag = false;
         mqtt_published.clear();
     }
 
     void TearDown() override {
-        nvs_stub_use_nvs = false;
         nvs_stub_reset_all();
     }
 
@@ -271,19 +268,6 @@ TEST_F(CommandTransmitterTest, LinkRemote_AllSlotsFull_ReturnsFalse) {
     EXPECT_FALSE(result);
 }
 
-TEST_F(CommandTransmitterTest, LinkRemote_UseNVSTrue_WritesLinkedAddrToNVS) {
-    nvs_stub_use_nvs = true;
-    shade.linkRemote(0xCAFE01, 0);
-    auto &store = nvs_ns_stores["SomfyShade1"];
-    EXPECT_EQ(store.entries.count("linkedAddr"), 1u);
-}
-
-TEST_F(CommandTransmitterTest, LinkRemote_UseNVSFalse_DoesNotWriteNVS) {
-    nvs_stub_use_nvs = false;
-    shade.linkRemote(0xCAFE02, 0);
-    EXPECT_TRUE(nvs_ns_stores.empty());
-}
-
 // ══════════════════════════════════════════════════════════════════════════════
 // H. unlinkRemote()
 // ══════════════════════════════════════════════════════════════════════════════
@@ -300,18 +284,3 @@ TEST_F(CommandTransmitterTest, UnlinkRemote_Found_ClearsSlotAndReturnsTrue) {
     EXPECT_EQ(shade.getLinkedRemote(0).getRemoteAddress(), 0u);
 }
 
-TEST_F(CommandTransmitterTest, UnlinkRemote_UseNVSTrue_WritesLinkedAddrToNVS) {
-    nvs_stub_use_nvs = true;
-    shade.getLinkedRemote(0).setRemoteAddress(0xBEEF02);
-    shade.getLinkedRemote(1).setRemoteAddress(0xBEEF03);
-    shade.unlinkRemote(0xBEEF02);
-    auto &store = nvs_ns_stores["SomfyShade1"];
-    EXPECT_EQ(store.entries.count("linkedAddr"), 1u);
-}
-
-TEST_F(CommandTransmitterTest, UnlinkRemote_UseNVSFalse_DoesNotWriteNVS) {
-    nvs_stub_use_nvs = false;
-    shade.getLinkedRemote(0).setRemoteAddress(0xBEEF04);
-    shade.unlinkRemote(0xBEEF04);
-    EXPECT_TRUE(nvs_ns_stores.empty());
-}

@@ -6,7 +6,6 @@
 #include "SomfyFlagManager.h"
 #include "SomfyGPIOControl.h"
 #include "SomfyMQTTPublisher.h"
-#include "SomfyPersistence.h"
 #include "SomfyCommandTransmitter.h"
 #include "SomfyJSONSerializer.h"
 #include "SomfyMotionState.h"
@@ -19,11 +18,10 @@ class SomfyShade : public SomfyRemote {
     uint32_t awaitMy = 0;
   public:
     uint8_t shadeId = 255;
-    SomfyShade() { mqttPublisher.shade = this; persistence.shade = this; commandTransmitter.shade = this; jsonSerializer.shade = this; targetSequencer.shade = this; commandProcessor.shade = this; movementTracker.shade = this; }
+    SomfyShade() { mqttPublisher.shade = this; commandTransmitter.shade = this; jsonSerializer.shade = this; targetSequencer.shade = this; commandProcessor.shade = this; movementTracker.shade = this; }
     SomfyFlagManager        flagManager;
     SomfyGPIOControl        gpioControl;
     SomfyMQTTPublisher      mqttPublisher;
-    SomfyPersistence        persistence;
     SomfyCommandTransmitter commandTransmitter;
     SomfyJSONSerializer     jsonSerializer;
     SomfyTargetSequencer    targetSequencer;

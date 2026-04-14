@@ -20,7 +20,6 @@ idf_component_register(
         "somfy/shade/SomfyFlagManager.cpp"
         "somfy/shade/SomfyGPIOControl.cpp"
         "somfy/shade/SomfyMQTTPublisher.cpp"
-        "somfy/shade/SomfyPersistence.cpp"
         "somfy/shade/SomfyCommandTransmitter.cpp"
         "somfy/shade/SomfyTargetSequencer.cpp"
         "somfy/shade/SomfyCommandProcessor.cpp"
