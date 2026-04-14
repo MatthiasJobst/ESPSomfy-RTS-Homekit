@@ -106,7 +106,7 @@ var security = new Security();
 
 class General {
     initialized = false; 
-    appVersion = 'v0.2.3';
+    appVersion = 'v0.2.31';
     reloadApp = false;
     init() {
         if (this.initialized) return;
