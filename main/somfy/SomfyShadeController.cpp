@@ -545,65 +545,6 @@ void SomfyShadeController::toJSONShades(JsonResponse &json) {
   }
 }
 
-/*
-
-bool SomfyShadeController::toJSON(JsonDocument &doc) {
-  doc["maxRooms"] = SOMFY_MAX_ROOMS;
-  doc["maxShades"] = SOMFY_MAX_SHADES;
-  doc["maxGroups"] = SOMFY_MAX_GROUPS;
-  doc["maxGroupedShades"] = SOMFY_MAX_GROUPED_SHADES;
-  doc["maxLinkedRemotes"] = SOMFY_MAX_LINKED_REMOTES;
-  doc["startingAddress"] = this->startingAddress;
-  JsonObject objRadio = doc.createNestedObject("transceiver");
-  this->transceiver.toJSON(objRadio);
-  JsonArray arrRooms = doc.createNestedArray("rooms");
-  this->toJSONRooms(arrRooms);
-  JsonArray arrShades = doc.createNestedArray("shades");
-  this->toJSONShades(arrShades);
-  JsonArray arrGroups = doc.createNestedArray("groups");
-  this->toJSONGroups(arrGroups);
-  return true;
-}
-
-bool SomfyShadeController::toJSON(JsonObject &obj) {
-  obj["maxShades"] = SOMFY_MAX_SHADES;
-  obj["maxLinkedRemotes"] = SOMFY_MAX_LINKED_REMOTES;
-  obj["startingAddress"] = this->startingAddress;
-  JsonObject oradio = obj.createNestedObject("transceiver");
-  this->transceiver.toJSON(oradio);
-  JsonArray arrShades = obj.createNestedArray("shades");
-  this->toJSONShades(arrShades);
-  JsonArray arrGroups = obj.createNestedArray("groups");
-  this->toJSONGroups(arrGroups);
-  return true;
-}
-
-
-
-bool SomfyShadeController::toJSONShades(JsonArray &arr) {
-  for(uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
-    SomfyShade &shade = this->shades[i];
-    if(shade.getShadeId() != 255) {
-      JsonObject oshade = arr.createNestedObject();
-      shade.toJSON(oshade);
-    }
-  }
-  return true;
-}
-
-bool SomfyShadeController::toJSONGroups(JsonArray &arr) {
-  for(uint8_t i = 0; i < SOMFY_MAX_GROUPS; i++) {
-    SomfyGroup &group = this->groups[i];
-    if(group.getGroupId() != 255) {
-      JsonObject ogroup = arr.createNestedObject();
-      group.toJSON(ogroup);
-    }
-  }
-  return true;
-}
-
-*/
-
 void SomfyShadeController::toJSONGroups(JsonResponse &json) {
   for(uint8_t i = 0; i < SOMFY_MAX_GROUPS; i++) {
     SomfyGroup &group = this->groups[i];

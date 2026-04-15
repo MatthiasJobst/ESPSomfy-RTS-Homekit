@@ -512,3 +512,278 @@ TEST_F(CommandQueueTest, Loop_ShadeNotFound_NoCrash) {
     somfy.loop();
     EXPECT_EQ(somfy.cmdQueue.count, 0);  // entry drained gracefully
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// L  end()
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(ControllerTest, End_DoesNotCrash) {
+    somfy.end();  // calls transceiver.disableReceive() (stubbed)
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// M  updateGroupFlags
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(ControllerTest, UpdateGroupFlags_ValidGroup_DoesNotCrash) {
+    somfy.groups[0].setGroupId(1);
+    somfy.updateGroupFlags();  // covers lines 61-64
+}
+
+TEST_F(ControllerTest, UpdateGroupFlags_FlagsChange_EmitsState) {
+    // Pre-set non-zero flags so updateFlags() (which resetFlags() + re-ORs shades) changes them
+    somfy.groups[0].setGroupId(1);
+    somfy.groups[0].flags.setFlags(0x01);  // group has SunFlag set
+    // No linked shades → updateFlags() resets to 0 → oldFlags != new flags → emitState() on line 65
+    somfy.updateGroupFlags();
+    EXPECT_EQ(somfy.groups[0].flags.getFlags(), 0);  // flags were reset
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// N  begin()
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(ControllerTest, Begin_FileNotExists_StartClean) {
+    stub_shadeconfig_exists = false;
+    EXPECT_TRUE(somfy.begin());
+}
+
+TEST_F(ControllerTest, Begin_FileExists_LoadsConfig) {
+    stub_shadeconfig_exists = true;
+    EXPECT_TRUE(somfy.begin());
+}
+
+TEST_F(ControllerTest, Begin_ShadeWithZeroBitLength_Commits) {
+    stub_shadeconfig_exists = false;
+    somfy.shades[0].setShadeId(1);
+    somfy.shades[0].bitLength = 0;  // triggers saveFlag path
+    EXPECT_TRUE(somfy.begin());
+    EXPECT_EQ(stub_save_call_count, 1);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// O  processWaitingFrame / emitState / publish
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(ControllerTest, ProcessWaitingFrame_WithShade_DoesNotCrash) {
+    somfy.shades[0].setShadeId(1);
+    somfy.processWaitingFrame();
+}
+
+TEST_F(ControllerTest, ProcessWaitingFrame_NoShades_DoesNotCrash) {
+    somfy.processWaitingFrame();
+}
+
+TEST_F(ControllerTest, EmitState_WithShade_DoesNotCrash) {
+    somfy.shades[0].setShadeId(1);
+    somfy.emitState();
+}
+
+TEST_F(ControllerTest, EmitState_NoShades_DoesNotCrash) {
+    somfy.emitState();
+}
+
+TEST_F(ControllerTest, Publish_Empty_DoesNotCrash) {
+    somfy.publish();
+}
+
+TEST_F(ControllerTest, Publish_WithShadeAndGroup_DoesNotCrash) {
+    somfy.shades[0].setShadeId(1);
+    somfy.shades[0].setRemoteAddress(0x100001);
+    somfy.groups[0].setGroupId(1);
+    somfy.groups[0].setRemoteAddress(0x200001);
+    somfy.publish();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// P  addShade(JsonObject&) / addRoom(JsonObject&) / addGroup(JsonObject&)
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(ControllerTest, AddShadeFromJSON_ReturnsValidShade) {
+    JsonDocument doc;
+    JsonObject obj = doc.to<JsonObject>();
+    SomfyShade *s = somfy.addShade(obj);
+    ASSERT_NE(s, nullptr);
+    EXPECT_EQ(s->getShadeId(), 1);
+}
+
+TEST_F(ControllerTest, AddRoomFromJSON_ReturnsValidRoom) {
+    JsonDocument doc;
+    JsonObject obj = doc.to<JsonObject>();
+    SomfyRoom *r = somfy.addRoom(obj);
+    ASSERT_NE(r, nullptr);
+    EXPECT_EQ(r->roomId, 1);
+}
+
+TEST_F(ControllerTest, AddGroupFromJSON_ReturnsValidGroup) {
+    JsonDocument doc;
+    JsonObject obj = doc.to<JsonObject>();
+    SomfyGroup *g = somfy.addGroup(obj);
+    ASSERT_NE(g, nullptr);
+    EXPECT_EQ(g->getGroupId(), 1);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Q  linkRepeater — all-slots-full path
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(ControllerTest, LinkRepeater_AllSlotsFull_ReturnsTrueWithoutAdding) {
+    for(uint8_t i = 0; i < SOMFY_MAX_REPEATERS; i++)
+        somfy.repeaters[i] = 0x1000 + i;  // fill all slots with distinct non-zero values
+    // Address not present and no empty slot — falls through to final return true
+    bool result = somfy.linkRepeater(0xDEAD);
+    EXPECT_TRUE(result);
+    EXPECT_EQ(somfy.repeaterCount(), SOMFY_MAX_REPEATERS);  // unchanged
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// R  loadShadesFile / toJSONRooms / toJSONShades / toJSONGroups / toJSONRepeaters
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(ControllerTest, LoadShadesFile_ReturnsTrue) {
+    EXPECT_TRUE(somfy.loadShadesFile("/shades.cfg"));
+}
+
+TEST_F(ControllerTest, ToJSONRooms_WithRoom_DoesNotCrash) {
+    somfy.rooms[0].roomId = 1;
+    JsonResponse json;
+    somfy.toJSONRooms(json);
+}
+
+TEST_F(ControllerTest, ToJSONRooms_Empty_DoesNotCrash) {
+    JsonResponse json;
+    somfy.toJSONRooms(json);
+}
+
+TEST_F(ControllerTest, ToJSONShades_WithShade_DoesNotCrash) {
+    somfy.shades[0].setShadeId(1);
+    JsonResponse json;
+    somfy.toJSONShades(json);
+}
+
+TEST_F(ControllerTest, ToJSONShades_Empty_DoesNotCrash) {
+    JsonResponse json;
+    somfy.toJSONShades(json);
+}
+
+TEST_F(ControllerTest, ToJSONGroups_WithGroup_DoesNotCrash) {
+    somfy.groups[0].setGroupId(1);
+    JsonResponse json;
+    somfy.toJSONGroups(json);
+}
+
+TEST_F(ControllerTest, ToJSONGroups_Empty_DoesNotCrash) {
+    JsonResponse json;
+    somfy.toJSONGroups(json);
+}
+
+TEST_F(ControllerTest, ToJSONRepeaters_WithRepeater_DoesNotCrash) {
+    somfy.repeaters[0] = 0x1234;
+    JsonResponse json;
+    somfy.toJSONRepeaters(json);
+}
+
+TEST_F(ControllerTest, ToJSONRepeaters_Empty_DoesNotCrash) {
+    JsonResponse json;
+    somfy.toJSONRepeaters(json);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// S  enqueue variants
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandQueueTest, EnqueueShadeTiltTarget_SetsFields) {
+    EXPECT_TRUE(somfy.enqueueShadeTiltTarget(1, 0.5f));
+    EXPECT_EQ(somfy.cmdQueue.count, 1);
+    EXPECT_EQ(somfy.cmdQueue.entries[0].type, cmd_queue_type_t::ShadeTiltTarget);
+    EXPECT_FLOAT_EQ(somfy.cmdQueue.entries[0].target, 0.5f);
+}
+
+TEST_F(CommandQueueTest, EnqueueShadeTiltCommand_SetsFields) {
+    EXPECT_TRUE(somfy.enqueueShadeTiltCommand(1, somfy_commands::Up));
+    EXPECT_EQ(somfy.cmdQueue.count, 1);
+    EXPECT_EQ(somfy.cmdQueue.entries[0].type, cmd_queue_type_t::ShadeTiltCommand);
+}
+
+TEST_F(CommandQueueTest, EnqueueShadeSensor_SetsFields) {
+    EXPECT_TRUE(somfy.enqueueShadeSensor(1, 1, 0, 2));
+    EXPECT_EQ(somfy.cmdQueue.count, 1);
+    EXPECT_EQ(somfy.cmdQueue.entries[0].type, cmd_queue_type_t::ShadeSensor);
+    EXPECT_EQ(somfy.cmdQueue.entries[0].isWindy, 1);
+    EXPECT_EQ(somfy.cmdQueue.entries[0].isSunny, 0);
+}
+
+TEST_F(CommandQueueTest, EnqueueGroupSensor_SetsFields) {
+    EXPECT_TRUE(somfy.enqueueGroupSensor(1, 0, 1, 1));
+    EXPECT_EQ(somfy.cmdQueue.count, 1);
+    EXPECT_EQ(somfy.cmdQueue.entries[0].type, cmd_queue_type_t::GroupSensor);
+    EXPECT_EQ(somfy.cmdQueue.entries[0].isSunny, 1);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// T  drain queue — one test per cmd_queue_type_t branch
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(CommandQueueTest, Drain_ShadeTarget_DoesNotCrash) {
+    somfy.enqueueShadeTarget(1, 0.8f);
+    test_clock_ms = CMD_QUEUE_DRAIN_MS + 1;
+    somfy.cmdQueue.lastDrain = 0;
+    somfy.loop();
+    EXPECT_EQ(somfy.cmdQueue.count, 0);
+}
+
+TEST_F(CommandQueueTest, Drain_ShadeTiltTarget_DoesNotCrash) {
+    somfy.enqueueShadeTiltTarget(1, 0.3f);
+    test_clock_ms = CMD_QUEUE_DRAIN_MS + 1;
+    somfy.cmdQueue.lastDrain = 0;
+    somfy.loop();
+    EXPECT_EQ(somfy.cmdQueue.count, 0);
+}
+
+TEST_F(CommandQueueTest, Drain_ShadeTiltCommand_DoesNotCrash) {
+    somfy.enqueueShadeTiltCommand(1, somfy_commands::My);
+    test_clock_ms = CMD_QUEUE_DRAIN_MS + 1;
+    somfy.cmdQueue.lastDrain = 0;
+    somfy.loop();
+    EXPECT_EQ(somfy.cmdQueue.count, 0);
+}
+
+TEST_F(CommandQueueTest, Drain_ShadeSensor_DoesNotCrash) {
+    somfy.enqueueShadeSensor(1, 1, 0, 1);
+    test_clock_ms = CMD_QUEUE_DRAIN_MS + 1;
+    somfy.cmdQueue.lastDrain = 0;
+    somfy.loop();
+    EXPECT_EQ(somfy.cmdQueue.count, 0);
+}
+
+TEST_F(CommandQueueTest, Drain_GroupCommand_DoesNotCrash) {
+    somfy.enqueueGroupCommand(1, somfy_commands::Down, 1);
+    test_clock_ms = CMD_QUEUE_DRAIN_MS + 1;
+    somfy.cmdQueue.lastDrain = 0;
+    somfy.loop();
+    EXPECT_EQ(somfy.cmdQueue.count, 0);
+}
+
+TEST_F(CommandQueueTest, Drain_GroupSensor_DoesNotCrash) {
+    somfy.enqueueGroupSensor(1, 0, 1, 1);
+    test_clock_ms = CMD_QUEUE_DRAIN_MS + 1;
+    somfy.cmdQueue.lastDrain = 0;
+    somfy.loop();
+    EXPECT_EQ(somfy.cmdQueue.count, 0);
+}
+
+TEST_F(CommandQueueTest, Drain_ShadeTargetNotFound_DoesNotCrash) {
+    somfy.enqueueShadeTarget(99, 0.5f);  // shade 99 doesn't exist
+    test_clock_ms = CMD_QUEUE_DRAIN_MS + 1;
+    somfy.cmdQueue.lastDrain = 0;
+    somfy.loop();
+    EXPECT_EQ(somfy.cmdQueue.count, 0);
+}
+
+TEST_F(CommandQueueTest, Drain_GroupCommandNotFound_DoesNotCrash) {
+    somfy.enqueueGroupCommand(99, somfy_commands::Up, 1);  // group 99 doesn't exist
+    test_clock_ms = CMD_QUEUE_DRAIN_MS + 1;
+    somfy.cmdQueue.lastDrain = 0;
+    somfy.loop();
+    EXPECT_EQ(somfy.cmdQueue.count, 0);
+}
