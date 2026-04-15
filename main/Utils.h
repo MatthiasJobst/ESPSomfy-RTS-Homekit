@@ -25,7 +25,7 @@ namespace util {
 
 static void str_ltrim(char *str) {
   int s = 0, j, k = 0;
-  int e = strlen(str);
+  size_t e = strlen(str);
   while(s < e && (str[s] == ' ' || str[s] == '\n' || str[s] == '\r' || str[s] == '\t' || str[s] == '"')) s++;
   if(s > 0) {
     for(j = s; j < e; j++) {
@@ -37,8 +37,8 @@ static void str_ltrim(char *str) {
   //if(s > 0) strcpy(str, &str[s]);
 }
 static void str_rtrim(char *str) {
-  int e = strlen(str) - 1;
-  while(e >= 0 && (str[e] == ' ' || str[e] == '\n' || str[e] == '\r' || str[e] == '\t' || str[e] == '"')) {str[e] = '\0'; e--;}
+  size_t e = strlen(str) - 1;
+  while(e > 0 && (str[e] == ' ' || str[e] == '\n' || str[e] == '\r' || str[e] == '\t' || str[e] == '"')) {str[e] = '\0'; e--;}
 }
 [[maybe_unused]] static void str_trim(char *str) { str_ltrim(str); str_rtrim(str); }
 struct rebootDelay_t {

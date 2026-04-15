@@ -18,10 +18,10 @@
 
 class SomfyShadeController {
   protected:
-    uint32_t lastCommit = 0;
-    SomfyCommandQueue cmdQueue;
     void drainCommandQueue();
   public:
+    uint32_t lastCommit = 0;
+    SomfyCommandQueue cmdQueue;
     bool isDirty = false;
     uint32_t startingAddress;
     uint8_t getNextRoomId();

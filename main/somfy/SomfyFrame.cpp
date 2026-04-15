@@ -18,39 +18,53 @@ int sort_asc(const void *cmp1, const void *cmp2) {
 
 
 somfy_commands translateSomfyCommand(const String& string) {
-    if (string.equalsIgnoreCase("My")) return somfy_commands::My;
-    else if (string.equalsIgnoreCase("Up")) return somfy_commands::Up;
-    else if (string.equalsIgnoreCase("MyUp")) return somfy_commands::MyUp;
-    else if (string.equalsIgnoreCase("Down")) return somfy_commands::Down;
-    else if (string.equalsIgnoreCase("MyDown")) return somfy_commands::MyDown;
-    else if (string.equalsIgnoreCase("UpDown")) return somfy_commands::UpDown;
-    else if (string.equalsIgnoreCase("MyUpDown")) return somfy_commands::MyUpDown;
-    else if (string.equalsIgnoreCase("Prog")) return somfy_commands::Prog;
-    else if (string.equalsIgnoreCase("SunFlag")) return somfy_commands::SunFlag;
-    else if (string.equalsIgnoreCase("StepUp")) return somfy_commands::StepUp;
-    else if (string.equalsIgnoreCase("StepDown")) return somfy_commands::StepDown;
-    else if (string.equalsIgnoreCase("Flag")) return somfy_commands::Flag;
-    else if (string.equalsIgnoreCase("Sensor")) return somfy_commands::Sensor;
-    else if (string.equalsIgnoreCase("Toggle")) return somfy_commands::Toggle;
-    else if (string.equalsIgnoreCase("Favorite")) return somfy_commands::Favorite;
-    else if (string.equalsIgnoreCase("Stop")) return somfy_commands::Stop;
-    else if (string.startsWith("fav") || string.startsWith("FAV")) return somfy_commands::Favorite;
-    else if (string.startsWith("mud") || string.startsWith("MUD")) return somfy_commands::MyUpDown;
-    else if (string.startsWith("md") || string.startsWith("MD")) return somfy_commands::MyDown;
-    else if (string.startsWith("ud") || string.startsWith("UD")) return somfy_commands::UpDown;
-    else if (string.startsWith("mu") || string.startsWith("MU")) return somfy_commands::MyUp;
-    else if (string.startsWith("su") || string.startsWith("SU")) return somfy_commands::StepUp;
-    else if (string.startsWith("sd") || string.startsWith("SD")) return somfy_commands::StepDown;
-    else if (string.startsWith("sen") || string.startsWith("SEN")) return somfy_commands::Sensor;
-    else if (string.startsWith("p") || string.startsWith("P")) return somfy_commands::Prog;
-    else if (string.startsWith("u") || string.startsWith("U")) return somfy_commands::Up;
-    else if (string.startsWith("d") || string.startsWith("D")) return somfy_commands::Down;
-    else if (string.startsWith("m") || string.startsWith("M")) return somfy_commands::My;
-    else if (string.startsWith("f") || string.startsWith("F")) return somfy_commands::Flag;
-    else if (string.startsWith("s") || string.startsWith("S")) return somfy_commands::SunFlag;
-    else if (string.startsWith("t") || string.startsWith("T")) return somfy_commands::Toggle;
-    else if (string.length() == 1) return static_cast<somfy_commands>(strtol(string.c_str(), nullptr, 16));
-    else return somfy_commands::My;
+    // Full-name exact matches (case-insensitive).
+    static const struct { const char *name; somfy_commands cmd; } exact[] = {
+        {"my",       somfy_commands::My},
+        {"up",       somfy_commands::Up},
+        {"myup",     somfy_commands::MyUp},
+        {"down",     somfy_commands::Down},
+        {"mydown",   somfy_commands::MyDown},
+        {"updown",   somfy_commands::UpDown},
+        {"myupdown", somfy_commands::MyUpDown},
+        {"prog",     somfy_commands::Prog},
+        {"sunflag",  somfy_commands::SunFlag},
+        {"stepup",   somfy_commands::StepUp},
+        {"stepdown", somfy_commands::StepDown},
+        {"flag",     somfy_commands::Flag},
+        {"sensor",   somfy_commands::Sensor},
+        {"toggle",   somfy_commands::Toggle},
+        {"favorite", somfy_commands::Favorite},
+        {"stop",     somfy_commands::Stop},
+    };
+    // Prefix abbreviations — longest first to avoid shadowing.
+    static const struct { const char *prefix; somfy_commands cmd; } abbrevs[] = {
+        {"fav", somfy_commands::Favorite},
+        {"mud", somfy_commands::MyUpDown},
+        {"md",  somfy_commands::MyDown},
+        {"ud",  somfy_commands::UpDown},
+        {"mu",  somfy_commands::MyUp},
+        {"su",  somfy_commands::StepUp},
+        {"sd",  somfy_commands::StepDown},
+        {"sen", somfy_commands::Sensor},
+        {"p",   somfy_commands::Prog},
+        {"u",   somfy_commands::Up},
+        {"d",   somfy_commands::Down},
+        {"m",   somfy_commands::My},
+        {"f",   somfy_commands::Flag},
+        {"s",   somfy_commands::SunFlag},
+        {"t",   somfy_commands::Toggle},
+    };
+    for (const auto& e : exact)
+        if (string.equalsIgnoreCase(e.name)) return e.cmd;
+    for (const auto& e : abbrevs) {
+        size_t plen = strlen(e.prefix);
+        if (string.length() >= plen && string.substring(0, plen).equalsIgnoreCase(e.prefix))
+            return e.cmd;
+    }
+    if (string.length() == 1)
+        return static_cast<somfy_commands>(strtol(string.c_str(), nullptr, 16));
+    return somfy_commands::My;
 }
 
 String translateSomfyCommand(const somfy_commands cmd) {

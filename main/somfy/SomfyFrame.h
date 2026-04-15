@@ -80,7 +80,7 @@ somfy_commands translateSomfyCommand(const String& string);
 #define MAX_RX_BUFFER 3
 #define MAX_TX_BUFFER 5
 
-typedef enum {
+typedef enum : byte {
     waiting_synchro = 0,
     receiving_data = 1,
     complete = 2

@@ -37,6 +37,7 @@ set(PRODUCTION_SOURCES
     ../../main/somfy/SomfyRoom.cpp
     ../../main/somfy/SomfyGroup.cpp
     ../../main/somfy/SomfyFrame.cpp
+    ../../main/somfy/SomfyShadeController.cpp
 )
 
 add_executable(shade_tests
@@ -50,6 +51,7 @@ add_executable(shade_tests
     test_somfyShade.cpp
     test_somfyFrame.cpp
     test_somfyRemote.cpp
+    test_somfyShadeController.cpp
     stubs/globals_stub.cpp
     ${PRODUCTION_SOURCES}
 )
@@ -89,4 +91,4 @@ target_compile_options(shade_tests PRIVATE
 target_link_options(shade_tests PRIVATE --coverage)
 
 include(GoogleTest)
-gtest_add_tests(TARGET shade_tests SOURCES test_commandProcessor.cpp test_movementTracker.cpp test_targetSequencer.cpp test_gpioControl.cpp test_mqttPublisher.cpp test_commandTransmitter.cpp test_jsonSerializer.cpp test_somfyShade.cpp test_somfyFrame.cpp test_somfyRemote.cpp)
+gtest_add_tests(TARGET shade_tests SOURCES test_commandProcessor.cpp test_movementTracker.cpp test_targetSequencer.cpp test_gpioControl.cpp test_mqttPublisher.cpp test_commandTransmitter.cpp test_jsonSerializer.cpp test_somfyShade.cpp test_somfyFrame.cpp test_somfyRemote.cpp test_somfyShadeController.cpp)

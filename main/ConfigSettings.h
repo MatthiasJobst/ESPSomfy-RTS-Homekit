@@ -12,7 +12,7 @@ enum class conn_types_t : byte {
     ap = 0x04
 };
 
-enum DeviceStatus {
+enum DeviceStatus : byte {
   DS_OK = 0,
   DS_ERROR = 1,
   DS_FWUPDATE = 2

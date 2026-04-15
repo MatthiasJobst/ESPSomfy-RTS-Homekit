@@ -15,6 +15,7 @@ class GitRelease { public: uint64_t id = 0; };
 class GitUpdater {
 public:
     uint8_t status = GIT_STATUS_READY;
+    bool lockFS = false;
     bool begin()  { return false; }
     void loop()   {}
     void end()    {}

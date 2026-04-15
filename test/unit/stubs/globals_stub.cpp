@@ -35,11 +35,16 @@ uint64_t test_clock_ms = 0;
 #include "HomeKit.h"
 
 // SomfyShadeController.h lives in main/somfy/ so it can't be stubbed via stubs dir.
-// We include it directly — its method bodies are provided below.
+// We include it directly — production methods are now compiled from SomfyShadeController.cpp.
 #include "../../main/somfy/SomfyShadeController.h"
 
+// ── ShadeConfigFile stub state ─────────────────────────────────────────────
+#include "ShadeConfigFile.h"
+bool stub_shadeconfig_exists = false;
+int  stub_save_call_count    = 0;
+int  stub_backup_call_count  = 0;
+
 // ── Global instances ────────────────────────────────────────────────────────
-// Must be defined AFTER their types are complete.
 SomfyShadeController somfy;
 SocketEmitter        sockEmit;
 ConfigSettings       settings;
@@ -54,54 +59,6 @@ Preferences pref;
 
 // bit_length is declared extern in SomfyTransceiver.h and used by sendCommand.
 uint8_t bit_length = 56;
-
-// ── SomfyShadeController stub implementations ──────────────────────────────
-SomfyShadeController::SomfyShadeController() {}
-
-void SomfyShadeController::updateGroupFlags() {}
-uint8_t SomfyShadeController::getNextShadeId() { return 0; }
-uint8_t SomfyShadeController::getNextGroupId() { return 0; }
-uint8_t SomfyShadeController::getNextRoomId()  { return 0; }
-int8_t  SomfyShadeController::getMaxShadeOrder() { return 0; }
-int8_t  SomfyShadeController::getMaxGroupOrder() { return 0; }
-int8_t  SomfyShadeController::getMaxRoomOrder()  { return 0; }
-uint32_t SomfyShadeController::getNextRemoteAddress(uint8_t) { return 0; }
-bool SomfyShadeController::begin()  { return false; }
-void SomfyShadeController::loop()   {}
-void SomfyShadeController::end()    {}
-bool SomfyShadeController::deleteShade(uint8_t) { return false; }
-bool SomfyShadeController::deleteGroup(uint8_t) { return false; }
-bool SomfyShadeController::deleteRoom(uint8_t)  { return false; }
-SomfyShade *SomfyShadeController::addShade()                 { return nullptr; }
-SomfyShade *SomfyShadeController::addShade(JsonObject &)     { return nullptr; }
-SomfyGroup *SomfyShadeController::addGroup()                 { return nullptr; }
-SomfyGroup *SomfyShadeController::addGroup(JsonObject &)     { return nullptr; }
-SomfyRoom  *SomfyShadeController::addRoom()                  { return nullptr; }
-SomfyRoom  *SomfyShadeController::addRoom(JsonObject &)      { return nullptr; }
-bool SomfyShadeController::linkRepeater(uint32_t)   { return false; }
-bool SomfyShadeController::unlinkRepeater(uint32_t) { return false; }
-void SomfyShadeController::compressRepeaters()  {}
-uint8_t SomfyShadeController::repeaterCount()  { return 0; }
-uint8_t SomfyShadeController::shadeCount()     { return 0; }
-uint8_t SomfyShadeController::groupCount()     { return 0; }
-uint8_t SomfyShadeController::roomCount()      { return 0; }
-void SomfyShadeController::toJSONShades(JsonResponse &)    {}
-void SomfyShadeController::toJSONGroups(JsonResponse &)    {}
-void SomfyShadeController::toJSONRooms(JsonResponse &)     {}
-void SomfyShadeController::toJSONRepeaters(JsonResponse &) {}
-SomfyShade *SomfyShadeController::getShadeById(uint8_t)        { return nullptr; }
-SomfyShade *SomfyShadeController::findShadeByRemoteAddress(uint32_t) { return nullptr; }
-SomfyGroup *SomfyShadeController::getGroupById(uint8_t)        { return nullptr; }
-SomfyGroup *SomfyShadeController::findGroupByRemoteAddress(uint32_t) { return nullptr; }
-SomfyRoom  *SomfyShadeController::getRoomById(uint8_t)         { return nullptr; }
-void SomfyShadeController::sendFrame(somfy_frame_t &, uint8_t) {}
-void SomfyShadeController::processFrame(somfy_frame_t &, bool) {}
-void SomfyShadeController::emitState(uint8_t)  {}
-void SomfyShadeController::publish()           {}
-void SomfyShadeController::processWaitingFrame() {}
-void SomfyShadeController::commit()            {}
-void SomfyShadeController::writeBackup()       {}
-bool SomfyShadeController::loadShadesFile(const char *) { return false; }
 
 // ── Transceiver stub implementations ───────────────────────────────────────
 #include "../../main/somfy/SomfyTransceiver.h"

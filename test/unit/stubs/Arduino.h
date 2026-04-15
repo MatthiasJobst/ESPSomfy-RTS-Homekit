@@ -6,6 +6,14 @@
 #include <string>
 #include <algorithm>
 
+// itoa is non-standard; provide it for the test host.
+inline char *itoa(int val, char *s, int base) {
+    if      (base == 16) snprintf(s, 12, "%x", val);
+    else if (base ==  2) { char *p = s; unsigned v = val; for (int i = 31; i >= 0; i--) *p++ = '0' + ((v >> i) & 1); *p = '\0'; }
+    else                 snprintf(s, 12, "%d", val);
+    return s;
+}
+
 using byte = uint8_t;
 
 // Arduino digital I/O levels
@@ -17,6 +25,11 @@ using byte = uint8_t;
 extern uint64_t test_clock_ms;
 inline uint64_t millis() { return test_clock_ms; }
 inline void delay(uint32_t) {}
+
+struct EspClass {
+    uint64_t getEfuseMac() const { return 0xDEADBEEF000ULL; }
+};
+inline EspClass ESP;
 
 template<typename T> T min(T a, T b) { return a < b ? a : b; }
 template<typename T> T max(T a, T b) { return a > b ? a : b; }

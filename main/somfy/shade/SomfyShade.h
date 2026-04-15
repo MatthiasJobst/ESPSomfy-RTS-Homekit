@@ -60,8 +60,8 @@ class SomfyShade : public SomfyRemote {
     void moveToTarget(float pos, float tilt = -1.0f);
     void moveToTiltTarget(float target);
     void sendTiltCommand(somfy_commands cmd);
-    void sendCommand(somfy_commands cmd);
-    void sendCommand(somfy_commands cmd, uint8_t repeat, uint8_t stepSize = 0);
+    void sendCommand(somfy_commands cmd) override;
+    void sendCommand(somfy_commands cmd, uint8_t repeat, uint8_t stepSize = 0) override;
     bool linkRemote(uint32_t remoteAddress, uint16_t rollingCode = 0);
     bool unlinkRemote(uint32_t remoteAddress);
     virtual void emitState(const char *evt = "shadeState");
@@ -116,7 +116,7 @@ class SomfyShade : public SomfyRemote {
     void clear();
     int8_t transformPosition(float fpos);
     void setGPIOs();
-    void triggerGPIOs(somfy_frame_t &frame);
+    void triggerGPIOs(somfy_frame_t &frame) override;
     bool usesPin(uint8_t pin);
     // State Setters
     int8_t p_direction(int8_t dir);
@@ -131,7 +131,7 @@ class SomfyShade : public SomfyRemote {
     bool p_windy(bool val);
     float p_currentPos(float pos);
     float p_currentTiltPos(float pos);
-    uint16_t p_lastRollingCode(uint16_t code);
+    uint16_t p_lastRollingCode(uint16_t code) override;
     bool publish(const char *topic, const char *val, bool retain = false);
     bool publish(const char *topic, uint8_t val, bool retain = false);
     bool publish(const char *topic, int8_t val, bool retain = false);

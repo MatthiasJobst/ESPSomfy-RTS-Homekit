@@ -172,11 +172,11 @@ void SomfyShadeController::publish() {
   for(uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
     SomfyShade *shade = &this->shades[i];
     if(shade->getShadeId() == 255) continue;
-    if(strlen(arrIds) > 1) strcat(arrIds, ",");
+    if(strlen(arrIds) > 1) strlcat(arrIds, ",", sizeof(arrIds));
     itoa(shade->getShadeId(), &arrIds[strlen(arrIds)], 10);
     shade->publish();
   }
-  strcat(arrIds, "]");
+  strlcat(arrIds, "]", sizeof(arrIds));
   mqtt.publish("shades", arrIds, true);
   for(uint8_t i = 1; i <= SOMFY_MAX_SHADES; i++) {
     SomfyShade *shade = this->getShadeById(i);
@@ -189,11 +189,11 @@ void SomfyShadeController::publish() {
   for(uint8_t i = 0; i < SOMFY_MAX_GROUPS; i++) {
     SomfyGroup *group = &this->groups[i];
     if(group->getGroupId() == 255) continue;
-    if(strlen(arrIds) > 1) strcat(arrIds, ",");
+    if(strlen(arrIds) > 1) strlcat(arrIds, ",", sizeof(arrIds));
     itoa(group->getGroupId(), &arrIds[strlen(arrIds)], 10);
     group->publish();
   }
-  strcat(arrIds, "]");
+  strlcat(arrIds, "]", sizeof(arrIds));
   mqtt.publish("groups", arrIds, true);
   for(uint8_t i = 1; i <= SOMFY_MAX_GROUPS; i++) {
     SomfyGroup *group = this->getGroupById(i);
@@ -337,7 +337,7 @@ uint32_t SomfyShadeController::getNextRemoteAddress(uint8_t id) {
     }
     else i++;
   }
-  i = 0;
+
   return address;
 }
 
