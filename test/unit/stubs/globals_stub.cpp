@@ -80,6 +80,9 @@ void SomfyTransceiver::endFrequencyScan()    {}
 void SomfyTransceiver::processFrequencyScan(bool) {}
 void SomfyTransceiver::emitFrequencyScan(uint8_t) {}
 bool transceiver_stub_uses_pin = false;
+void SomfyTransceiver::beginFrameTx(somfy_frame_t &, uint8_t) {}
+void SomfyTransceiver::beginRawFrameTx(byte *, uint8_t, uint8_t) {}
+bool SomfyTransceiver::txBusy() { return false; }
 bool SomfyTransceiver::usesPin(uint8_t) { return transceiver_stub_uses_pin; }
 bool SomfyTransceiver::save()           { return false; }
 bool SomfyTransceiver::fromJSON(JsonObject &) { return false; }
