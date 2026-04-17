@@ -9,10 +9,8 @@
 #include "esp_rom_sys.h"
 #include "esp_log.h"
 #include "driver/gpio.h"
-#ifdef SOMFY_TX_RMT
 #include "driver/rmt_tx.h"
 #include "freertos/task.h"
-#endif
 #include "SomfyTransceiver.h"
 #include "SomfyShadeController.h"
 #include "Sockets.h"
@@ -80,35 +78,42 @@ extern Preferences pref;
 extern GitUpdater git;
 
 // ─── RMT TX encoder ──────────────────────────────────────────────────────────
-#ifdef SOMFY_TX_RMT
 
 // State machine driven by the RMT driver's encode() callback.
-// Each call fills as many rmt_symbol_word_t items as fit in the channel buffer;
-// the driver calls back until RMT_ENCODING_COMPLETE is returned.
-typedef enum : byte{
-    ST_WAKEUP = 0,   // wakeup pulse (first frame only)
+// Each invocation handles ONE frame end-to-end. The driver may call back
+// multiple times if the channel buffer fills; state persists in somfy_encoder_t
+// across calls within the same transaction. Between transactions the driver
+// invokes the encoder's reset hook, returning state to ST_WAKEUP.
+typedef enum : uint8_t {
+    ST_WAKEUP = 0,   // wakeup pulse (first frame in burst only)
     ST_SYNC,         // hardware sync pulses
     ST_SWSYNC,       // software sync + start-0 bit
     ST_DATA,         // Manchester-encoded payload bits
-    ST_TAIL,         // inter-frame silence (56-bit only)
-    ST_NEXT_REPEAT,  // advance repeat counter, loop back or finish
+    ST_TAIL,         // inter-frame silence (56-bit, when more frames follow)
     ST_DONE
 } tx_state_t;
 
 typedef struct {
-    rmt_encoder_t      base;         // MUST be first — driver casts to rmt_encoder_t*
+    rmt_encoder_t        base;       // MUST be first — driver casts to rmt_encoder_t*
     rmt_encoder_handle_t copy_enc;   // single-symbol copy encoder (IDF built-in)
-    tx_state_t         state;
-    uint16_t           idx;          // position within the current state
-    uint8_t            frame[10];    // encoded bytes for the current repeat
-    somfy_frame_t     *src;          // source frame for 80-bit per-repeat re-encoding
-    uint8_t            bit_length;
-    uint8_t            sync_count;   // hw sync pulses to emit for the current repeat
-    uint8_t            first_sync;   // 2 (56-bit) or 12 (80-bit) — initial frame
-    uint8_t            rep_sync;     // 7 (56-bit) or  6 (80-bit) — repeat frames
-    uint8_t            rep_idx;      // 0 = initial frame, 1..rep_total = repeats
-    uint8_t            rep_total;    // number of repeat frames after the initial
+    tx_state_t           state;
+    uint16_t             idx;        // position within the current state
 } somfy_encoder_t;
+
+// Per-transmission payload — passed via rmt_transmit's `data` pointer; the
+// driver pins it until that transaction completes, so the encoder can read
+// freely from it across multiple invocations.
+typedef struct {
+    uint8_t bytes[10];   // pre-encoded frame bytes
+    uint8_t bit_length;  // 56 or 80
+    uint8_t sync_count;  // sync pulses for this frame (2/12 initial, 7/6 repeat)
+    bool    wakeup;      // emit wakeup pulse before sync (first frame only)
+    bool    tail;        // emit ~27 ms inter-frame silence after data
+} somfy_tx_frame_t;
+
+// Maximum frames per burst (1 initial + up to N-1 repeats). Bound by the
+// per-channel trans_queue_depth and by the static s_burst[] storage.
+#define SOMFY_BURST_MAX 16
 
 // Helper: write one symbol via the copy encoder.  Returns false and sets
 // RMT_ENCODING_MEM_FULL in *state if the channel buffer is full.
@@ -130,6 +135,7 @@ static size_t somfy_encode(rmt_encoder_t *enc, rmt_channel_handle_t chan,
                             rmt_encode_state_t *ret_state)
 {
     somfy_encoder_t *e = __containerof(enc, somfy_encoder_t, base);
+    const somfy_tx_frame_t *f = (const somfy_tx_frame_t *)data;
     *ret_state = RMT_ENCODING_RESET;
     size_t n = 0;
     rmt_symbol_word_t sym;
@@ -138,20 +144,17 @@ static size_t somfy_encode(rmt_encoder_t *enc, rmt_channel_handle_t chan,
         switch(e->state) {
 
         case ST_WAKEUP:
-            // Wakeup pulse only on the very first frame and only for RTS/RTW
-            // (identified by first_sync being 2 or 12).
-            if(e->rep_idx == 0) {
+            if(f->wakeup) {
                 sym.level0 = 1; sym.duration0 = 10920;
                 sym.level1 = 0; sym.duration1 = 7357;
                 SOMFY_WRITE_SYM(e, chan, sym, ret_state, n);
             }
-            e->sync_count = (e->rep_idx == 0) ? e->first_sync : e->rep_sync;
             e->idx   = 0;
             e->state = ST_SYNC;
             break;
 
         case ST_SYNC:
-            if(e->idx < e->sync_count) {
+            if(e->idx < f->sync_count) {
                 sym.level0 = 1; sym.duration0 = 4 * SYMBOL;
                 sym.level1 = 0; sym.duration1 = 4 * SYMBOL;
                 SOMFY_WRITE_SYM(e, chan, sym, ret_state, n);
@@ -171,8 +174,8 @@ static size_t somfy_encode(rmt_encoder_t *enc, rmt_channel_handle_t chan,
             break;
 
         case ST_DATA:
-            if(e->idx < e->bit_length) {
-                uint8_t bit = (e->frame[e->idx / 8] >> (7 - (e->idx % 8))) & 1;
+            if(e->idx < f->bit_length) {
+                uint8_t bit = (f->bytes[e->idx / 8] >> (7 - (e->idx % 8))) & 1;
                 if(bit) {
                     sym.level0 = 0; sym.duration0 = SYMBOL;
                     sym.level1 = 1; sym.duration1 = SYMBOL;
@@ -183,7 +186,9 @@ static size_t somfy_encode(rmt_encoder_t *enc, rmt_channel_handle_t chan,
                 SOMFY_WRITE_SYM(e, chan, sym, ret_state, n);
                 e->idx++;
             } else {
-                e->state = (e->bit_length != 80) ? ST_TAIL : ST_NEXT_REPEAT;
+                // 80-bit protocol has no per-frame tail; 56-bit only adds
+                // inter-frame silence when more frames follow in the burst.
+                e->state = (f->bit_length == 56 && f->tail) ? ST_TAIL : ST_DONE;
             }
             break;
 
@@ -192,20 +197,7 @@ static size_t somfy_encode(rmt_encoder_t *enc, rmt_channel_handle_t chan,
             sym.level0 = 0; sym.duration0 = 13717;
             sym.level1 = 0; sym.duration1 = 13717;
             SOMFY_WRITE_SYM(e, chan, sym, ret_state, n);
-            e->state = ST_NEXT_REPEAT;
-            break;
-
-        case ST_NEXT_REPEAT:
-            if(e->rep_idx < e->rep_total) {
-                e->rep_idx++;
-                // 80-bit protocol: each repeat has different encoded bytes
-                if(e->bit_length == 80 && e->src)
-                    e->src->encode80BitFrame(e->frame, e->rep_idx);
-                e->idx   = 0;
-                e->state = ST_WAKEUP; // wakeup check uses rep_idx, skips pulse
-            } else {
-                e->state = ST_DONE;
-            }
+            e->state = ST_DONE;
             break;
 
         default:
@@ -223,9 +215,8 @@ static size_t somfy_encode(rmt_encoder_t *enc, rmt_channel_handle_t chan,
 static esp_err_t somfy_encoder_reset(rmt_encoder_t *enc) {
     somfy_encoder_t *e = __containerof(enc, somfy_encoder_t, base);
     e->copy_enc->reset(e->copy_enc);
-    e->state   = ST_WAKEUP;
-    e->idx     = 0;
-    e->rep_idx = 0;
+    e->state = ST_WAKEUP;
+    e->idx   = 0;
     return ESP_OK;
 }
 
@@ -236,27 +227,35 @@ static esp_err_t somfy_encoder_del(rmt_encoder_t *enc) {
     return ESP_OK;
 }
 
-static somfy_encoder_t *s_enc  = nullptr;
+static somfy_encoder_t     *s_enc       = nullptr;
 static rmt_channel_handle_t s_rmtTxChan = nullptr;
+// Per-burst frame storage; the RMT driver reads s_burst[i] asynchronously
+// until transaction i completes, so this must outlive beginFrameTx() — hence
+// static storage, guarded by the s_rmtBusy interlock.
+static somfy_tx_frame_t s_burst[SOMFY_BURST_MAX];
 // s_rmtBusy: set by beginFrameTx/beginRawFrameTx, cleared by loop() after endTransmit().
-// s_txDone:  set by the ISR callback when the last symbol leaves the wire; cleared by loop().
+// s_txDone:  set by the ISR callback when the LAST queued frame finishes; cleared by loop().
+// s_pendingFrames: decremented by the ISR per frame; when it hits 0, s_txDone is set.
 // They are kept separate so txBusy() (= s_rmtBusy) stays true until loop() has run
 // endTransmit() — if the ISR cleared s_rmtBusy directly, the loop condition
 // `s_rmtBusy && !txBusy()` would become `s_rmtBusy && !s_rmtBusy` (always false).
-static volatile bool s_rmtBusy = false;
-static volatile bool s_txDone  = false;
+static volatile bool    s_rmtBusy       = false;
+static volatile bool    s_txDone        = false;
+static volatile uint8_t s_pendingFrames = 0;
 
-// ISR callback: fired by the RMT driver when all symbols have been sent.
-// Sets s_txDone so loop() knows to call endTransmit().
+// ISR callback: fired by the RMT driver once per completed transaction.
+// For multi-frame bursts we count down and only set s_txDone after the last.
 static bool IRAM_ATTR rmt_tx_done_cb(rmt_channel_handle_t chan,
                                       const rmt_tx_done_event_data_t *edata,
                                       void *user_ctx)
 {
-    s_txDone = true;
+    if(s_pendingFrames > 0) {
+        s_pendingFrames = s_pendingFrames - 1;
+        if(s_pendingFrames == 0) s_txDone = true;
+    }
     return false; // no high-priority task woken
 }
 
-#endif // SOMFY_TX_RMT
 // ─────────────────────────────────────────────────────────────────────────────
 
 void SomfyTransceiver::sendFrame(byte *frame, uint8_t sync, uint8_t bitLength) {
@@ -828,15 +827,9 @@ void transceiver_config_t::apply() {
       // peripheral has not claimed it.  gpio_set_direction() internally calls
       // esp_rom_gpio_connect_out_signal(pin, SIG_GPIO_OUT_IDX) which overwrites
       // the RMT routing; once rmt_new_tx_channel() owns the pin, skip this.
-#ifdef SOMFY_TX_RMT
       if(this->TXPin != this->RXPin && s_rmtTxChan == nullptr)
         gpio_set_direction((gpio_num_t)this->TXPin, GPIO_MODE_OUTPUT);
-#else
-      if(this->TXPin != this->RXPin)
-        gpio_set_direction((gpio_num_t)this->TXPin, GPIO_MODE_OUTPUT);
-#endif
       gpio_set_direction((gpio_num_t)this->RXPin, GPIO_MODE_INPUT);
-#ifdef SOMFY_TX_RMT
       if(s_rmtTxChan == nullptr) {
         // RMT not yet initialised — safe to let the CC1101 library configure TXPin.
         if(this->TXPin == this->RXPin)
@@ -846,12 +839,6 @@ void transceiver_config_t::apply() {
       }
       // else: RMT owns TXPin — setGDO() → GDO_Set() → pinMode(TXPin, OUTPUT)
       // would overwrite the RMT GPIO routing; skip it entirely.
-#else
-      if(this->TXPin == this->RXPin)
-        ELECHOUSE_cc1101.setGDO0(this->TXPin); // This pin may be shared.
-      else
-        ELECHOUSE_cc1101.setGDO(this->TXPin, this->RXPin); // GDO0, GDO2
-#endif
       ESP_LOGI(TAG, "Setting SPI Pins SCK:%u MISO:%u MOSI:%u CSN:%u", this->SCKPin, this->MISOPin, this->MOSIPin, this->CSNPin);
       ESP_LOGI(TAG, "Radio Pins Configured!");
       ELECHOUSE_cc1101.Init();
@@ -919,15 +906,14 @@ bool SomfyTransceiver::begin() {
     pref.end();
     this->config.apply();
     rx_queue.init();
-#ifdef SOMFY_TX_RMT
     ESP_LOGI(TAG, "RMT build: transceiver enabled=%d TXPin=%d", this->config.enabled, this->config.TXPin);
     if(this->config.enabled && s_rmtTxChan == nullptr) {
         rmt_tx_channel_config_t ch_cfg = {};
         ch_cfg.gpio_num          = (gpio_num_t)this->config.TXPin;
         ch_cfg.clk_src           = RMT_CLK_SRC_DEFAULT;
         ch_cfg.resolution_hz     = 1000000; // 1 tick = 1 µs
-        ch_cfg.mem_block_symbols = 64;
-        ch_cfg.trans_queue_depth = 2;
+        ch_cfg.mem_block_symbols = 96; // one frame fits (56-bit ≤61 syms, 80-bit ≤94 syms)
+        ch_cfg.trans_queue_depth = SOMFY_BURST_MAX; // queue the whole burst up-front
         ch_cfg.flags.with_dma    = false;
         ESP_ERROR_CHECK(rmt_new_tx_channel(&ch_cfg, &s_rmtTxChan));
 
@@ -945,13 +931,11 @@ bool SomfyTransceiver::begin() {
         ESP_ERROR_CHECK(rmt_enable(s_rmtTxChan));
         ESP_LOGI(TAG, "RMT TX channel initialised on GPIO %d", this->config.TXPin);
     }
-#endif
     return true;
 }
 
 bool SomfyTransceiver::end() {
     this->disableReceive();
-#ifdef SOMFY_TX_RMT
     if(s_rmtTxChan) {
         rmt_tx_wait_all_done(s_rmtTxChan, 2000);
         rmt_disable(s_rmtTxChan);
@@ -964,7 +948,6 @@ bool SomfyTransceiver::end() {
     }
     s_rmtBusy = false;
     s_txDone  = false;
-#endif
     return true;
 }
 
@@ -1004,7 +987,6 @@ void SomfyTransceiver::loop() {
     somfy.processFrame(this->frame, false);
   }
   else {
-#ifdef SOMFY_TX_RMT
     // Finish a completed RMT transmission before doing anything else.
     static uint32_t s_busyWarnAt = 0;
     if(s_rmtBusy && s_txDone) {
@@ -1023,14 +1005,9 @@ void SomfyTransceiver::loop() {
     } else {
       s_busyWarnAt = 0;
     }
-#endif
     somfy.processWaitingFrame();
     // Drain one repeater frame from the tx_queue when the channel is free.
-    if(tx_queue.length > 0 && millis() > tx_queue.delay_time && somfy_rx.cpt_synchro_hw == 0
-#ifdef SOMFY_TX_RMT
-       && !s_rmtBusy
-#endif
-    ) {
+    if(tx_queue.length > 0 && millis() > tx_queue.delay_time && somfy_rx.cpt_synchro_hw == 0 && !s_rmtBusy) {
       somfy_tx_t tx;
       tx_queue.pop(&tx);
       ESP_LOGI(TAG, "Sending frame %d - %d-BIT [", tx.hwsync, tx.bit_length);
@@ -1040,87 +1017,123 @@ void SomfyTransceiver::loop() {
       }
       ESP_LOGI(TAG, "]");
       this->beginTransmit();
-#ifdef SOMFY_TX_RMT
       this->beginRawFrameTx(tx.payload, tx.hwsync, tx.bit_length);
       // endTransmit() deferred — handled above when txBusy() clears
-#else
-      this->sendFrame(tx.payload, tx.hwsync, tx.bit_length);
-      tx_queue.delay_time = millis() + TX_QUEUE_DELAY;
-      this->endTransmit();
-#endif
     }
   }
 }
 
 somfy_frame_t& SomfyTransceiver::lastFrame() { return this->frame; }
 
-#ifdef SOMFY_TX_RMT
-// Load the encoder with a fully described frame burst and kick off RMT.
+// Encode a Somfy frame burst (1 initial + N repeats) as separate RMT
+// transactions and queue them all. Each transaction carries one self-contained
+// frame (≤ mem_block_symbols), so the encoder never has to span DMA refills
+// within a frame — eliminating the buffer-underrun class of on-air glitches.
 // beginTransmit() must be called first. endTransmit() is deferred: it will
 // be called by SomfyTransceiver::loop() once txBusy() returns false.
 void SomfyTransceiver::beginFrameTx(somfy_frame_t &frame, uint8_t repeats) {
-    frame.encodeFrame(s_enc->frame);
-    s_enc->src        = &frame;
-    s_enc->bit_length = frame.bitLength;
-    s_enc->first_sync = (frame.bitLength == 56) ? 2 : 12;
-    s_enc->rep_sync   = (frame.bitLength == 56) ? 7 : 6;
-    s_enc->rep_total  = repeats;
-    s_enc->rep_idx    = 0;
-    s_enc->state      = ST_WAKEUP;
-    s_enc->idx        = 0;
-    s_enc->copy_enc->reset(s_enc->copy_enc);
+    if(repeats >= SOMFY_BURST_MAX) {
+        ESP_LOGW(TAG, "Capping repeats %u→%u (burst queue depth)",
+                 repeats, SOMFY_BURST_MAX - 1);
+        repeats = SOMFY_BURST_MAX - 1;
+    }
+    const uint8_t total = repeats + 1;
+
+    // Initial frame — wakeup + first_sync pulses. Tail if more frames follow.
+    frame.encodeFrame(s_burst[0].bytes);
+    s_burst[0].bit_length = frame.bitLength;
+    s_burst[0].sync_count = (frame.bitLength == 56) ? 2 : 12;
+    s_burst[0].wakeup     = true;
+    s_burst[0].tail       = (total > 1);
+
+    // Repeat frames — no wakeup, rep_sync pulses. Tail on all but the last.
+    for(uint8_t i = 1; i < total; i++) {
+        if(frame.bitLength == 80)
+            frame.encode80BitFrame(s_burst[i].bytes, i);
+        else
+            memcpy(s_burst[i].bytes, s_burst[0].bytes, 10);
+        s_burst[i].bit_length = frame.bitLength;
+        s_burst[i].sync_count = (frame.bitLength == 56) ? 7 : 6;
+        s_burst[i].wakeup     = false;
+        s_burst[i].tail       = (i < total - 1);
+    }
 
     rmt_transmit_config_t tx_cfg = {};
     tx_cfg.loop_count              = 0;
-    tx_cfg.flags.eot_level         = 0; // TX line goes LOW after last symbol
-    tx_cfg.flags.queue_nonblocking = 1; // Never block the calling task — skip if queue full
-    s_txDone = false;
-    ESP_LOGI(TAG, "RMT beginFrameTx: bitlen=%d repeats=%d", s_enc->bit_length, s_enc->rep_total);
-    ESP_ERROR_CHECK(rmt_transmit(s_rmtTxChan, &s_enc->base, s_enc->frame, 10, &tx_cfg));
+    tx_cfg.flags.eot_level         = 0; // line LOW between frames
+    tx_cfg.flags.queue_nonblocking = 1; // never block app_main
 
+    // Set bookkeeping BEFORE first transmit so an early ISR can't see stale state.
+    s_pendingFrames = total;
+    s_txDone  = false;
     s_rmtBusy = true;
-    ESP_LOGI(TAG, "RMT beginFrameTx: queued OK");
+
+    ESP_LOGI(TAG, "RMT beginFrameTx: bitlen=%d frames=%d", frame.bitLength, total);
+
+    uint8_t queued = 0;
+    for(uint8_t i = 0; i < total; i++) {
+        esp_err_t err = rmt_transmit(s_rmtTxChan, &s_enc->base,
+                                      &s_burst[i], sizeof(somfy_tx_frame_t), &tx_cfg);
+        if(err != ESP_OK) {
+            ESP_LOGE(TAG, "rmt_transmit frame %u/%u failed: %s",
+                     i + 1, total, esp_err_to_name(err));
+            break;
+        }
+        queued++;
+    }
+
+    if(queued < total) {
+        // Some frames didn't queue. Best-effort adjust pendingFrames so the
+        // ISR still reaches zero. Race with ISR is benign in the typical case
+        // (queue_depth ≥ total means this branch never runs).
+        const uint8_t skipped = total - queued;
+        if(s_pendingFrames > skipped) s_pendingFrames -= skipped;
+        else { s_pendingFrames = 0; s_txDone = true; }
+    }
+    if(queued == 0) {
+        s_rmtBusy = false;
+        s_txDone  = false;
+    }
+    ESP_LOGI(TAG, "RMT beginFrameTx: queued %u/%u", queued, total);
 }
 
-// Raw variant used by the repeater path: pre-encoded bytes, single frame, no
-// per-repeat re-encoding needed.
+// Raw variant used by the repeater path: pre-encoded bytes, single frame.
+// `sync` values of 2 or 12 mark an initial-frame (wakeup pulse), others are
+// treated as repeat sync counts.
 void SomfyTransceiver::beginRawFrameTx(byte *payload, uint8_t sync, uint8_t bitLength) {
-    memcpy(s_enc->frame, payload, 10);
-    s_enc->src        = nullptr;
-    s_enc->bit_length = bitLength;
-    s_enc->first_sync = sync;
-    s_enc->rep_sync   = sync; // only one frame, wakeup check uses rep_idx==0
-    s_enc->rep_total  = 0;
-    s_enc->rep_idx    = 0;
-    s_enc->state      = ST_WAKEUP;
-    s_enc->idx        = 0;
-    s_enc->copy_enc->reset(s_enc->copy_enc);
+    memcpy(s_burst[0].bytes, payload, 10);
+    s_burst[0].bit_length = bitLength;
+    s_burst[0].sync_count = sync;
+    s_burst[0].wakeup     = (sync == 2 || sync == 12);
+    s_burst[0].tail       = false;
 
     rmt_transmit_config_t tx_cfg = {};
     tx_cfg.loop_count              = 0;
     tx_cfg.flags.eot_level         = 0;
-    tx_cfg.flags.queue_nonblocking = 1; // Never block the calling task — skip if queue full
-    s_txDone = false;
-    ESP_ERROR_CHECK(rmt_transmit(s_rmtTxChan, &s_enc->base, s_enc->frame, 10, &tx_cfg));
+    tx_cfg.flags.queue_nonblocking = 1;
+
+    s_pendingFrames = 1;
+    s_txDone  = false;
     s_rmtBusy = true;
+
+    esp_err_t err = rmt_transmit(s_rmtTxChan, &s_enc->base,
+                                  &s_burst[0], sizeof(somfy_tx_frame_t), &tx_cfg);
+    if(err != ESP_OK) {
+        ESP_LOGE(TAG, "rmt_transmit raw failed: %s", esp_err_to_name(err));
+        s_pendingFrames = 0;
+        s_rmtBusy = false;
+    }
 }
 
 bool SomfyTransceiver::txBusy() {
     return s_rmtBusy;
 }
-#endif // SOMFY_TX_RMT
 
 void SomfyTransceiver::beginTransmit() {
     if(this->config.enabled) {
       this->disableReceive();
-#ifndef SOMFY_TX_RMT
-      // Bit-bang path: reclaim GPIO and set idle-LOW before driving manually.
-      // RMT path: skip — rmt_new_tx_channel() already owns the pin; calling
-      // gpio_set_direction() here would invoke esp_rom_gpio_connect_out_signal()
-      // with SIG_GPIO_OUT_IDX, silently disconnecting the RMT peripheral.
-      gpio_set_direction((gpio_num_t)this->config.TXPin, GPIO_MODE_OUTPUT);
-      gpio_set_level((gpio_num_t)this->config.TXPin, 0);
-#endif
+      // RMT owns TXPin — skip gpio_set_direction() which would invoke
+      // esp_rom_gpio_connect_out_signal(SIG_GPIO_OUT_IDX) and disconnect the peripheral.
       ELECHOUSE_cc1101.SetTx();
     }
 }
