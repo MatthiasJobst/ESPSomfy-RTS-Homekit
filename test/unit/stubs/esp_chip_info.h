@@ -15,9 +15,11 @@ typedef struct {
     uint8_t  cores;
 } esp_chip_info_t;
 
-// Default to vanilla ESP32 so transceiver_config_t::load() uses plain GPIO defaults.
+// Tests override this to exercise chip-specific pin defaults in load().
+extern esp_chip_model_t stub_chip_model;
+
 inline void esp_chip_info(esp_chip_info_t *out) {
-    out->model    = CHIP_ESP32;
+    out->model    = stub_chip_model;
     out->features = 0;
     out->revision = 0;
     out->cores    = 2;

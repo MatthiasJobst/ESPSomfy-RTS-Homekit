@@ -6,6 +6,9 @@
 #define SOCK_MAX_ROOMS 1
 #define ROOM_EMIT_FRAME 0
 
+// Tests set this > 0 to exercise emitFrame() body.
+inline uint8_t stub_active_clients = 0;
+
 class SocketEmitter {
 public:
     JsonSockEvent json;
@@ -18,5 +21,5 @@ public:
     void disconnect() {}
     void initClients() {}
     void startup() {}
-    uint8_t activeClients(uint8_t) { return 0; }
+    uint8_t activeClients(uint8_t) { return stub_active_clients; }
 };

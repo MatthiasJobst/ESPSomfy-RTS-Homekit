@@ -199,9 +199,9 @@ static size_t somfy_encode(rmt_encoder_t *enc, rmt_channel_handle_t chan,
             e->state = ST_DONE;
             break;
 
-        default:
-            e->state = ST_DONE;
-            break;
+        default: // LCOV_EXCL_LINE
+            e->state = ST_DONE; // LCOV_EXCL_LINE
+            break; // LCOV_EXCL_LINE
         }
     }
 
@@ -364,8 +364,7 @@ void RECEIVE_ATTR SomfyTransceiver::handleReceive() {
             somfy_rx.pulses[0] = duration;
         }
         break;
-    default:
-        break;
+    default: break; // LCOV_EXCL_LINE
     }
     if (somfy_rx.status == receiving_data && somfy_rx.cpt_bits >= somfy_rx.bit_length) {
         // Since we are operating within the interrupt all data really needs to be static

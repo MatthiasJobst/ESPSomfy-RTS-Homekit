@@ -77,6 +77,12 @@ struct rmt_stub_queued_t { const void *data; size_t size; };
 extern rmt_stub_queued_t rmt_stub_queue[RMT_STUB_QUEUE_MAX];
 extern int               rmt_stub_queue_count;
 
+// Last encoder passed to rmt_transmit — tests invoke encode/reset via function pointers.
+extern rmt_encoder_handle_t rmt_stub_last_encoder;
+
+// Set > 0 to make rmt_transmit return ESP_FAIL after this many successes (then reset to 0).
+extern int rmt_stub_fail_after;
+
 // Stub copy encoder: encode is a no-op returning COMPLETE, reset is a no-op.
 inline size_t    rmt_stub_copy_encode(rmt_encoder_t *, rmt_channel_handle_t,
                                       const void *, size_t,
@@ -117,12 +123,22 @@ inline esp_err_t rmt_tx_register_event_callbacks(rmt_channel_handle_t,
 inline esp_err_t rmt_enable(rmt_channel_handle_t)               { return ESP_OK; }
 inline esp_err_t rmt_disable(rmt_channel_handle_t)              { return ESP_OK; }
 inline esp_err_t rmt_del_channel(rmt_channel_handle_t)          { return ESP_OK; }
-inline esp_err_t rmt_del_encoder(rmt_encoder_handle_t)          { return ESP_OK; }
+inline esp_err_t rmt_del_encoder(rmt_encoder_handle_t enc) {
+    if (enc && enc->del) return enc->del(enc);
+    return ESP_OK;
+}
 inline esp_err_t rmt_tx_wait_all_done(rmt_channel_handle_t, int){ return ESP_OK; }
 inline esp_err_t rmt_transmit(rmt_channel_handle_t,
-                               rmt_encoder_handle_t,
+                               rmt_encoder_handle_t encoder,
                                const void *payload, size_t size,
                                const rmt_transmit_config_t *) {
+    rmt_stub_last_encoder = encoder;
+    if (rmt_stub_fail_after > 0) {
+        rmt_stub_fail_after--;
+        if (rmt_stub_fail_after == 0) { rmt_stub_fail_after = -1; return ESP_FAIL; }
+    } else if (rmt_stub_fail_after < 0) {
+        return ESP_FAIL;
+    }
     if (rmt_stub_queue_count < RMT_STUB_QUEUE_MAX)
         rmt_stub_queue[rmt_stub_queue_count++] = { payload, size };
     return ESP_OK;

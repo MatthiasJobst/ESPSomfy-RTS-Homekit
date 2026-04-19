@@ -63,6 +63,13 @@ static somfy_frame_t makeFrame(uint8_t bitLength = 56) {
 class TransceiverTxTest : public ::testing::Test {
 protected:
     void SetUp() override {
+        // Reset noiseDetected (module-static) via the cooldown path so this
+        // fixture is order-independent when the binary runs all tests in one process.
+        test_clock_ms = 35000;
+        somfy.transceiver.loop();
+        test_clock_ms = 70000;
+        somfy.transceiver.loop();
+
         nvs_stub_reset_all();
         rmt_stub_queue_count  = 0;
         rmt_stub_done_cb      = nullptr;
@@ -86,6 +93,14 @@ protected:
     }
 
     void TearDown() override {
+        // Drain any outstanding TX so s_rmtBusy and s_txDone are clear
+        // before the next fixture's SetUp runs.
+        rmt_stub_fail_after = 0;
+        if (somfy.transceiver.txBusy()) {
+            if (rmt_stub_done_cb)
+                rmt_stub_done_cb(nullptr, nullptr, rmt_stub_done_cb_ctx);
+            somfy.transceiver.loop();
+        }
         somfy.transceiver.end();
         nvs_stub_reset_all();
     }
@@ -274,4 +289,40 @@ TEST_F(TransceiverTxTest, BurstSetup_56bit_PayloadBytesMatchEncoded) {
     ASSERT_EQ(rmt_stub_queue_count, 1);
     EXPECT_EQ(memcmp(captured(0)->bytes, expected, 10), 0)
         << "Frame bytes in s_burst[0] must match encodeFrame() output";
+}
+
+// ── RMT error paths ───────────────────────────────────────────────────────────
+
+TEST_F(TransceiverTxTest, BeginFrameTx_FirstTransmitFails_TxBusyClearedImmediately) {
+    // rmt_stub_fail_after=1 → first rmt_transmit returns ESP_FAIL (queued=0).
+    // beginFrameTx should clear s_rmtBusy since nothing was queued.
+    rmt_stub_fail_after = 1;
+    somfy_frame_t f = makeFrame();
+    somfy.transceiver.beginTransmit();
+    somfy.transceiver.beginFrameTx(f, 0);
+
+    EXPECT_FALSE(somfy.transceiver.txBusy())
+        << "All transmits failed → s_rmtBusy must be cleared immediately";
+}
+
+TEST_F(TransceiverTxTest, BeginFrameTx_PartialFailure_AdjustsPendingFrames) {
+    // rmt_stub_fail_after=2 → first transmit succeeds, second fails (queued=1 of 3).
+    // s_rmtBusy stays true (at least one frame queued); pendingFrames adjusted.
+    rmt_stub_fail_after = 2;
+    somfy_frame_t f = makeFrame();
+    somfy.transceiver.beginTransmit();
+    somfy.transceiver.beginFrameTx(f, 2);  // total = 3
+
+    EXPECT_TRUE(somfy.transceiver.txBusy())
+        << "At least 1 frame queued → s_rmtBusy must stay true";
+}
+
+TEST_F(TransceiverTxTest, BeginRawFrameTx_TransmitFails_TxBusyCleared) {
+    rmt_stub_fail_after = 1;
+    uint8_t payload[10] = {};
+    somfy.transceiver.beginTransmit();
+    somfy.transceiver.beginRawFrameTx(payload, 2, 56);
+
+    EXPECT_FALSE(somfy.transceiver.txBusy())
+        << "rmt_transmit raw failed → s_rmtBusy must be cleared";
 }

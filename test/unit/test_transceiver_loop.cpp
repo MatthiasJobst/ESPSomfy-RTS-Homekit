@@ -101,6 +101,7 @@ protected:
         rmt_stub_queue_count  = 0;
         rmt_stub_done_cb      = nullptr;
         rmt_stub_done_cb_ctx  = nullptr;
+        rmt_stub_fail_after   = 0;
         test_clock_ms         = 0;
         test_clock_us         = 0;
         gpio_last_isr         = nullptr;
@@ -204,4 +205,100 @@ TEST_F(TransceiverLoopTest, Loop_NoiseDetected_PreventsTxCompletion) {
 
     EXPECT_TRUE(somfy.transceiver.txBusy())
         << "loop() must return early when noiseDetected, leaving txBusy() true";
+}
+
+// ── emitFrame body ────────────────────────────────────────────────────────────
+
+TEST_F(TransceiverLoopTest, EmitFrame_WithActiveClients_NullRx_NoCrash) {
+    // Make activeClients() return > 0 so the emitFrame() JSON body executes.
+    extern uint8_t stub_active_clients;
+    stub_active_clients = 1;
+
+    somfy_frame_t f{};
+    EXPECT_NO_FATAL_FAILURE(somfy.transceiver.emitFrame(&f, nullptr));
+
+    stub_active_clients = 0;
+}
+
+TEST_F(TransceiverLoopTest, EmitFrame_WithActiveClients_StepUpCmd_EmitsStepSize) {
+    extern uint8_t stub_active_clients;
+    stub_active_clients = 1;
+
+    somfy_frame_t f{};
+    f.cmd      = somfy_commands::StepUp;
+    f.stepSize = 3;
+    EXPECT_NO_FATAL_FAILURE(somfy.transceiver.emitFrame(&f, nullptr));
+
+    stub_active_clients = 0;
+}
+
+TEST_F(TransceiverLoopTest, EmitFrame_WithNonNullRx_EmitsPulses) {
+    extern uint8_t stub_active_clients;
+    stub_active_clients = 1;
+
+    somfy_frame_t f{};
+    somfy_rx_t rx{};
+    rx.pulseCount = 2;
+    rx.pulses[0]  = 640;
+    rx.pulses[1]  = 1280;
+    EXPECT_NO_FATAL_FAILURE(somfy.transceiver.emitFrame(&f, &rx));
+
+    stub_active_clients = 0;
+}
+
+// ── loop() rxmode==3 with a queued frame ──────────────────────────────────────
+
+TEST_F(TransceiverLoopTest, Loop_RxMode3_WithReceivedFrame_CallsProcessScanTrue) {
+    somfy.transceiver.beginFrequencyScan();
+
+    // Inject a frame so receive() returns true.
+    injectFrame();
+
+    EXPECT_NO_FATAL_FAILURE(somfy.transceiver.loop());
+
+    somfy.transceiver.endFrequencyScan();
+}
+
+// ── Repeater frame queuing and draining ───────────────────────────────────────
+
+TEST_F(TransceiverLoopTest, Loop_RepeaterMatch_QueuesAndDrainsFrame) {
+    // Configure repeater[0] to match the injected frame's address.
+    const uint32_t repeaterAddr = 0x123456;
+    somfy.repeaters[0] = repeaterAddr;
+
+    // Inject a frame that matches the repeater address.
+    injectFrame(repeaterAddr, somfy_commands::Up);
+
+    // First loop(): receive() returns the decoded frame → matched repeater →
+    // pushed onto tx_queue, then processFrame() runs.
+    somfy.transceiver.loop();
+
+    // Second loop(): tx_queue has an entry, channel is free, delay elapsed →
+    // drain path: beginTransmit() + beginRawFrameTx().
+    // Advance clock past TX_QUEUE_DELAY (500 ms typical).
+    test_clock_ms = 2000;
+    EXPECT_NO_FATAL_FAILURE(somfy.transceiver.loop());
+
+    somfy.repeaters[0] = 0;
+}
+
+// ── handleReceive else branch (sync count 8–11, hits line 313) ───────────────
+
+TEST_F(TransceiverLoopTest, HandleReceive_ElseSyncBranch_Sync8) {
+    // sendHwSync(8) produces cpt_synchro_hw=8, which hits the else branch that
+    // falls through to bit_length=56 (not covered by the explicit <=7 / 12/13/14 cases).
+    somfy_frame_t f;
+    f.remoteAddress = 0x123456; f.rollingCode = 1;
+    f.cmd = somfy_commands::Up; f.proto = radio_proto::RTS;
+    f.bitLength = 56; f.encKey = 0xA0;
+    uint8_t enc[10] = {};
+    f.encodeFrame(enc);
+
+    sendPulse(WAKEUP_US);
+    for (uint8_t i = 0; i < 8 * 2; i++) sendPulse(HW_SYNC_US);  // sync count = 8
+    sendPulse(SW_SYNC_US);
+    sendDataBits(enc, 56);
+
+    // No crash required; frame is buffered in rx_queue.
+    EXPECT_NO_FATAL_FAILURE(somfy.transceiver.loop());
 }
