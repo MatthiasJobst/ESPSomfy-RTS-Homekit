@@ -58,7 +58,6 @@ class SomfyTransceiver {
     void enableReceive();
     void disableReceive();
     somfy_frame_t& lastFrame();
-    void sendFrame(byte *frame, uint8_t sync, uint8_t bitLength = 56);
     void beginTransmit();
     void endTransmit();
     void beginFrameTx(somfy_frame_t &frame, uint8_t repeats);
