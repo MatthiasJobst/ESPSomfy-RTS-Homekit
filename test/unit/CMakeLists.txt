@@ -101,6 +101,7 @@ add_executable(transceiver_tests
     test_transceiver_rx.cpp
     test_transceiver_config.cpp
     test_transceiver_tx.cpp
+    test_transceiver_loop.cpp
     transceiver_globals_stub.cpp
     ${PRODUCTION_SOURCES}
     ../../main/somfy/SomfyTransceiver.cpp
