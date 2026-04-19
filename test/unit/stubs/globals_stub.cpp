@@ -25,6 +25,7 @@ ELECHOUSE_CC1101 ELECHOUSE_cc1101;
 // ── test clock ────────────────────────────────────────────────────────────
 #include "Arduino.h"
 uint64_t test_clock_ms = 0;
+uint64_t test_clock_us = 0;
 
 // Now pull in project types (stubs intercept the heavy headers)
 #include "ConfigSettings.h"

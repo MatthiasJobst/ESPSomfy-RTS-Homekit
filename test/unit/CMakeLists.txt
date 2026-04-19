@@ -92,5 +92,45 @@ target_compile_options(shade_tests PRIVATE
 
 target_link_options(shade_tests PRIVATE --coverage)
 
+# ── transceiver_tests ────────────────────────────────────────────────────────
+# Compiles the real SomfyTransceiver.cpp alongside the production shade sources.
+# Uses transceiver_globals_stub.cpp instead of stubs/globals_stub.cpp so the
+# SomfyTransceiver method bodies are not replaced by empty stubs.
+
+add_executable(transceiver_tests
+    test_transceiver_rx.cpp
+    transceiver_globals_stub.cpp
+    ${PRODUCTION_SOURCES}
+    ../../main/somfy/SomfyTransceiver.cpp
+)
+
+target_include_directories(transceiver_tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/stubs
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../main
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../main/somfy
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../main/somfy/shade
+    ${arduinojson_SOURCE_DIR}/src
+)
+
+target_link_libraries(transceiver_tests
+    GTest::gtest_main
+    GTest::gmock
+)
+
+target_compile_definitions(transceiver_tests PRIVATE USE_NVS)
+
+target_compile_options(transceiver_tests PRIVATE
+    -Wno-unused-parameter
+    -Wno-sign-compare
+    -Wno-unused-variable
+    -Wno-inconsistent-missing-override
+    -Wno-non-pod-varargs
+    -Wno-deprecated-declarations
+    --coverage
+)
+
+target_link_options(transceiver_tests PRIVATE --coverage)
+
 include(GoogleTest)
 gtest_add_tests(TARGET shade_tests SOURCES test_commandProcessor.cpp test_movementTracker.cpp test_targetSequencer.cpp test_gpioControl.cpp test_mqttPublisher.cpp test_commandTransmitter.cpp test_jsonSerializer.cpp test_somfyShade.cpp test_somfyFrame.cpp test_somfyRemote.cpp test_somfyShadeController.cpp test_somfyGroup.cpp test_somfyRoom.cpp)
+gtest_add_tests(TARGET transceiver_tests SOURCES test_transceiver_rx.cpp)

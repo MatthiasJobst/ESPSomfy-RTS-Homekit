@@ -23,7 +23,9 @@ using byte = uint8_t;
 #define OUTPUT 1
 
 extern uint64_t test_clock_ms;
-inline uint64_t millis() { return test_clock_ms; }
+extern uint64_t test_clock_us;
+inline uint64_t millis()  { return test_clock_ms; }
+inline uint64_t micros()  { return test_clock_us; }
 inline void delay(uint32_t) {}
 
 struct EspClass {
