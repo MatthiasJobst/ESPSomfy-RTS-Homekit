@@ -30,6 +30,8 @@ bool cc1101_init_ok = true;
 #include "driver/rmt_tx.h"
 rmt_tx_done_callback_t rmt_stub_done_cb     = nullptr;
 void                  *rmt_stub_done_cb_ctx = nullptr;
+rmt_stub_queued_t      rmt_stub_queue[RMT_STUB_QUEUE_MAX] = {};
+int                    rmt_stub_queue_count = 0;
 
 // ── Test clocks ────────────────────────────────────────────────────────────
 #include "Arduino.h"

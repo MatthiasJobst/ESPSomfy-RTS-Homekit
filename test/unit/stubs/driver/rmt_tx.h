@@ -71,6 +71,12 @@ typedef struct { } rmt_copy_encoder_config_t;
 extern rmt_tx_done_callback_t rmt_stub_done_cb;
 extern void                  *rmt_stub_done_cb_ctx;
 
+// Captured rmt_transmit() calls — tests inspect payload pointers and sizes.
+#define RMT_STUB_QUEUE_MAX 16
+struct rmt_stub_queued_t { const void *data; size_t size; };
+extern rmt_stub_queued_t rmt_stub_queue[RMT_STUB_QUEUE_MAX];
+extern int               rmt_stub_queue_count;
+
 // Stub copy encoder: encode is a no-op returning COMPLETE, reset is a no-op.
 inline size_t    rmt_stub_copy_encode(rmt_encoder_t *, rmt_channel_handle_t,
                                       const void *, size_t,
@@ -115,7 +121,9 @@ inline esp_err_t rmt_del_encoder(rmt_encoder_handle_t)          { return ESP_OK;
 inline esp_err_t rmt_tx_wait_all_done(rmt_channel_handle_t, int){ return ESP_OK; }
 inline esp_err_t rmt_transmit(rmt_channel_handle_t,
                                rmt_encoder_handle_t,
-                               const void *, size_t,
+                               const void *payload, size_t size,
                                const rmt_transmit_config_t *) {
+    if (rmt_stub_queue_count < RMT_STUB_QUEUE_MAX)
+        rmt_stub_queue[rmt_stub_queue_count++] = { payload, size };
     return ESP_OK;
 }
