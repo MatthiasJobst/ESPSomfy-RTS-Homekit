@@ -72,7 +72,6 @@ void SomfyTransceiver::clearReceived()       {}
 void SomfyTransceiver::enableReceive()       {}
 void SomfyTransceiver::disableReceive()      {}
 somfy_frame_t &SomfyTransceiver::lastFrame() { static somfy_frame_t f; return f; }
-void SomfyTransceiver::sendFrame(byte *, uint8_t, uint8_t) {}
 void SomfyTransceiver::beginTransmit()  {}
 void SomfyTransceiver::endTransmit()    {}
 void SomfyTransceiver::emitFrame(somfy_frame_t *, somfy_rx_t *) {}
