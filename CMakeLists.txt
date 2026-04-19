@@ -27,7 +27,7 @@ add_custom_target(build_unit_tests
 )
 
 add_custom_target(run_unit_tests
-    COMMAND find ${test_build_dir} -name "*.gcda" -delete && ${test_build_dir}/shade_tests
+    COMMAND ctest --test-dir ${test_build_dir} --output-on-failure
     DEPENDS build_unit_tests
     COMMENT "Running unit tests"
 )

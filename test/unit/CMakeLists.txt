@@ -99,6 +99,7 @@ target_link_options(shade_tests PRIVATE --coverage)
 
 add_executable(transceiver_tests
     test_transceiver_rx.cpp
+    test_transceiver_config.cpp
     transceiver_globals_stub.cpp
     ${PRODUCTION_SOURCES}
     ../../main/somfy/SomfyTransceiver.cpp
@@ -132,5 +133,5 @@ target_compile_options(transceiver_tests PRIVATE
 target_link_options(transceiver_tests PRIVATE --coverage)
 
 include(GoogleTest)
-gtest_add_tests(TARGET shade_tests SOURCES test_commandProcessor.cpp test_movementTracker.cpp test_targetSequencer.cpp test_gpioControl.cpp test_mqttPublisher.cpp test_commandTransmitter.cpp test_jsonSerializer.cpp test_somfyShade.cpp test_somfyFrame.cpp test_somfyRemote.cpp test_somfyShadeController.cpp test_somfyGroup.cpp test_somfyRoom.cpp)
-gtest_add_tests(TARGET transceiver_tests SOURCES test_transceiver_rx.cpp)
+gtest_discover_tests(shade_tests)
+gtest_discover_tests(transceiver_tests)
