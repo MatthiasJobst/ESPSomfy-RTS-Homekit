@@ -41,7 +41,21 @@ void SomfyTargetSequencer::moveToTarget(float pos, float tilt) {
       ESP_LOGI(TAG, " tilt %f%% from %f%%", tilt, shade->currentTiltPos);
     }
     ESP_LOGI(TAG, " using %s", translateSomfyCommand(cmd).c_str());
-    shade->SomfyRemote::sendCommand(cmd, shade->tiltType == tilt_types::euromode ? TILT_REPEATS : shade->repeats);
+    // Lift moves need a ~1 s burst so the motor registers a sustained press
+    // (movement) rather than a tap (tilt nudge). After the burst the motor
+    // runs on its own until it hits an endpoint or the target-reached handler
+    // sends a My/Stop for intermediate positions. Tilt-only modes keep the
+    // short-burst path; euromode still needs its TILT_REPEATS signalling.
+    const bool useLongPress = (shade->tiltType != tilt_types::euromode) &&
+                              (shade->tiltType != tilt_types::tiltonly) &&
+                              (shade->tiltType != tilt_types::tiltmotor) &&
+                              (shade->getUpTime() > 0) && (shade->getDownTime() > 0);
+    if(useLongPress) {
+      shade->SomfyRemote::sendCommand(cmd, MOVE_REPEATS);
+    }
+    else {
+      shade->SomfyRemote::sendCommand(cmd, shade->tiltType == tilt_types::euromode ? TILT_REPEATS : shade->repeats);
+    }
     shade->setSettingPos(true);
     shade->p_target(pos);
     if(tilt >= 0) {

@@ -161,12 +161,14 @@ TEST_F(TargetSequencerTest, MoveToTarget_Euromode_UsesTiltRepeats) {
     EXPECT_EQ(shade.getLastFrame().repeats, TILT_REPEATS);
 }
 
-// A11. Non-euromode roller → uses shade.repeats (default 1)
-TEST_F(TargetSequencerTest, MoveToTarget_Roller_UsesDefaultRepeats) {
+// A11. Non-euromode roller → uses MOVE_REPEATS so the motor registers a
+// sustained press (movement), not a tap (tilt nudge). After the ~1 s burst
+// the transmitter is freed and the motor runs on its own to the endpoint.
+TEST_F(TargetSequencerTest, MoveToTarget_Roller_UsesMoveRepeats) {
     shade.tiltType   = tilt_types::none;
     shade.currentPos = 20.0f;
     shade.moveToTarget(80.0f);
-    EXPECT_EQ(shade.getLastFrame().repeats, shade.getRepeats());
+    EXPECT_EQ(shade.getLastFrame().repeats, MOVE_REPEATS);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

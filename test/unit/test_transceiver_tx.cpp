@@ -326,3 +326,4 @@ TEST_F(TransceiverTxTest, BeginRawFrameTx_TransmitFails_TxBusyCleared) {
     EXPECT_FALSE(somfy.transceiver.txBusy())
         << "rmt_transmit raw failed → s_rmtBusy must be cleared";
 }
+

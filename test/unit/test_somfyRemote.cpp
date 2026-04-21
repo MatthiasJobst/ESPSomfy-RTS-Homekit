@@ -17,6 +17,8 @@
 #include "SomfyShadeController.h"
 #include <gtest/gtest.h>
 
+extern uint64_t test_clock_ms;
+
 class SomfyRemoteTest : public ::testing::Test {
 protected:
     SomfyLinkedRemote remote;

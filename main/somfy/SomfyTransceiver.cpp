@@ -979,10 +979,9 @@ void SomfyTransceiver::beginFrameTx(somfy_frame_t &frame, uint8_t repeats) {
 
     // Repeat frames — no wakeup, rep_sync pulses. Tail on all but the last.
     for(uint8_t i = 1; i < total; i++) {
+        memcpy(s_burst[i].bytes, s_burst[0].bytes, 10);
         if(frame.bitLength == 80)
             frame.encode80BitFrame(s_burst[i].bytes, i);
-        else
-            memcpy(s_burst[i].bytes, s_burst[0].bytes, 10);
         s_burst[i].bit_length = frame.bitLength;
         s_burst[i].sync_count = (frame.bitLength == 56) ? 7 : 6;
         s_burst[i].wakeup     = false;
