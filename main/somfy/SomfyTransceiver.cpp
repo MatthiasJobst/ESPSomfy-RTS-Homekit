@@ -30,8 +30,6 @@ static const uint16_t NOISE_PULSE_THRESHOLD = 100;
 static const uint32_t NOISE_WINDOW_MS = 10000;
 static const uint32_t NOISE_COOLDOWN_MS = 30000;
 
-#define SETMY_REPEATS 35
-#define TILT_REPEATS 15
 #define TX_QUEUE_DELAY 100
 
 #define SYMBOL 640
