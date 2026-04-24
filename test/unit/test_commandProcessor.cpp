@@ -11,6 +11,7 @@
 //              moveToTarget/moveToTiltTarget/setMyPosition set them correctly
 
 #include "TestableShade.h"
+#include "SomfyTransceiver.h"
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
@@ -993,3 +994,153 @@ TEST_F(CommandProcessorTest, Favorite_SimMy_CallsMoveToMyPosition) {
     shade.processFrame(f);
     EXPECT_FLOAT_EQ(shade.getTarget(), 35.0f);
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// processWaitingFrame() — repeat-count boundary conditions
+//
+// TILT_REPEATS == 15, SETMY_REPEATS == 35
+//
+// For tiltmotor Up/Down:
+//   repeats <  TILT_REPEATS → lift move  (target changes)
+//   repeats >= TILT_REPEATS → tilt move  (tiltTarget changes)
+//   repeats >  TILT_REPEATS+2 → second emitCommand call
+//
+// For euromode Up/Down (reversed):
+//   repeats <  TILT_REPEATS → tilt move  (tiltTarget changes)
+//   repeats >= TILT_REPEATS → lift move  (target changes)
+//
+// For My (idle, myPos != currentPos):
+//   repeats <  SETMY_REPEATS → execute My (target = myPos)
+//   repeats >= SETMY_REPEATS → set My position (myPos = currentPos)
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Helper: prime lastFrame for processWaitingFrame()
+static void primeWaitingFrame(TestableShade &shade, somfy_commands cmd, uint8_t repeats) {
+    shade.lastFrame.cmd           = cmd;
+    shade.lastFrame.repeats       = repeats;
+    shade.lastFrame.await         = 1;
+    shade.lastFrame.processed     = false;
+    shade.lastFrame.remoteAddress = 0xABCDEF;
+    test_clock_ms = 2;  // > await so the guard passes
+}
+
+// ── A. Tiltmotor Up: lift vs tilt boundary ────────────────────────────────────
+
+struct TiltRepeatCase {
+    uint8_t repeats;
+    bool    expectTilt;  // true → tiltTarget changes to 0; false → target changes to 0
+};
+
+class TiltmotorRepeatBoundaryTest : public CommandProcessorTest,
+                                    public ::testing::WithParamInterface<TiltRepeatCase> {};
+
+TEST_P(TiltmotorRepeatBoundaryTest, UpCommand_LiftVsTilt) {
+    shade.tiltType       = tilt_types::tiltmotor;
+    shade.currentPos     = 50.0f;
+    shade.target         = 50.0f;
+    shade.currentTiltPos = 50.0f;
+    shade.tiltTarget     = 50.0f;
+
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(AnyNumber());
+    primeWaitingFrame(shade, somfy_commands::Up, GetParam().repeats);
+    shade.processWaitingFrame();
+
+    if (GetParam().expectTilt) {
+        EXPECT_FLOAT_EQ(shade.getTiltTarget(), 0.0f) << "repeats=" << (int)GetParam().repeats;
+        EXPECT_FLOAT_EQ(shade.getTarget(), 50.0f);
+    } else {
+        EXPECT_FLOAT_EQ(shade.getTarget(), 0.0f) << "repeats=" << (int)GetParam().repeats;
+        EXPECT_FLOAT_EQ(shade.getTiltTarget(), 50.0f);
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(Boundaries, TiltmotorRepeatBoundaryTest, ::testing::Values(
+    TiltRepeatCase{TILT_REPEATS - 1, false},  // 14 → lift
+    TiltRepeatCase{TILT_REPEATS,     true},   // 15 → tilt (first value to cross threshold)
+    TiltRepeatCase{TILT_REPEATS + 1, true}    // 16 → tilt
+));
+
+// ── B. Euromode Up: reversed lift vs tilt boundary ───────────────────────────
+
+class EuromodeRepeatBoundaryTest : public CommandProcessorTest,
+                                   public ::testing::WithParamInterface<TiltRepeatCase> {};
+
+TEST_P(EuromodeRepeatBoundaryTest, UpCommand_LiftVsTilt) {
+    shade.tiltType       = tilt_types::euromode;
+    shade.currentPos     = 50.0f;
+    shade.target         = 50.0f;
+    shade.currentTiltPos = 50.0f;
+    shade.tiltTarget     = 50.0f;
+
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(AnyNumber());
+    primeWaitingFrame(shade, somfy_commands::Up, GetParam().repeats);
+    shade.processWaitingFrame();
+
+    if (GetParam().expectTilt) {
+        EXPECT_FLOAT_EQ(shade.getTiltTarget(), 0.0f) << "repeats=" << (int)GetParam().repeats;
+        EXPECT_FLOAT_EQ(shade.getTarget(), 50.0f);
+    } else {
+        EXPECT_FLOAT_EQ(shade.getTarget(), 0.0f) << "repeats=" << (int)GetParam().repeats;
+        EXPECT_FLOAT_EQ(shade.getTiltTarget(), 50.0f);
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(Boundaries, EuromodeRepeatBoundaryTest, ::testing::Values(
+    TiltRepeatCase{TILT_REPEATS - 1, true},   // 14 → tilt (euromode is reversed)
+    TiltRepeatCase{TILT_REPEATS,     false},  // 15 → lift
+    TiltRepeatCase{TILT_REPEATS + 1, false}   // 16 → lift
+));
+
+// ── C. Tiltmotor double-emit at TILT_REPEATS+2 boundary ──────────────────────
+//
+// When repeats > TILT_REPEATS+2 (> 17), a second emitCommand is fired.
+// repeats=17 is exactly at the boundary (NOT > 17) → single emit.
+// repeats=18 crosses it (IS > 17) → double emit.
+
+TEST_F(CommandProcessorTest, ProcessWaitingFrame_Tiltmotor_SingleEmit_AtBoundary) {
+    shade.tiltType = tilt_types::tiltmotor;
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(1);
+    primeWaitingFrame(shade, somfy_commands::Up, TILT_REPEATS + 2);  // 17
+    shade.processWaitingFrame();
+}
+
+TEST_F(CommandProcessorTest, ProcessWaitingFrame_Tiltmotor_DoubleEmit_BeyondBoundary) {
+    shade.tiltType = tilt_types::tiltmotor;
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(2);
+    primeWaitingFrame(shade, somfy_commands::Up, TILT_REPEATS + 3);  // 18
+    shade.processWaitingFrame();
+}
+
+// ── D. My: execute vs set-My-position boundary ───────────────────────────────
+
+struct MyRepeatCase {
+    uint8_t repeats;
+    bool    expectSetMyPos;  // true → myPos updated; false → target moves to myPos
+};
+
+class MyRepeatBoundaryTest : public CommandProcessorTest,
+                             public ::testing::WithParamInterface<MyRepeatCase> {};
+
+TEST_P(MyRepeatBoundaryTest, IdleShade) {
+    shade.currentPos = 60.0f;
+    shade.target     = 60.0f;   // idle (at target, direction==0)
+    shade.targetSequencer.myPos = 30.0f;
+
+    EXPECT_CALL(shade, emitCommand(_, _, _, _)).Times(AnyNumber());
+    primeWaitingFrame(shade, somfy_commands::My, GetParam().repeats);
+    shade.processWaitingFrame();
+
+    if (GetParam().expectSetMyPos) {
+        EXPECT_FLOAT_EQ(shade.targetSequencer.myPos, 60.0f)
+            << "repeats=" << (int)GetParam().repeats << " should set myPos to currentPos";
+    } else {
+        EXPECT_FLOAT_EQ(shade.getTarget(), 30.0f)
+            << "repeats=" << (int)GetParam().repeats << " should move to myPos";
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(Boundaries, MyRepeatBoundaryTest, ::testing::Values(
+    MyRepeatCase{SETMY_REPEATS - 1, false},  // 34 → execute My (move to myPos)
+    MyRepeatCase{SETMY_REPEATS,     true},   // 35 → set My position (first crossing)
+    MyRepeatCase{SETMY_REPEATS + 1, true}    // 36 → set My position
+));

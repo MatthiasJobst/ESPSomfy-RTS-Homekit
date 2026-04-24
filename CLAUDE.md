@@ -41,6 +41,8 @@ gcovr --object-directory build --filter '.*main/somfy/'
 
 Coverage as of last run: **88%** overall. `SomfyGroup.cpp` and `SomfyRoom.cpp` have 0% coverage — no tests exist for them yet.
 
+Prefer `TEST_P` / `INSTANTIATE_TEST_SUITE_P` for boundary conditions and any case where the same assertion logic applies across multiple input values.
+
 ## Architecture
 
 ### Task structure

@@ -329,3 +329,39 @@ TEST_F(TransceiverRxTest, NoiseWatchdog_CounterResets_AfterWindow) {
     EXPECT_TRUE(gpio_intr_enabled)
         << "Interrupt should stay enabled when pulses are spread across windows";
 }
+
+// ── Half-symbol boundary: pulse durations that reset receiving_data state ────
+//
+// The ISR has three duration zones inside receiving_data:
+//   < bitMin (448)              → glitch, absorbed (no state change)
+//   > 448 && < 832              → valid half-symbol
+//   > 896 && < 1664             → valid full symbol
+//   anything else               → reset to waiting_synchro
+//
+// Exact boundaries 448 and 832 are the "neither fish nor fowl" values: 448
+// passes the glitch filter (>= bitMin) but fails the strict `> 448` half-symbol
+// check; 832 fails the strict `< 832` half-symbol check.  Both reset state.
+
+struct HalfSymBoundaryParam { uint32_t probe_us; };
+
+class HalfSymbolResetBoundaryTest : public TransceiverRxTest,
+                                    public ::testing::WithParamInterface<HalfSymBoundaryParam> {};
+
+TEST_P(HalfSymbolResetBoundaryTest, ResetsToWaitingOnOutOfRangePulse) {
+    // Enter receiving_data, inject the probe, verify no frame is ever queued.
+    sendWakeup();
+    sendHwSync(2);
+    sendSwSync();
+    sendPulse(GetParam().probe_us);
+
+    somfy_rx_t rx{};
+    EXPECT_FALSE(somfy.transceiver.receive(&rx))
+        << "probe=" << GetParam().probe_us << " µs should reset receiving_data";
+}
+
+INSTANTIATE_TEST_SUITE_P(Boundaries, HalfSymbolResetBoundaryTest, ::testing::Values(
+    HalfSymBoundaryParam{448},    // == bitMin: passes glitch filter, NOT > half_symbol_min → RESET
+    HalfSymBoundaryParam{832},    // == half_symbol_max: NOT < half_symbol_max → RESET
+    HalfSymBoundaryParam{895},    // gap between half-symbol and full-symbol ranges → RESET
+    HalfSymBoundaryParam{50000}   // far out of range → RESET
+));
