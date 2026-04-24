@@ -90,7 +90,7 @@ static int shade_write(hap_write_data_t write_data[], int count,
                 target = (float)w->val.u;
             ESP_LOGI(TAG, "TargetPosition write: hap=%u -> somfy=%.0f (currentPos=%.0f flip=%d)",
                      w->val.u, target, shade->currentPos, shade->getFlipPosition());
-            somfy.enqueueShadeTarget(shadeId, target);
+            somfy.enqueueShadeTargetForced(shadeId, target);
             hap_char_update_val(w->hc, &w->val);
             *(w->status) = HAP_STATUS_SUCCESS;
 

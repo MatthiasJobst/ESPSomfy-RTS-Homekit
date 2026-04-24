@@ -7,62 +7,70 @@
 
 static const char *TAG = "SomfyTargetSequencer";
 
+
+// ── moveDirection ─────────────────────────────────────────────────────────────
+
+somfy_commands SomfyTargetSequencer::moveDirection(float &pos, float tilt) {
+  if(shade->isToggle()) {
+    shade->p_target(pos); shade->p_currentPos(pos); shade->emitState();
+    return somfy_commands::My;
+  }
+  if(shade->tiltType == tilt_types::tiltonly) {
+    shade->p_target(100.0f); shade->p_myPos(-1.0f); shade->p_currentPos(100.0f);
+    pos = 100.0f;
+    if(tilt < shade->currentTiltPos) return somfy_commands::Up;
+    if(tilt > shade->currentTiltPos) return somfy_commands::Down;
+    return somfy_commands::My;
+  }
+  if(pos < shade->currentPos) return somfy_commands::Up;
+  if(pos > shade->currentPos) return somfy_commands::Down;
+  if(tilt < 0)                return somfy_commands::My;
+  if(tilt < shade->currentTiltPos) return somfy_commands::Up;
+  if(tilt > shade->currentTiltPos) return somfy_commands::Down;
+  return somfy_commands::My;
+}
+
+// ── repeatCount ───────────────────────────────────────────────────────────────
+
+uint8_t SomfyTargetSequencer::repeatCount() const {
+  if(shade->tiltType == tilt_types::euromode)  return TILT_REPEATS;
+  if(shade->tiltType == tilt_types::tiltonly)  return shade->repeats;
+  if(shade->tiltType == tilt_types::tiltmotor) return shade->repeats;
+  if(shade->getUpTime() > 0 && shade->getDownTime() > 0) return MOVE_REPEATS;
+  return shade->repeats;
+}
+
 // ── moveToTarget ─────────────────────────────────────────────────────────────
 
 void SomfyTargetSequencer::moveToTarget(float pos, float tilt) {
-  somfy_commands cmd = somfy_commands::My;
-  if(shade->isToggle()) {
-    shade->p_target(pos);
-    shade->p_currentPos(pos);
-    shade->emitState();
+  somfy_commands cmd = this->moveDirection(pos, tilt);
+  if(cmd == somfy_commands::My) {
+    ESP_LOGI(TAG, "No need to move!");
     return;
   }
-  if(shade->tiltType == tilt_types::tiltonly) {
-    shade->p_target(100.0f);
-    shade->p_myPos(-1.0f);
-    shade->p_currentPos(100.0f);
-    pos = 100;
-    if(tilt < shade->currentTiltPos) cmd = somfy_commands::Up;
-    else if(tilt > shade->currentTiltPos) cmd = somfy_commands::Down;
+  ESP_LOGI(TAG, "Moving to %f%% from %f%%", pos, shade->currentPos);
+  if(tilt >= 0) ESP_LOGI(TAG, " tilt %f%% from %f%%", tilt, shade->currentTiltPos);
+  ESP_LOGI(TAG, " using %s", translateSomfyCommand(cmd).c_str());
+  shade->SomfyRemote::sendCommand(cmd, this->repeatCount());
+  shade->setSettingPos(true);
+  shade->p_target(pos);
+  if(tilt >= 0) { shade->p_tiltTarget(tilt); shade->setSettingTiltPos(true); }
+}
+
+// ── moveToTargetForced: moves to Target with high repeat to force up or down ─
+
+void SomfyTargetSequencer::moveToTargetForced(float pos, float tilt) {
+  somfy_commands cmd = this->moveDirection(pos, tilt);
+  if(cmd == somfy_commands::My) {
+    ESP_LOGI(TAG, "No need to move!");
+    return;
   }
-  else {
-    if(pos < shade->currentPos)
-      cmd = somfy_commands::Up;
-    else if(pos > shade->currentPos)
-      cmd = somfy_commands::Down;
-    else if(tilt >= 0 && tilt < shade->currentTiltPos)
-      cmd = somfy_commands::Up;
-    else if(tilt >= 0 && tilt > shade->currentTiltPos)
-      cmd = somfy_commands::Down;
-  }
-  if(cmd != somfy_commands::My) {
-    ESP_LOGI(TAG, "Moving to %f%% from %f%%", pos, shade->currentPos);
-    if(tilt >= 0) {
-      ESP_LOGI(TAG, " tilt %f%% from %f%%", tilt, shade->currentTiltPos);
-    }
-    ESP_LOGI(TAG, " using %s", translateSomfyCommand(cmd).c_str());
-    // Lift moves need a ~1 s burst so the motor registers a sustained press
-    // (movement) rather than a tap (tilt nudge). After the burst the motor
-    // runs on its own until it hits an endpoint or the target-reached handler
-    // sends a My/Stop for intermediate positions. Tilt-only modes keep the
-    // short-burst path; euromode still needs its TILT_REPEATS signalling.
-    const bool useLongPress = (shade->tiltType != tilt_types::euromode) &&
-                              (shade->tiltType != tilt_types::tiltonly) &&
-                              (shade->tiltType != tilt_types::tiltmotor) &&
-                              (shade->getUpTime() > 0) && (shade->getDownTime() > 0);
-    if(useLongPress) {
-      shade->SomfyRemote::sendCommand(cmd, MOVE_REPEATS);
-    }
-    else {
-      shade->SomfyRemote::sendCommand(cmd, shade->tiltType == tilt_types::euromode ? TILT_REPEATS : shade->repeats);
-    }
-    shade->setSettingPos(true);
-    shade->p_target(pos);
-    if(tilt >= 0) {
-      shade->p_tiltTarget(tilt);
-      shade->setSettingTiltPos(true);
-    }
-  }
+  ESP_LOGI(TAG, "Moving forced to %f%% from %f%%", pos, shade->currentPos);
+  ESP_LOGW(TAG, "Tilt is set to %f%% will be ignored in forced move", tilt);
+  ESP_LOGI(TAG, " using %s", translateSomfyCommand(cmd).c_str());
+  shade->SomfyRemote::sendCommand(cmd, MOVE_REPEATS);
+  shade->setSettingPos(true);
+  shade->p_target(pos);
 }
 
 // ── moveToTiltTarget ─────────────────────────────────────────────────────────

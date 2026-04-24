@@ -601,3 +601,74 @@ TEST_F(TargetSequencerTest, SetMyPos_TiltOnly_FloorTiltMatchButExactDiffers_Call
     EXPECT_TRUE(shade.getSettingMyPos());
     EXPECT_EQ(lastCmd(), somfy_commands::My);  // moveToMyPosition → My
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// H. moveDirection uncovered branches
+// ══════════════════════════════════════════════════════════════════════════════
+
+// H1. tiltonly, tilt == currentTiltPos → My (line 23)
+TEST_F(TargetSequencerTest, MoveToTarget_TiltOnly_SameTilt_NoCommand) {
+    shade.tiltType       = tilt_types::tiltonly;
+    shade.currentPos     = 100.0f;
+    shade.currentTiltPos = 50.0f;
+    shade.targetSequencer.myPos = -1.0f;
+    uint16_t rcBefore = shade.getLastFrame().rollingCode;
+    shade.moveToTarget(100.0f, 50.0f);  // tilt == currentTiltPos → My
+    EXPECT_EQ(shade.getLastFrame().rollingCode, rcBefore);
+}
+
+// H2. pos==currentPos, tilt≥0, tilt==currentTiltPos → final My return (line 30)
+TEST_F(TargetSequencerTest, MoveToTarget_SamePosSameTilt_NoCommand) {
+    shade.tiltType       = tilt_types::integrated;
+    shade.currentPos     = 50.0f;
+    shade.currentTiltPos = 50.0f;
+    uint16_t rcBefore = shade.getLastFrame().rollingCode;
+    shade.moveToTarget(50.0f, 50.0f);  // pos==currentPos, tilt==currentTiltPos → My
+    EXPECT_EQ(shade.getLastFrame().rollingCode, rcBefore);
+}
+
+// H3. repeatCount fallback: no travel timings → returns shade->repeats (line 40)
+TEST_F(TargetSequencerTest, MoveToTarget_NoTimings_UsesShadeRepeats) {
+    shade.tiltType   = tilt_types::none;
+    shade.setUpTime(0);
+    shade.setDownTime(0);
+    shade.repeats    = 3;
+    shade.currentPos = 20.0f;
+    shade.moveToTarget(80.0f);
+    EXPECT_EQ(shade.getLastFrame().repeats, 3);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// I. moveToTargetForced
+// ══════════════════════════════════════════════════════════════════════════════
+
+// I1. pos > currentPos → Down sent with MOVE_REPEATS
+TEST_F(TargetSequencerTest, MoveToTargetForced_PosHigher_SendsDownWithMoveRepeats) {
+    shade.currentPos = 30.0f;
+    shade.moveToTargetForced(80.0f);
+    EXPECT_EQ(lastCmd(), somfy_commands::Down);
+    EXPECT_EQ(shade.getLastFrame().repeats, MOVE_REPEATS);
+}
+
+// I2. pos < currentPos → Up sent with MOVE_REPEATS
+TEST_F(TargetSequencerTest, MoveToTargetForced_PosLower_SendsUpWithMoveRepeats) {
+    shade.currentPos = 70.0f;
+    shade.moveToTargetForced(20.0f);
+    EXPECT_EQ(lastCmd(), somfy_commands::Up);
+    EXPECT_EQ(shade.getLastFrame().repeats, MOVE_REPEATS);
+}
+
+// I3. pos == currentPos → no command (early return)
+TEST_F(TargetSequencerTest, MoveToTargetForced_SamePos_NoCommand) {
+    shade.currentPos = 50.0f;
+    uint16_t rcBefore = shade.getLastFrame().rollingCode;
+    shade.moveToTargetForced(50.0f);
+    EXPECT_EQ(shade.getLastFrame().rollingCode, rcBefore);
+}
+
+// I4. target set to requested pos
+TEST_F(TargetSequencerTest, MoveToTargetForced_SetsTarget) {
+    shade.currentPos = 20.0f;
+    shade.moveToTargetForced(75.0f);
+    EXPECT_FLOAT_EQ(shade.target, 75.0f);
+}

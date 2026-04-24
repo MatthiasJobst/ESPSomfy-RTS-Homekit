@@ -859,6 +859,9 @@ bool SomfyTransceiver::begin() {
         ESP_ERROR_CHECK(rmt_tx_register_event_callbacks(s_rmtTxChan, &cbs, nullptr));
         ESP_ERROR_CHECK(rmt_enable(s_rmtTxChan));
         ESP_LOGI(TAG, "RMT TX channel initialised on GPIO %d", this->config.TXPin);
+        // RMT enable drives TXPin LOW, which the CC1101 in async serial mode
+        // interprets as a start bit on GDO2 and leaves RX mode. Restore it.
+        ELECHOUSE_cc1101.SetRx();
     }
     return true;
 }

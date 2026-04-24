@@ -565,6 +565,11 @@ void SomfyShadeController::drainCommandQueue() {
       if(s) s->moveToTarget(c.target);
       break;
     }
+    case cmd_queue_type_t::ShadeTargetForced: {
+      SomfyShade *s = this->getShadeById(c.entityId);
+      if(s) s->moveToTargetForced(c.target);
+      break;
+    }
     case cmd_queue_type_t::ShadeTiltTarget: {
       SomfyShade *s = this->getShadeById(c.entityId);
       if(s) s->moveToTiltTarget(c.target);
@@ -599,6 +604,10 @@ bool SomfyShadeController::enqueueShadeCommand(uint8_t shadeId, somfy_commands c
 }
 bool SomfyShadeController::enqueueShadeTarget(uint8_t shadeId, float target) {
   queued_cmd_t c; c.type = cmd_queue_type_t::ShadeTarget; c.entityId = shadeId; c.target = target;
+  return this->cmdQueue.push(c);
+}
+bool SomfyShadeController::enqueueShadeTargetForced(uint8_t shadeId, float target) {
+  queued_cmd_t c; c.type = cmd_queue_type_t::ShadeTargetForced; c.entityId = shadeId; c.target = target;
   return this->cmdQueue.push(c);
 }
 bool SomfyShadeController::enqueueShadeTiltTarget(uint8_t shadeId, float target) {

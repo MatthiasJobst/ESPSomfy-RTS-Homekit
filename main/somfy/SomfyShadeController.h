@@ -68,6 +68,7 @@ class SomfyShadeController {
     SomfyGroup * findGroupByRemoteAddress(uint32_t address);
     bool enqueueShadeCommand(uint8_t shadeId, somfy_commands cmd, uint8_t repeat, uint8_t stepSize = 0);
     bool enqueueShadeTarget(uint8_t shadeId, float target);
+    bool enqueueShadeTargetForced(uint8_t shadeId, float target);
     bool enqueueShadeTiltTarget(uint8_t shadeId, float target);
     bool enqueueShadeTiltCommand(uint8_t shadeId, somfy_commands cmd);
     bool enqueueShadeSensor(uint8_t shadeId, int8_t isWindy, int8_t isSunny, uint8_t repeat);

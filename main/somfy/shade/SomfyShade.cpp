@@ -280,6 +280,7 @@ void SomfyShade::sendTiltCommand(somfy_commands cmd) { commandTransmitter.sendTi
 
 void SomfyShade::moveToTiltTarget(float target) { targetSequencer.moveToTiltTarget(target); }
 void SomfyShade::moveToTarget(float pos, float tilt) { targetSequencer.moveToTarget(pos, tilt); }
+void SomfyShade::moveToTargetForced(float pos, float tilt) { targetSequencer.moveToTargetForced(pos, tilt); }
 
 bool SomfyShade::save() { commit(); publish(); return true; }
 

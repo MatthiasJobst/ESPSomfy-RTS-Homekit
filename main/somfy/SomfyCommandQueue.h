@@ -10,6 +10,7 @@
 enum class cmd_queue_type_t : uint8_t {
     ShadeCommand,
     ShadeTarget,
+    ShadeTargetForced,
     ShadeTiltTarget,
     ShadeTiltCommand,
     ShadeSensor,
