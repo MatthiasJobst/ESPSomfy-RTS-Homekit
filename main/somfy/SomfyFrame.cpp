@@ -520,7 +520,7 @@ void somfy_rx_queue_t::init() {
 
 bool somfy_rx_queue_t::pop(somfy_rx_t *rx) {
   // Read off the data from the oldest index.
-  //ESP_LOGI(TAG, "Popping RX Queue");
+  ESP_LOGD(TAG, "Popping RX Queue");
   for(int8_t i = MAX_RX_BUFFER - 1; i >= 0; i--) {
     if(this->index[i] < MAX_RX_BUFFER) {
       uint8_t ndx = this->index[i];

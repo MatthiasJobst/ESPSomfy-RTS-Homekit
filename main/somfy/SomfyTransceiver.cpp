@@ -30,6 +30,20 @@ static const uint16_t NOISE_PULSE_THRESHOLD = 100;
 static const uint32_t NOISE_WINDOW_MS = 10000;
 static const uint32_t NOISE_COOLDOWN_MS = 30000;
 
+// ISR telemetry — written in ISR (no logging allowed there), read and logged by loop().
+static volatile struct {
+    uint32_t totalCalls;     // incremented on every ISR entry — confirms ISR fires at all
+    uint32_t glitchCalls;    // incremented for every pulse < bitMin
+    uint32_t resetCalls;     // incremented every time the else-branch resets state in receiving_data
+    uint32_t lastDuration;   // duration of the most recent valid (non-glitch) pulse
+    uint32_t resetDuration;  // duration that triggered the last reset in receiving_data
+    uint8_t  hwSyncCount;    // cpt_synchro_hw at last valid-pulse ISR call
+    uint8_t  bitsReceived;   // cpt_bits at last valid-pulse ISR call
+    uint8_t  status;         // somfy_rx.status at last valid-pulse ISR call
+    bool     waitingHalf;    // somfy_rx.waiting_half_symbol at last valid-pulse ISR call
+    bool     frameQueued;    // set when a complete frame is pushed to rx_queue
+} s_rxDbg;
+
 #define TX_QUEUE_DELAY 100
 
 #define SYMBOL 640
@@ -260,6 +274,7 @@ void RECEIVE_ATTR SomfyTransceiver::handleReceive() {
     static unsigned long last_time = 0;
     const unsigned long time = micros();
     const unsigned int duration = time - last_time;
+    s_rxDbg.totalCalls = s_rxDbg.totalCalls + 1;
 
     // RF noise watchdog: count rapid pulses; disable RX if threshold is exceeded.
     if(somfy.transceiver.config.noiseDetection) {
@@ -283,8 +298,14 @@ void RECEIVE_ATTR SomfyTransceiver::handleReceive() {
         // REMOVE THIS AFTER WE DETERMINE THAT THE out-of-bounds stuff isn't a problem.  If there are bits
         // from the previous frame then we will capture this data here.
         if(somfy_rx.pulseCount < MAX_TIMINGS && somfy_rx.cpt_synchro_hw > 0) somfy_rx.pulses[somfy_rx.pulseCount++] = duration;
+        s_rxDbg.glitchCalls = s_rxDbg.glitchCalls + 1;
         return;
     }
+    s_rxDbg.lastDuration  = duration;
+    s_rxDbg.hwSyncCount   = somfy_rx.cpt_synchro_hw;
+    s_rxDbg.bitsReceived  = somfy_rx.cpt_bits;
+    s_rxDbg.status        = somfy_rx.status;
+    s_rxDbg.waitingHalf   = somfy_rx.waiting_half_symbol;
     last_time = time;
     switch (somfy_rx.status) {
     case waiting_synchro:
@@ -351,6 +372,8 @@ void RECEIVE_ATTR SomfyTransceiver::handleReceive() {
         else {
             //++somfy_rx.cpt_bits;
             // Start over we are not within our parameters for bit timing.
+            s_rxDbg.resetCalls    = s_rxDbg.resetCalls + 1;
+            s_rxDbg.resetDuration = duration;
             memset(&somfy_rx.payload, 0x00, sizeof(somfy_rx.payload));
             somfy_rx.pulseCount = 1;
             somfy_rx.cpt_synchro_hw = 0;
@@ -387,6 +410,7 @@ void RECEIVE_ATTR SomfyTransceiver::handleReceive() {
           if(rx_queue.items[i].pulseCount == 0) {
             first = i;
             memcpy(&rx_queue.items[i], &somfy_rx, sizeof(somfy_rx_t));
+            s_rxDbg.frameQueued = true;
             break;
           }
         }
@@ -487,6 +511,10 @@ bool SomfyTransceiver::receive(somfy_rx_t *rx) {
       ESP_LOGD(TAG, "Processing receive %d", rx_queue.length);
       rx_queue.pop(rx);
       this->frame.decodeFrame(rx);
+      ESP_LOGI(TAG, "Frame decoded: addr=0x%06" PRIx32 " rcode=%u cmd=%s valid=%d bits=%u",
+               (uint32_t)this->frame.remoteAddress, (unsigned)this->frame.rollingCode,
+               translateSomfyCommand(this->frame.cmd).c_str(),
+               (int)this->frame.valid, (unsigned)rx->bit_length);
       this->emitFrame(&this->frame, rx);
       return this->frame.valid;
     }
@@ -537,7 +565,7 @@ void SomfyTransceiver::enableReceive(void) {
       gpio_uninstall_isr_service();
       gpio_install_isr_service(0);
       gpio_isr_handler_add((gpio_num_t)interruptPin, SomfyTransceiver::handleReceiveISR, NULL);
-      ESP_LOGI(TAG, "Enabled receive on Pin #%d Timing: %ld", this->config.RXPin, millis() - timing);
+      ESP_LOGD(TAG, "Enabled receive on Pin #%d Timing: %ld", this->config.RXPin, millis() - timing);
     }
 }
 
@@ -596,7 +624,7 @@ void transceiver_config_t::fromJSON(JsonObject& obj) {
     if(obj.containsKey("txPower")) this->txPower = obj["txPower"].as<int8_t>();
     if(obj.containsKey("proto")) this->proto = static_cast<radio_proto>(obj["proto"].as<uint8_t>());
     if(obj.containsKey("noiseDetection")) this->noiseDetection = obj["noiseDetection"];
-    ESP_LOGI(TAG, "SCK:%u MISO:%u MOSI:%u CSN:%u RX:%u TX:%u", this->SCKPin, this->MISOPin, this->MOSIPin, this->CSNPin, this->RXPin, this->TXPin);
+    ESP_LOGD(TAG, "SCK:%u MISO:%u MOSI:%u CSN:%u RX:%u TX:%u", this->SCKPin, this->MISOPin, this->MOSIPin, this->CSNPin, this->RXPin, this->TXPin);
 }
 
 void transceiver_config_t::toJSON(JsonResponse &json) {
@@ -637,13 +665,13 @@ void transceiver_config_t::save() {
     pref.putBool("noiseDet", this->noiseDetection);
     pref.end();
    
-    ESP_LOGI(TAG, "Save Radio Settings ");
-    ESP_LOGI(TAG, "SCK:%u MISO:%u MOSI:%u CSN:%u RX:%u TX:%u", this->SCKPin, this->MISOPin, this->MOSIPin, this->CSNPin, this->RXPin, this->TXPin);
+    ESP_LOGD(TAG, "Save Radio Settings ");
+    ESP_LOGD(TAG, "SCK:%u MISO:%u MOSI:%u CSN:%u RX:%u TX:%u", this->SCKPin, this->MISOPin, this->MOSIPin, this->CSNPin, this->RXPin, this->TXPin);
 }
 
 void transceiver_config_t::removeNVSKey(const char *key) {
   if(pref.isKey(key)) {
-    ESP_LOGI(TAG, "Removing NVS Key: CC1101.%s", key);
+    ESP_LOGD(TAG, "Removing NVS Key: CC1101.%s", key);
     pref.remove(key);
   }
 }
@@ -653,7 +681,7 @@ void transceiver_config_t::load() {
     esp_chip_info(&ci);
     switch(ci.model) {
       case esp_chip_model_t::CHIP_ESP32S3:
-        ESP_LOGI(TAG, "Setting S3 Transceiver Defaults...");
+        ESP_LOGD(TAG, "Setting S3 Transceiver Defaults...");
         this->TXPin = 15;
         this->RXPin = 14;
         this->MOSIPin = 11;
@@ -742,8 +770,8 @@ void transceiver_config_t::apply() {
       this->radioInit = false;
       pref.end();
       if(!radioInit) return;
-      ESP_LOGI(TAG, "Applying radio settings ");
-      ESP_LOGI(TAG, "Setting Data Pins RX:%u TX:%u", this->RXPin, this->TXPin);
+      ESP_LOGD(TAG, "Applying radio settings ");
+      ESP_LOGD(TAG, "Setting Data Pins RX:%u TX:%u", this->RXPin, this->TXPin);
       // Configure all pins through the GPIO matrix before SPI/CC1101 init.
       // Without this, ESP32-S3 reports "IO x is not set as GPIO" and the SPI
       // transfer hangs, triggering the watchdog.
@@ -768,8 +796,8 @@ void transceiver_config_t::apply() {
       }
       // else: RMT owns TXPin — setGDO() → GDO_Set() → pinMode(TXPin, OUTPUT)
       // would overwrite the RMT GPIO routing; skip it entirely.
-      ESP_LOGI(TAG, "Setting SPI Pins SCK:%u MISO:%u MOSI:%u CSN:%u", this->SCKPin, this->MISOPin, this->MOSIPin, this->CSNPin);
-      ESP_LOGI(TAG, "Radio Pins Configured!");
+      ESP_LOGD(TAG, "Setting SPI Pins SCK:%u MISO:%u MOSI:%u CSN:%u", this->SCKPin, this->MISOPin, this->MOSIPin, this->CSNPin);
+      ESP_LOGD(TAG, "Radio Pins Configured!");
       ELECHOUSE_cc1101.Init();
       ELECHOUSE_cc1101.setCCMode(0);                            // set config for internal transmission mode.
       ELECHOUSE_cc1101.setMHZ(this->frequency);                 // Here you can set your basic frequency. The lib calculates the frequency automatically (default = 433.92).The cc1101 can: 300-348 MHZ, 387-464MHZ and 779-928MHZ. Read More info from datasheet.
@@ -805,7 +833,7 @@ void transceiver_config_t::apply() {
     
       
       if (!ELECHOUSE_cc1101.getCC1101()) {
-          ESP_LOGI(TAG, "Error setting up the radio");
+          ESP_LOGE(TAG, "Error setting up the radio");
           this->radioInit = false;
       }
       else {
@@ -835,7 +863,7 @@ bool SomfyTransceiver::begin() {
     pref.end();
     this->config.apply();
     rx_queue.init();
-    ESP_LOGI(TAG, "RMT build: transceiver enabled=%d TXPin=%d", this->config.enabled, this->config.TXPin);
+    ESP_LOGD(TAG, "RMT build: transceiver enabled=%d TXPin=%d", this->config.enabled, this->config.TXPin);
     if(this->config.enabled && s_rmtTxChan == nullptr) {
         rmt_tx_channel_config_t ch_cfg = {};
         ch_cfg.gpio_num          = (gpio_num_t)this->config.TXPin;
@@ -858,10 +886,11 @@ bool SomfyTransceiver::begin() {
         cbs.on_trans_done = rmt_tx_done_cb;
         ESP_ERROR_CHECK(rmt_tx_register_event_callbacks(s_rmtTxChan, &cbs, nullptr));
         ESP_ERROR_CHECK(rmt_enable(s_rmtTxChan));
-        ESP_LOGI(TAG, "RMT TX channel initialised on GPIO %d", this->config.TXPin);
-        // RMT enable drives TXPin LOW, which the CC1101 in async serial mode
-        // interprets as a start bit on GDO2 and leaves RX mode. Restore it.
-        ELECHOUSE_cc1101.SetRx();
+        ESP_LOGD(TAG, "RMT TX channel initialised on GPIO %d", this->config.TXPin);
+        // rmt_enable() drives TXPin LOW against CC1101 GDO0, corrupting IOCFG2/PKTCTRL0
+        // so GDO2 stops toggling. A full re-apply restores all CC1101 registers and
+        // re-enables the GPIO interrupt — matching what beginFrequencyScan() does.
+        this->config.apply();
     }
     return true;
 }
@@ -891,7 +920,7 @@ void SomfyTransceiver::loop() {
       noiseDisabledAt = millis();
       ESP_LOGW(TAG, "RF noise detected — RX disabled for %lu ms", (unsigned long)NOISE_COOLDOWN_MS);
     } else if(millis() - noiseDisabledAt > NOISE_COOLDOWN_MS) {
-      ESP_LOGI(TAG, "RF noise cooldown elapsed — re-enabling RX");
+      ESP_LOGD(TAG, "RF noise cooldown elapsed — re-enabling RX");
       noiseDetected = false;
       noiseDisabledAt = 0;
       noisePulseCount = 0;
@@ -899,6 +928,31 @@ void SomfyTransceiver::loop() {
       gpio_intr_enable((gpio_num_t)interruptPin);
     }
     return;
+  }
+
+  // Drain ISR telemetry — safe to log here (task context, not ISR).
+  // Reports every 5 s so we can see ISR activity (or lack of it) without flooding.
+  static uint32_t lastTelemAt = 0;
+  static uint32_t lastTotalCalls = 0;
+  if(millis() - lastTelemAt > 5000) {
+    lastTelemAt = millis();
+    uint32_t calls = s_rxDbg.totalCalls;
+    ESP_LOGD(TAG, "ISR telem: total=%lu (+%lu) glitch=%lu reset=%lu lastDur=%lu µs resetDur=%lu µs hwSync=%u bits=%u waitHalf=%d status=%u",
+             (unsigned long)calls,
+             (unsigned long)(calls - lastTotalCalls),
+             (unsigned long)s_rxDbg.glitchCalls,
+             (unsigned long)s_rxDbg.resetCalls,
+             (unsigned long)s_rxDbg.lastDuration,
+             (unsigned long)s_rxDbg.resetDuration,
+             (unsigned)s_rxDbg.hwSyncCount,
+             (unsigned)s_rxDbg.bitsReceived,
+             (int)s_rxDbg.waitingHalf,
+             (unsigned)s_rxDbg.status);
+    lastTotalCalls = calls;
+  }
+  if(s_rxDbg.frameQueued) {
+    s_rxDbg.frameQueued = false;
+    ESP_LOGD(TAG, "ISR queued complete frame");
   }
 
   somfy_rx_t rx;
@@ -912,7 +966,7 @@ void SomfyTransceiver::loop() {
     for(uint8_t i = 0; i < SOMFY_MAX_REPEATERS; i++) {
       if(somfy.repeaters[i] == frame.remoteAddress) {
         tx_queue.push(&rx);
-        ESP_LOGI(TAG, "Queued repeater frame...");
+        ESP_LOGD(TAG, "Queued repeater frame...");
         break;
       }
     }
@@ -922,7 +976,7 @@ void SomfyTransceiver::loop() {
     // Finish a completed RMT transmission before doing anything else.
     static uint32_t s_busyWarnAt = 0;
     if(s_rmtBusy && s_txDone) {
-      ESP_LOGI(TAG, "RMT TX done — calling endTransmit");
+      ESP_LOGD(TAG, "RMT TX done — calling endTransmit");
       this->endTransmit();
       s_rmtBusy = false;
       s_txDone  = false;
@@ -942,12 +996,12 @@ void SomfyTransceiver::loop() {
     if(tx_queue.length > 0 && millis() > tx_queue.delay_time && somfy_rx.cpt_synchro_hw == 0 && !s_rmtBusy) {
       somfy_tx_t tx;
       tx_queue.pop(&tx);
-      ESP_LOGI(TAG, "Sending frame %d - %d-BIT [", tx.hwsync, tx.bit_length);
+      ESP_LOGD(TAG, "Sending frame %d - %d-BIT [", tx.hwsync, tx.bit_length);
       for(uint8_t j = 0; j < 10; j++) {
-        ESP_LOGI(TAG, "%d", tx.payload[j]);
-        if(j < 9) ESP_LOGI(TAG, ", ");
+        ESP_LOGD(TAG, "%d", tx.payload[j]);
+        if(j < 9) ESP_LOGD(TAG, ", ");
       }
-      ESP_LOGI(TAG, "]");
+      ESP_LOGD(TAG, "]");
       this->beginTransmit();
       this->beginRawFrameTx(tx.payload, tx.hwsync, tx.bit_length);
       // endTransmit() deferred — handled above when txBusy() clears
@@ -999,7 +1053,7 @@ void SomfyTransceiver::beginFrameTx(somfy_frame_t &frame, uint8_t repeats) {
     s_txDone  = false;
     s_rmtBusy = true;
 
-    ESP_LOGI(TAG, "RMT beginFrameTx: bitlen=%d frames=%d", frame.bitLength, total);
+    ESP_LOGD(TAG, "RMT beginFrameTx: bitlen=%d frames=%d", frame.bitLength, total);
 
     uint8_t queued = 0;
     for(uint8_t i = 0; i < total; i++) {
@@ -1025,7 +1079,7 @@ void SomfyTransceiver::beginFrameTx(somfy_frame_t &frame, uint8_t repeats) {
         s_rmtBusy = false;
         s_txDone  = false;
     }
-    ESP_LOGI(TAG, "RMT beginFrameTx: queued %u/%u", queued, total);
+    ESP_LOGD(TAG, "RMT beginFrameTx: queued %u/%u", queued, total);
 }
 
 // Raw variant used by the repeater path: pre-encoded bytes, single frame.

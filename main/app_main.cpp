@@ -34,6 +34,8 @@ static const char *TAG = "Main";
 
 static void mainLoop(void*) {
   initArduino();
+  // Changing the log level needs to be here, after initArduino() has set up the default logger, but before any other initialisation that might log messages. Setting it to ESP_LOG_DEBUG will log all messages; set to ESP_LOG_INFO to disable debug logs.
+  esp_log_level_set("*", ESP_LOG_INFO);
   ESP_LOGI(TAG, "Startup/Boot....");
   ESP_LOGI(TAG, "Mounting File System...");
   if(LittleFS.begin(true)) ESP_LOGI(TAG, "File system mounted successfully");
@@ -57,8 +59,6 @@ static void mainLoop(void*) {
   somfy.begin();
   // homekit.begin() is deferred — called in ControllerNetwork::setConnected() after mDNS is up.
   // Breadcrumb logging for hang diagnosis — set to ESP_LOG_INFO to disable.
-  esp_log_level_set("Sockets", ESP_LOG_DEBUG);
-  esp_log_level_set("ControllerNetwork", ESP_LOG_DEBUG);
 
   uint32_t iterMaxMs = 0;
   uint32_t iterMaxReportedAt = 0;
