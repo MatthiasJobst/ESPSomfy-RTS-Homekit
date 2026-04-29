@@ -10,14 +10,12 @@
 #include "SomfyShade.h"
 #include "SomfyShadeController.h"
 #include "Sockets.h"
-#include "MQTT.h"
 
 static const char *TAG = "SomfyRemote";
 
 extern SomfyShadeController somfy;
 extern SocketEmitter sockEmit;
 extern ConfigSettings settings;
-extern MQTTClass mqtt;
 extern Preferences pref;
 extern GitUpdater git;
 

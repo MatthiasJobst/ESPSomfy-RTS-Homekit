@@ -12,7 +12,6 @@
 #include "WResp.h"
 #include "Web.h"
 #include "WebHelpers.h"
-#include "MQTT.h"
 #include "GitOTA.h"
 #include "ControllerNetwork.h"
 #include "HomeKit.h"
@@ -23,7 +22,6 @@ extern SSDPClass SSDP;
 extern rebootDelay_t rebootDelay;
 extern SomfyShadeController somfy;
 extern Web webServer;
-extern MQTTClass mqtt;
 extern GitUpdater git;
 extern ControllerNetwork net;
 extern SocketEmitter sockEmit;
@@ -706,8 +704,6 @@ void Web::begin() {
   server.on("/connectwifi",        []() { webServer.handleConnectWifi(server); });
   server.on("/modulesettings",     []() { webServer.handleModuleSettings(server); });
   server.on("/networksettings",    []() { webServer.handleNetworkSettings(server); });
-  server.on("/connectmqtt",        []() { webServer.handleConnectMQTT(server); });
-  server.on("/mqttsettings",       []() { webServer.handleMQTTSettings(server); });
   server.on("/roomSortOrder",      []() { webServer.handleRoomSortOrder(server); });
   server.on("/shadeSortOrder",     []() { webServer.handleShadeSortOrder(server); });
   server.on("/groupSortOrder",     []() { webServer.handleGroupSortOrder(server); });

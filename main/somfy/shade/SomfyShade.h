@@ -1,6 +1,6 @@
 // SomfyShade.h — Individual shade abstraction: SomfyShade extends SomfyRemote with
 // position tracking (current/target/my), tilt support, up/down/tilt timing, sun-sensor
-// and light flags, GPIO relay outputs, MQTT state publishing, and HomeKit integration.
+// and light flags, GPIO relay outputs, socket/HomeKit state publishing.
 #pragma once
 #include "SomfyRemote.h"
 #include "SomfyFlagManager.h"
@@ -105,10 +105,6 @@ class SomfyShade : public SomfyRemote {
     void processSunFlagCommand(bool internal, somfy_frame_t &frame);
     void processMyCommand(bool internal, somfy_frame_t &frame, uint64_t curTime);
     void processUpDownCommand(somfy_commands cmd, int8_t moveDir, bool internal, somfy_frame_t &frame, uint64_t curTime);
-    void publish();
-    void unpublish();
-    static void unpublish(uint8_t id);
-    static void unpublish(uint8_t id, const char *topic);
     void publishState();
     void commit();
     void commitShadePosition();
@@ -133,14 +129,6 @@ class SomfyShade : public SomfyRemote {
     float p_currentPos(float pos);
     float p_currentTiltPos(float pos);
     uint16_t p_lastRollingCode(uint16_t code) override;
-    bool publish(const char *topic, const char *val, bool retain = false);
-    bool publish(const char *topic, uint8_t val, bool retain = false);
-    bool publish(const char *topic, int8_t val, bool retain = false);
-    bool publish(const char *topic, uint32_t val, bool retain = false);
-    bool publish(const char *topic, uint16_t val, bool retain = false);
-    bool publish(const char *topic, bool val, bool retain = false);
-    void publishDisco();
-    void unpublishDisco();
 };
 
 

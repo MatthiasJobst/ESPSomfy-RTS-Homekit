@@ -13,7 +13,6 @@
 #include "SomfyTransceiver.h"
 #include "SomfyShadeController.h"
 #include "Sockets.h"
-#include "MQTT.h"
 #include "GitOTA.h"
 
 static const char *TAG = "SomfyTransceiver";
@@ -84,7 +83,6 @@ uint32_t lastScan = 0;
 extern SomfyShadeController somfy;
 extern SocketEmitter sockEmit;
 extern ConfigSettings settings;
-extern MQTTClass mqtt;
 extern Preferences pref;
 extern GitUpdater git;
 

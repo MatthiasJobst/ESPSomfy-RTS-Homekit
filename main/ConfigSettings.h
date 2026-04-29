@@ -23,7 +23,6 @@ struct restore_options_t {
   bool network = false;
   bool transceiver = false;
   bool repeaters = false;
-  bool mqtt = false;
   void fromJSON(JsonObject &obj);
 };
 struct appver_t {
@@ -153,24 +152,6 @@ class SecuritySettings: BaseSettings {
     void toJSON(JsonResponse &json);
     bool fromJSON(JsonObject &obj);
 };
-class MQTTSettings: BaseSettings {
-  public:
-    bool enabled = false;
-    bool pubDisco = false;
-    char hostname[65] = "ESPSomfyRTS";
-    char protocol[10] = "mqtt://";
-    uint16_t port = 1883;
-    char username[33] = "";
-    char password[33] = "";
-    char rootTopic[65] = "";
-    char discoTopic[65] = "homeassistant";
-    bool begin();
-    bool save();
-    bool load();
-    bool toJSON(JsonObject &obj);
-    void toJSON(JsonResponse &json);
-    bool fromJSON(JsonObject &obj);
-};
 class ConfigSettings: BaseSettings {
   public:
     static void printAvailHeap();
@@ -187,7 +168,6 @@ class ConfigSettings: BaseSettings {
     WifiSettings WIFI;
     EthernetSettings Ethernet;
     NTPSettings NTP;
-    MQTTSettings MQTT;
     SecuritySettings Security;
     bool requiresAuth();
     bool fromJSON(JsonObject &obj);

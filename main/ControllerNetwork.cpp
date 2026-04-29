@@ -10,12 +10,10 @@
 #include "Sockets.h"
 #include "Utils.h"
 #include "SSDP.h"
-#include "MQTT.h"
 
 extern ConfigSettings settings;
 extern Web webServer;
 extern SocketEmitter sockEmit;
-extern MQTTClass mqtt;
 extern rebootDelay_t rebootDelay;
 extern ControllerNetwork net;
 extern SomfyShadeController somfy;
@@ -30,7 +28,6 @@ int connectRetries = 0;
 
 void ControllerNetwork::end() {
   SSDP.end();
-  mqtt.end();
   sockEmit.end();
   delay(100);
 }
@@ -152,7 +149,6 @@ void ControllerNetwork ::loop() {
   }
   
   //sockEmit.loop();
-  //mqtt.loop();
   if(settings.ssdpBroadcast && this->connected()) {
     if(!SSDP.isStarted) SSDP.begin();
     if(SSDP.isStarted) SSDP.loop();
@@ -162,7 +158,6 @@ void ControllerNetwork ::loop() {
 
 bool ControllerNetwork::changeAP(const uint8_t *bssid, const int32_t channel) {
   if(SSDP.isStarted) SSDP.end();
-  mqtt.disconnect();
   //sockEmit.end();
   WiFi.disconnect(false, true);
   this->connType = conn_types_t::unset;

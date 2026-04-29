@@ -45,8 +45,6 @@ class Web {
     void handleConnectWifi(WebServer &server);
     void handleModuleSettings(WebServer &server);
     void handleNetworkSettings(WebServer &server);
-    void handleConnectMQTT(WebServer &server);
-    void handleMQTTSettings(WebServer &server);
     // Next ID / scaffold
     void handleGetNextRoom(WebServer &server);
     void handleGetNextShade(WebServer &server);

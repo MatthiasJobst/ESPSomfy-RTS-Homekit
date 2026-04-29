@@ -1,16 +1,13 @@
-// SomfyRoom.cpp — SomfyRoom: NVS persistence, JSON serialisation, MQTT
-// publishing and socket-emit for named rooms.
+// SomfyRoom.cpp — SomfyRoom: NVS persistence, JSON serialisation, and socket-emit.
 #include "SomfyRoom.h"
 #include "SomfyShadeController.h"
 #include "Sockets.h"
-#include "MQTT.h"
 #include "esp_log.h"
 
 static const char *TAG = "SomfyRoom";
 
 extern SomfyShadeController somfy;
 extern SocketEmitter sockEmit;
-extern MQTTClass mqtt;
 
 void SomfyRoom::clear() {
   this->roomId = 0;
@@ -42,29 +39,7 @@ void SomfyRoom::emitState(uint8_t num, const char *evt) {
   json->addElem("sortOrder", this->sortOrder);
   json->endObject();
   sockEmit.endEmit(num);
-  this->publish();
 }
 
-void SomfyRoom::publish() {
-  if(mqtt.connected()) {
-    char topic[64];
-    sprintf(topic, "rooms/%d/roomId", this->roomId);
-    mqtt.publish(topic, this->roomId, true);
-    sprintf(topic, "rooms/%d/name", this->roomId);
-    mqtt.publish(topic, this->name, true);
-    sprintf(topic, "rooms/%d/sortOrder", this->roomId);
-    mqtt.publish(topic, this->sortOrder, true);
-  }
-}
-
-void SomfyRoom::unpublish() {
-  if(mqtt.connected()) {
-    char topic[64];
-    sprintf(topic, "rooms/%d/roomId", this->roomId);
-    mqtt.unpublish(topic);
-    sprintf(topic, "rooms/%d/name", this->roomId);
-    mqtt.unpublish(topic);
-    sprintf(topic, "rooms/%d/sortOrder", this->roomId);
-    mqtt.unpublish(topic);
-  }
-}
+void SomfyRoom::publish() {}
+void SomfyRoom::unpublish() {}

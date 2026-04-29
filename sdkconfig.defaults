@@ -1,14 +1,17 @@
 # ---------------------------------------------------------------------------
 # sdkconfig.defaults — applied before menuconfig on a clean build.
-# Run `idf.py set-target esp32s3` before first build.
+# Run `idf.py set-target esp32` before first build.
 # ---------------------------------------------------------------------------
 
 # Partition table
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 
-# Flash size — Seeed ESP32-S3 has 8MB flash
-CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
+# Flash size
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+
+# Compiler optimization — size (-Os) instead of debug (-Og)
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y
 
 # FreeRTOS tick rate — arduino-esp32 requires 1000 Hz
 CONFIG_FREERTOS_HZ=1000
@@ -20,11 +23,16 @@ CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH=8192
 # arduino-esp32: we provide app_main() ourselves and call initArduino() directly
 CONFIG_AUTOSTART_ARDUINO=n
 
-# mbedTLS: full certificate bundle for HTTPS (GitHub OTA, MQTT TLS)
-CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y
+# mbedTLS: common certificate bundle for HTTPS (GitHub OTA).
+# Full bundle (~72 KB) is not needed — GitHub uses DigiCert which is in the common bundle (~40 KB).
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_CMN=y
 
-# mbedTLS: PSK cipher suites — required for NetworkClientSecure/ssl_client.cpp
+# mbedTLS: PSK cipher suites — required by arduino-esp32 NetworkClientSecure/ssl_client.cpp
 CONFIG_MBEDTLS_PSK_MODES=y
+
+# mbedTLS: disable old TLS versions — GitHub requires TLS 1.2+, HAP uses its own crypto stack.
+CONFIG_MBEDTLS_SSL_PROTO_TLS1=n
+CONFIG_MBEDTLS_SSL_PROTO_TLS1_1=n
 
 # WDT timeout — matches the 7s set in app_main()
 CONFIG_ESP_TASK_WDT_TIMEOUT_S=10
@@ -58,7 +66,7 @@ CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=16
 
 # HAP port and socket cap — port must not clash with web server (port 80).
 # HAP spec requires minimum 8 open sockets for certification; 8+3 internal = 11 used by HAP.
-# LWIP_MAX_SOCKETS must cover HAP(11) + web server(4) + WebSocket(4) + MQTT/misc(4) + headroom.
+# LWIP_MAX_SOCKETS must cover HAP(11) + web server(4) + WebSocket(4) + headroom(5).
 CONFIG_HAP_HTTP_SERVER_PORT=51826
 CONFIG_HAP_HTTP_MAX_OPEN_SOCKETS=8
 
@@ -66,7 +74,7 @@ CONFIG_HAP_HTTP_MAX_OPEN_SOCKETS=8
 # MAX_ACTIVE_TCP is the PCB pool shared by active AND TIME_WAIT sockets.
 # A page load creates ~12 HTTP connections that linger in TIME_WAIT.
 # TCP_MSL=10000 → TIME_WAIT = 20s (was 120s), freeing PCBs faster.
-CONFIG_LWIP_MAX_SOCKETS=28
+CONFIG_LWIP_MAX_SOCKETS=24
 CONFIG_LWIP_SO_REUSE=y
 CONFIG_LWIP_MAX_ACTIVE_TCP=32
 CONFIG_LWIP_MAX_LISTENING_TCP=16

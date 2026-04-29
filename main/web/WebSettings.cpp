@@ -5,7 +5,6 @@
 //   - Radio / transceiver configuration (handleGetRadio, handleSaveRadio)
 //   - General device settings (handleSetGeneral)
 //   - Network settings and Wi-Fi connection (handleSetNetwork, handleSetIP, handleConnectWifi, handleNetworkSettings)
-//   - MQTT broker configuration and connection (handleMQTTSettings, handleConnectMQTT)
 //   - Module-level settings (handleModuleSettings)
 //   - OTA release listing and firmware download queuing (handleGetReleases, handleCancelFirmware)
 
@@ -18,7 +17,6 @@
 #include "WResp.h"
 #include "Web.h"
 #include "WebHelpers.h"
-#include "MQTT.h"
 #include "GitOTA.h"
 #include "ControllerNetwork.h"
 
@@ -26,7 +24,6 @@ extern ConfigSettings settings;
 extern rebootDelay_t rebootDelay;
 extern SomfyShadeController somfy;
 extern Web webServer;
-extern MQTTClass mqtt;
 extern GitUpdater git;
 extern ControllerNetwork net;
 
@@ -281,34 +278,6 @@ void Web::handleNetworkSettings(WebServer &server) {
   resp.beginObject("ip");
   settings.IP.toJSON(resp);
   resp.endObject();
-  resp.endObject();
-  resp.endResponse();
-}
-void Web::handleConnectMQTT(WebServer &server) {
-  JsonDocument doc; JsonObject obj;
-  if (!parseBody(server, doc, obj)) return;
-  HTTPMethod method = server.method();
-  ESP_LOGI(TAG, "Saving MQTT HTTP Method: %d", server.method());
-  if (method == HTTP_POST || method == HTTP_PUT) {
-    mqtt.disconnect();
-    settings.MQTT.fromJSON(obj);
-    settings.MQTT.save();
-    JsonResponse resp;
-    resp.beginResponse(&server, g_content, sizeof(g_content));
-    resp.beginObject();
-    settings.MQTT.toJSON(resp);
-    resp.endObject();
-    resp.endResponse();
-  }
-  else {
-    server.send(201, "application/json", "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
-  }
-}
-void Web::handleMQTTSettings(WebServer &server) {
-  JsonResponse resp;
-  resp.beginResponse(&server, g_content, sizeof(g_content));
-  resp.beginObject();
-  settings.MQTT.toJSON(resp);
   resp.endObject();
   resp.endResponse();
 }

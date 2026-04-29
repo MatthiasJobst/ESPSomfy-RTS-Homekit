@@ -1,5 +1,5 @@
 // SomfyGroup.h — SomfyGroup: a named group of shades that forwards commands to
-// all linked shades, aggregates flag state, and publishes via MQTT.
+// all linked shades, aggregates flag state, and emits state over WebSocket.
 #pragma once
 #include "SomfyRemote.h"
 
@@ -25,21 +25,12 @@ class SomfyGroup : public SomfyRemote {
     bool unlinkShade(uint8_t shadeId);
     bool hasShadeId(uint8_t shadeId);
     void compressLinkedShadeIds();
-    void publish();
     void unpublish();
     static void unpublish(uint8_t id);
-    static void unpublish(uint8_t id, const char *topic);
-    void publishState();
     void updateFlags();
     void emitState(const char *evt = "groupState");
     void emitState(uint8_t num, const char *evt = "groupState");
     void sendCommand(somfy_commands cmd);
     void sendCommand(somfy_commands cmd, uint8_t repeat, uint8_t stepSize = 0);
     int8_t p_direction(int8_t dir);
-    bool publish(const char *topic, const char *val, bool retain = false);
-    bool publish(const char *topic, uint8_t val, bool retain = false);
-    bool publish(const char *topic, int8_t val, bool retain = false);
-    bool publish(const char *topic, uint32_t val, bool retain = false);
-    bool publish(const char *topic, uint16_t val, bool retain = false);
-    bool publish(const char *topic, bool val, bool retain = false);
 };

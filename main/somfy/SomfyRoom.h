@@ -1,5 +1,4 @@
-// SomfyRoom.h — SomfyRoom: named room with sort order, NVS persistence, MQTT
-// publishing and socket-emit helpers.
+// SomfyRoom.h — SomfyRoom: named room with sort order, NVS persistence, and socket-emit.
 #pragma once
 #include "SomfyFrame.h"
 

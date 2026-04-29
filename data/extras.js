@@ -1,53 +1,3 @@
-class MQTT {
-    initialized = false;
-    init() { this.initialized = true; }
-    async loadMQTT() {
-        return getJSONSync('/mqttsettings', (err, settings) => {
-            if (err) 
-                console.log(err);
-            else {
-                console.log(settings);
-                ui.toElement(document.getElementById('divMQTT'), { mqtt: settings });
-                document.getElementById('divDiscoveryTopic').style.display = settings.pubDisco ? '' : 'none';
-            }
-        });
-    }
-    connectMQTT() {
-        let obj = ui.fromElement(document.getElementById('divMQTT'));
-        console.log(obj);
-        if (obj.mqtt.enabled) {
-            if (typeof obj.mqtt.hostname !== 'string' || obj.mqtt.hostname.length === 0) {
-                ui.errorMessage('Invalid host name').querySelector('.sub-message').innerHTML = 'You must supply a host name to connect to MQTT.';
-                return;
-            }
-            if (obj.mqtt.hostname.length > 64) {
-                ui.errorMessage('Invalid host name').querySelector('.sub-message').innerHTML = 'The maximum length of the host name is 64 characters.';
-                return;
-            }
-            if (isNaN(obj.mqtt.port) || obj.mqtt.port < 0) {
-                ui.errorMessage('Invalid port number').querySelector('.sub-message').innerHTML = 'Likely ports are 1183, 8883 for MQTT/S or 80,443 for HTTP/S';
-                return;
-            }
-            if (typeof obj.mqtt.username === 'string' && obj.mqtt.username.length > 32) {
-                ui.errorMessage('Invalid Username').querySelector('.sub-message').innerHTML = 'The maximum length of the username is 32 characters.';
-                return;
-            }
-            if (typeof obj.mqtt.password === 'string' && obj.mqtt.password.length > 32) {
-                ui.errorMessage('Invalid Password').querySelector('.sub-message').innerHTML = 'The maximum length of the password is 32 characters.';
-                return;
-            }
-            if (typeof obj.mqtt.rootTopic === 'string' && obj.mqtt.rootTopic.length > 64) {
-                ui.errorMessage('Invalid Root Topic').querySelector('.sub-message').innerHTML = 'The maximum length of the root topic is 64 characters.';
-                return;
-            }
-        }
-        putJSONSync('/connectmqtt', obj.mqtt, (err, response) => {
-            if (err) ui.serviceError(err);
-            console.log(response);
-        });
-    }
-}
-var mqtt = new MQTT();
 class Firmware {
     initialized = false;
     init() { this.initialized = true; }
@@ -121,13 +71,12 @@ class Firmware {
         let div = this.createFileUploader('/restore');
         let inst = div.querySelector('div[id=divInstText]');
         let html = '<div style="font-size:14px;">Select a backup file that you would like to restore and the options you would like to restore then press the Upload File button.</div><hr />';
-        html += `<div style="font-size:14px;">Restoring network settings from a different board than the original will ignore Ethernet chip settings. Security, MQTT and WiFi connection information will also not be restored since backup files do not contain passwords.</div><hr/>`;
+        html += `<div style="font-size:14px;">Restoring network settings from a different board than the original will ignore Ethernet chip settings. Security and WiFi connection information will also not be restored since backup files do not contain passwords.</div><hr/>`;
         html += '<div style="font-size:14px;margin-bottom:27px;text-align:left;margin-left:70px;">';
         html += `<div class="field-group" style="vertical-align:middle;width:auto;"><input id="cbRestoreShades" type="checkbox" data-bind="shades" style="display:inline-block;" checked="true" /><label for="cbRestoreShades" style="display:inline-block;cursor:pointer;color:white;">Restore Shades and Groups</label></div>`;
         html += `<div class="field-group" style="vertical-align:middle;width:auto;"><input id="cbRestoreRepeaters" type="checkbox" data-bind="repeaters" style="display:inline-block;" /><label for="cbRestoreRepeaters" style="display:inline-block;cursor:pointer;color:white;">Restore Repeaters</label></div>`;
         html += `<div class="field-group" style="vertical-align:middle;width:auto;"><input id="cbRestoreSystem" type="checkbox" data-bind="settings" style="display:inline-block;" /><label for="cbRestoreSystem" style="display:inline-block;cursor:pointer;color:white;">Restore System Settings</label></div>`;
         html += `<div class="field-group" style="vertical-align:middle;width:auto;"><input id="cbRestoreNetwork" type="checkbox" data-bind="network" style="display:inline-block;" /><label for="cbRestoreNetwork" style="display:inline-block;cursor:pointer;color:white;">Restore Network Settings</label></div>`
-        html += `<div class="field-group" style="vertical-align:middle;width:auto;"><input id="cbRestoreMQTT" type="checkbox" data-bind="mqtt" style="display:inline-block;" /><label for="cbRestoreMQTT" style="display:inline-block;cursor:pointer;color:white;">Restore MQTT Settings</label></div>`
         html += `<div class="field-group" style="vertical-align:middle;width:auto;"><input id="cbRestoreTransceiver" type="checkbox" data-bind="transceiver" style="display:inline-block;" /><label for="cbRestoreTransceiver" style="display:inline-block;cursor:pointer;color:white;">Restore Radio Settings</label></div>`;
         html += '</div>';
         inst.innerHTML = html;
@@ -520,7 +469,7 @@ class Firmware {
                     ui.errorMessage(el, 'This file is not a valid backup file');
                     return;
                 }
-                if (!data.shades && !data.settings && !data.network && !data.transceiver && !data.repeaters && !data.mqtt) {
+                if (!data.shades && !data.settings && !data.network && !data.transceiver && !data.repeaters) {
                     ui.errorMessage(el, 'No restore options have been selected');
                     return;
                 }

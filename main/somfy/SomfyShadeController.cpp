@@ -11,7 +11,6 @@
 #include "ConfigSettings.h"
 #include "SomfyShadeController.h"
 #include "Sockets.h"
-#include "MQTT.h"
 #include "HomeKit.h"
 #include "ShadeConfigFile.h"
 #include "GitOTA.h"
@@ -19,7 +18,6 @@
 extern SomfyShadeController somfy;
 extern SocketEmitter sockEmit;
 extern ConfigSettings settings;
-extern MQTTClass mqtt;
 extern Preferences pref;
 extern GitUpdater git;
 
@@ -166,38 +164,6 @@ void SomfyShadeController::emitState(uint8_t num) {
 
 void SomfyShadeController::publish() {
   this->updateGroupFlags();
-  char arrIds[128] = "[";
-  for(uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
-    SomfyShade *shade = &this->shades[i];
-    if(shade->getShadeId() == 255) continue;
-    if(strlen(arrIds) > 1) strlcat(arrIds, ",", sizeof(arrIds));
-    itoa(shade->getShadeId(), &arrIds[strlen(arrIds)], 10);
-    shade->publish();
-  }
-  strlcat(arrIds, "]", sizeof(arrIds));
-  mqtt.publish("shades", arrIds, true);
-  for(uint8_t i = 1; i <= SOMFY_MAX_SHADES; i++) {
-    SomfyShade *shade = this->getShadeById(i);
-    if(shade) continue;
-    else {
-      SomfyShade::unpublish(i);
-    }
-  }
-  strcpy(arrIds, "[");
-  for(uint8_t i = 0; i < SOMFY_MAX_GROUPS; i++) {
-    SomfyGroup *group = &this->groups[i];
-    if(group->getGroupId() == 255) continue;
-    if(strlen(arrIds) > 1) strlcat(arrIds, ",", sizeof(arrIds));
-    itoa(group->getGroupId(), &arrIds[strlen(arrIds)], 10);
-    group->publish();
-  }
-  strlcat(arrIds, "]", sizeof(arrIds));
-  mqtt.publish("groups", arrIds, true);
-  for(uint8_t i = 1; i <= SOMFY_MAX_GROUPS; i++) {
-    SomfyGroup *group = this->getGroupById(i);
-    if(group) continue;
-    else SomfyGroup::unpublish(i);
-  }
 }
 
 uint8_t SomfyShadeController::getNextShadeId() {
@@ -460,7 +426,6 @@ bool SomfyShadeController::deleteShade(uint8_t shadeId) {
   for(uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
     if(this->shades[i].getShadeId() == shadeId) {
       shades[i].emitState("shadeRemoved");
-      shades[i].unpublish();
       homekit.removeShade(&shades[i]);
       this->shades[i].clear();
     }

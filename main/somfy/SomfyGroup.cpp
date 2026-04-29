@@ -1,18 +1,15 @@
 // SomfyGroup.cpp — SomfyGroup: linked-shade management, command dispatch,
-// flag aggregation, JSON serialisation, MQTT publishing and socket-emit.
+// flag aggregation, JSON serialisation, and socket-emit.
 #include "SomfyGroup.h"
 #include "SomfyShade.h"
 #include "SomfyShadeController.h"
 #include "Sockets.h"
-#include "MQTT.h"
 #include "esp_log.h"
 
 static const char *TAG = "SomfyGroup";
-static char mqttTopicBuffer[55];
 
 extern SomfyShadeController somfy;
 extern SocketEmitter sockEmit;
-extern MQTTClass mqtt;
 
 void SomfyGroup::clear() {
   ESP_LOGD(TAG, "Clearing group.");
@@ -94,10 +91,7 @@ void SomfyGroup::updateFlags() {
 
 int8_t SomfyGroup::p_direction(int8_t dir) {
   int8_t old = this->direction;
-  if(old != dir) {
-    this->direction = dir;
-    this->publish("direction", this->direction);
-  }
+  this->direction = dir;
   return old;
 }
 
@@ -126,7 +120,6 @@ void SomfyGroup::emitState(uint8_t num, const char *evt) {
   json->addElem("flags", flags.getFlags());
   json->endObject();
   sockEmit.endEmit(num);
-  this->publish();
 }
 
 void SomfyGroup::sendCommand(somfy_commands cmd) { this->sendCommand(cmd, this->repeats); }
@@ -230,102 +223,5 @@ void SomfyGroup::toJSONRef(JsonResponse &json) {
   json.addElem("sortOrder", this->sortOrder);
 }
 
-void SomfyGroup::publishState() {
-  if(mqtt.connected()) {
-    this->publish("direction", this->direction, true);
-    this->publish("lastRollingCode", this->lastRollingCode, true);
-    this->publish("flipCommands", this->flipCommands, true);
-    this->publish("sunFlag", this->flags.hasSunFlag());
-    this->publish("sunny", this->flags.isSunny());
-    this->publish("windy", this->flags.isWindy());
-  }
-}
-
-void SomfyGroup::publish() {
-  if(mqtt.connected()) {
-    this->publish("groupId", this->groupId, true);
-    this->publish("name", this->name, true);
-    this->publish("remoteAddress", this->getRemoteAddress(), true);
-    this->publish("groupType", static_cast<uint8_t>(this->groupType), true);
-    this->publish("flags", this->flags.getFlags(), true);
-    this->publish("sunSensor", this->hasSunSensor(), true);
-    this->publishState();
-  }
-}
-
-void SomfyGroup::unpublish() { SomfyGroup::unpublish(this->groupId); }
-
-void SomfyGroup::unpublish(uint8_t id) {
-  if(mqtt.connected()) {
-    SomfyGroup::unpublish(id, "groupId");
-    SomfyGroup::unpublish(id, "name");
-    SomfyGroup::unpublish(id, "remoteAddress");
-    SomfyGroup::unpublish(id, "groupType");
-    SomfyGroup::unpublish(id, "direction");
-    SomfyGroup::unpublish(id, "lastRollingCode");
-    SomfyGroup::unpublish(id, "flags");
-    SomfyGroup::unpublish(id, "SunSensor");
-    SomfyGroup::unpublish(id, "flipCommands");
-  }
-}
-
-void SomfyGroup::unpublish(uint8_t id, const char *topic) {
-  if(mqtt.connected()) {
-    snprintf(mqttTopicBuffer, sizeof(mqttTopicBuffer), "groups/%u/%s", id, topic);
-    mqtt.unpublish(mqttTopicBuffer);
-  }
-}
-
-bool SomfyGroup::publish(const char *topic, const char *val, bool retain) {
-  if(mqtt.connected()) {
-    snprintf(mqttTopicBuffer, sizeof(mqttTopicBuffer), "groups/%u/%s", this->groupId, topic);
-    mqtt.publish(mqttTopicBuffer, val, retain);
-    return true;
-  }
-  return false;
-}
-
-bool SomfyGroup::publish(const char *topic, int8_t val, bool retain) {
-  if(mqtt.connected()) {
-    snprintf(mqttTopicBuffer, sizeof(mqttTopicBuffer), "groups/%u/%s", this->groupId, topic);
-    mqtt.publish(mqttTopicBuffer, val, retain);
-    return true;
-  }
-  return false;
-}
-
-bool SomfyGroup::publish(const char *topic, uint8_t val, bool retain) {
-  if(mqtt.connected()) {
-    snprintf(mqttTopicBuffer, sizeof(mqttTopicBuffer), "groups/%u/%s", this->groupId, topic);
-    mqtt.publish(mqttTopicBuffer, val, retain);
-    return true;
-  }
-  return false;
-}
-
-bool SomfyGroup::publish(const char *topic, uint32_t val, bool retain) {
-  if(mqtt.connected()) {
-    snprintf(mqttTopicBuffer, sizeof(mqttTopicBuffer), "groups/%u/%s", this->groupId, topic);
-    mqtt.publish(mqttTopicBuffer, val, retain);
-    return true;
-  }
-  return false;
-}
-
-bool SomfyGroup::publish(const char *topic, uint16_t val, bool retain) {
-  if(mqtt.connected()) {
-    snprintf(mqttTopicBuffer, sizeof(mqttTopicBuffer), "groups/%u/%s", this->groupId, topic);
-    mqtt.publish(mqttTopicBuffer, val, retain);
-    return true;
-  }
-  return false;
-}
-
-bool SomfyGroup::publish(const char *topic, bool val, bool retain) {
-  if(mqtt.connected()) {
-    snprintf(mqttTopicBuffer, sizeof(mqttTopicBuffer), "groups/%u/%s", this->groupId, topic);
-    mqtt.publish(mqttTopicBuffer, val, retain);
-    return true;
-  }
-  return false;
-}
+void SomfyGroup::unpublish() {}
+void SomfyGroup::unpublish(uint8_t id) { (void)id; }

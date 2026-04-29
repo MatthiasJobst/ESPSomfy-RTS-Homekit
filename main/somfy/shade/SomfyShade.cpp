@@ -93,120 +93,69 @@ void SomfyShade::checkMovement() { movementTracker.checkMovement(); }
 
 void SomfyShade::publishState() { mqttPublisher.publishState(); }
 
-void SomfyShade::publishDisco()   { mqttPublisher.publishDisco(); }
-void SomfyShade::unpublishDisco() { mqttPublisher.unpublishDisco(); }
-void SomfyShade::publish()        { mqttPublisher.publish(); }
-void SomfyShade::unpublish()      { mqttPublisher.unpublish(); }
-void SomfyShade::unpublish(uint8_t id)                    { SomfyMQTTPublisher::unpublish(id); }
-void SomfyShade::unpublish(uint8_t id, const char *topic) { SomfyMQTTPublisher::unpublish(id, topic); }
-
-bool SomfyShade::publish(const char *topic, int8_t val,  bool retain) { return mqttPublisher.publish(topic, val, retain); }
-bool SomfyShade::publish(const char *topic, const char *val, bool retain) { return mqttPublisher.publish(topic, val, retain); }
-bool SomfyShade::publish(const char *topic, uint8_t val, bool retain) { return mqttPublisher.publish(topic, val, retain); }
-bool SomfyShade::publish(const char *topic, uint32_t val, bool retain) { return mqttPublisher.publish(topic, val, retain); }
-bool SomfyShade::publish(const char *topic, uint16_t val, bool retain) { return mqttPublisher.publish(topic, val, retain); }
-bool SomfyShade::publish(const char *topic, bool val,    bool retain) { return mqttPublisher.publish(topic, val, retain); }
-
-
 float SomfyShade::p_currentPos(float pos) {
-  float old = this->currentPos;
   this->currentPos = pos;
-  if(floor(old) != floor(pos)) this->publish("position", this->transformPosition(static_cast<uint8_t>(floor(this->currentPos))));
-  return old;
+  return pos;
 }
 
 float SomfyShade::p_currentTiltPos(float pos) {
-  float old = this->currentTiltPos;
   this->currentTiltPos = pos;
-  if(floor(old) != floor(pos)) this->publish("tiltPosition", this->transformPosition(static_cast<uint8_t>(floor(this->currentTiltPos))));
-  return old;
+  return pos;
 }
 
 uint16_t SomfyShade::p_lastRollingCode(uint16_t code) {
-  uint16_t old = SomfyRemote::p_lastRollingCode(code);
-  if(old != code) this->publish("lastRollingCode", code);
-  return old;
+  return SomfyRemote::p_lastRollingCode(code);
 }
 
-bool SomfyShade::p_demoMode( bool val) {
-  bool old = this->flags.setDemoFlagReturnOld( val);
-  if(old != val) this->publish("demoMode", static_cast<uint8_t>(val));
-  return old;
+bool SomfyShade::p_demoMode(bool val) {
+  return this->flags.setDemoFlagReturnOld(val);
 }
 
 bool SomfyShade::p_sunFlag(bool val) {
-  bool old = this->flags.setSunFlagReturnOld(val);
-  if(old != val) this->publish("sunFlag", static_cast<uint8_t>(val));
-  return old;
+  return this->flags.setSunFlagReturnOld(val);
 }
 
 bool SomfyShade::p_windy(bool val) {
-  bool old = this->flags.setWindyReturnOld(val);
-  if(old != val) this->publish("windy", static_cast<uint8_t>(val));
-  return old;
+  return this->flags.setWindyReturnOld(val);
 }
 
 bool SomfyShade::p_sunny(bool val) {
-  bool old = this->flags.setSunnyReturnOld(val);
-  if(old != val) this->publish("sunny", static_cast<uint8_t>(val));
-  return old;
+  return this->flags.setSunnyReturnOld(val);
 }
 
 int8_t SomfyShade::p_direction(int8_t dir) {
   int8_t old = this->direction;
-  if(old != dir) {
-    this->direction = dir;
-    this->publish("direction", this->direction, true);
-  }
+  this->direction = dir;
   return old;
 }
 
 int8_t SomfyShade::p_tiltDirection(int8_t dir) {
   int8_t old = this->tiltDirection;
-  if(old != dir) {
-    this->tiltDirection = dir;
-    this->publish("tiltDirection", this->tiltDirection, true);
-  }
+  this->tiltDirection = dir;
   return old;
 }
 
 float SomfyShade::p_target(float target) {
   float old = this->target;
-  if(old != target) {
-    this->target = target;
-    if(this->transformPosition(old) != this->transformPosition(target))
-      this->publish("target", this->transformPosition(this->target), true);
-  }
+  this->target = target;
   return old;
 }
 
 float SomfyShade::p_tiltTarget(float target) {
   float old = this->tiltTarget;
-  if(old != target) {
-    this->tiltTarget = target;
-    if(this->transformPosition(old) != this->transformPosition(target))
-      this->publish("tiltTarget", this->transformPosition(this->tiltTarget), true);
-  }
+  this->tiltTarget = target;
   return old;
 }
 
 float SomfyShade::p_myPos(float pos) {
   float old = targetSequencer.myPos;
-  if(old != pos) {
-    targetSequencer.myPos = pos;
-    if(this->transformPosition(old) != this->transformPosition(pos))
-      this->publish("mypos", this->transformPosition(targetSequencer.myPos), true);
-  }
+  targetSequencer.myPos = pos;
   return old;
 }
 
 float SomfyShade::p_myTiltPos(float pos) {
   float old = targetSequencer.myTiltPos;
-  if(old != pos) {
-    targetSequencer.myTiltPos = pos;
-    if(this->transformPosition(old) != this->transformPosition(pos))
-      this->publish("myTiltPos", this->transformPosition(targetSequencer.myTiltPos), true);
-  }
+  targetSequencer.myTiltPos = pos;
   return old;
 }
 
@@ -282,7 +231,7 @@ void SomfyShade::moveToTiltTarget(float target) { targetSequencer.moveToTiltTarg
 void SomfyShade::moveToTarget(float pos, float tilt) { targetSequencer.moveToTarget(pos, tilt); }
 void SomfyShade::moveToTargetForced(float pos, float tilt) { targetSequencer.moveToTargetForced(pos, tilt); }
 
-bool SomfyShade::save() { commit(); publish(); return true; }
+bool SomfyShade::save() { commit(); return true; }
 
 bool SomfyShade::isToggle() {
   switch(this->shadeType) {

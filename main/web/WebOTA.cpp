@@ -19,14 +19,12 @@
 #include "WResp.h"
 #include "Web.h"
 #include "GitOTA.h"
-#include "MQTT.h"
 
 extern ConfigSettings settings;
 extern SomfyShadeController somfy;
 extern Web webServer;
 extern GitUpdater git;
 extern rebootDelay_t rebootDelay;
-extern MQTTClass mqtt;
 
 #define WEB_MAX_RESPONSE 4096
 extern char g_content[WEB_MAX_RESPONSE];
@@ -139,7 +137,6 @@ void Web::handleUpdateFirmwareUpload(WebServer &server) {
     }
     else {
       somfy.transceiver.end();
-      mqtt.end();
     }
   }
   else if(upload.status == UPLOAD_FILE_ABORTED) {
@@ -209,7 +206,6 @@ void Web::handleUpdateApplicationUpload(WebServer &server) {
     }
     else {
       somfy.transceiver.end();
-      mqtt.end();
     }
   }
   else if(upload.status == UPLOAD_FILE_ABORTED) {

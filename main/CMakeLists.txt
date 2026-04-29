@@ -9,7 +9,6 @@ idf_component_register(
         "ConfigSettings.cpp"
         "GitOTA.cpp"
         "HomeKit.cpp"
-        "MQTT.cpp"
         "ControllerNetwork.cpp"
         "Sockets.cpp"
         "somfy/SomfyFrame.cpp"
@@ -44,7 +43,6 @@ idf_component_register(
         "web"
     REQUIRES
         arduino-esp32
-        PubSubClient
         WebSockets
         ArduinoJson
         CC1101

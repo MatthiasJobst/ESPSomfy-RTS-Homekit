@@ -594,7 +594,6 @@ async function initSockets() {
                     await general.loadGeneral();
                     await wifi.loadNetwork();
                     await somfy.loadSomfy();
-                    await mqtt.loadMQTT();
                     if (ui.isConfigOpen()) socket.send('join:0');
 
                     //await general.init();
@@ -676,9 +675,6 @@ async function init() {
         if (typeof somfy === 'undefined') { console.error('somfy.js failed to load — somfy is not defined'); return; }
         console.log('init: somfy');
         somfy.init();
-        if (typeof mqtt === 'undefined') { console.error('extras.js failed to load — mqtt is not defined'); return; }
-        console.log('init: mqtt');
-        mqtt.init();
         console.log('init: firmware');
         firmware.init();
         console.log('init: homekit icon');

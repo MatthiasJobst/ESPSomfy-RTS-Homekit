@@ -308,7 +308,7 @@
                     </div>
                 </div>
                 <div id="divNetworkSettings" style="display:none;">
-                    <div class="subtab-container"><span class="selected" data-grpid="divNetAdapter">Adapter</span><span data-grpid="divDHCP">DHCP/Static IP</span><span data-grpid="divMQTT">MQTT</span></div>
+                    <div class="subtab-container"><span class="selected" data-grpid="divNetAdapter">Adapter</span><span data-grpid="divDHCP">DHCP/Static IP</span></div>
                     <div id="divNetAdapter" class="subtab-content">
                         <div class="field-group" style="vertical-align:middle;color:#00bcd4;margin-top:-24px;">
                             <input id="cbHardwired" name="hardwired" data-bind="ethernet.hardwired" type="checkbox" style="display:inline-block;" onclick="wifi.useEthernetClicked();" />
@@ -418,48 +418,6 @@
                             </button>
                         </div>
 
-                    </div>
-                    <div id="divMQTT" class="subtab-content" style="display:none;">
-                        <div class="field-group" style="vertical-align:middle;margin-top:-20px;">
-                            <div class="field-group" style="display:inline-block;width:auto;">
-                                <input id="cbMqttEnabled" name="mqtt-enabled" type="checkbox" data-bind="mqtt.enabled" style="display:inline-block;" />
-                                <label for="cbMqttEnabled" style="display:inline-block;cursor:pointer;">Enable MQTT client</label>
-                            </div>
-                            <div class="field-group" style="width:auto;float:right;">
-                                <input id="cbPubDisco" name="pub-disco" type="checkbox" data-bind="mqtt.pubDisco" style="display:inline-block;margin-left:7px;" onclick="document.getElementById('divDiscoveryTopic').style.display = this.checked ? '' : 'none'" />
-                                <label for="cbPubDisco" style="display:inline-block;cursor:pointer;">Publish Discovery</label>
-                            </div>
-                        </div>
-                        <div class="field-group1" style="white-space:nowrap;">
-                            <select name="mqtt-protocol" data-bind="mqtt.protocol" style="width:54px;">
-                                <option>MQTT</option>
-                                <option>MQTTS</option>
-                            </select>
-                            <span>://</span>
-                            <input name="mqtt-host" type="text" length=64 placeholder="Host" data-bind="mqtt.hostname" style="width:calc(100% - 137px);">
-                            <span>:</span>
-                            <input name="mqtt-port" type="text" length=5 placeholder="Port" data-bind="mqtt.port" data-datatype="int" style="width:50px;">
-                        </div>
-                        <div class="field-group">
-                            <input id="fldMqttUsername" name="mqtt-username" type="text" data-bind="mqtt.username" length=32 placeholder="Username" autocomplete="username">
-                            <label for="fldMqttUsername">Username</label>
-                        </div>
-                        <div class="field-group">
-                            <input id="fldMqttPassword" name="mqtt-password" type="text" length=64 data-bind="mqtt.password" placeholder="Password" autocomplete="current-password">
-                            <label for="fldMqttPassword">Password</label>
-                        </div>
-                        <div class="field-group">
-                            <input id="fldMqttTopic" name="mqtt-topic" type="text" length=64 data-bind="mqtt.rootTopic" placeholder="Root Topic">
-                            <label for="fldMqttTopic">Root Topic</label>
-                        </div>
-                        <div class="field-group" id="divDiscoveryTopic" style="display:none;">
-                            <input id="fldDiscoTopic" name="disco-topic" type="text" length=64 data-bind="mqtt.discoTopic" placeholder="Discovery Topic">
-                            <label for="fldDiscoTopic">Discovery Topic</label>
-                        </div>
-
-                        <div class="button-container">
-                            <button id="btnConnectMQTT" type="button" onclick="mqtt.connectMQTT();">Save MQTT Settings</button>
-                        </div>
                     </div>
                 </div>
                 <div id="divHomeKitSettings" style="display:none;">

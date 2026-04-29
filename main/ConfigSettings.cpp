@@ -18,7 +18,6 @@ void restore_options_t::fromJSON(JsonObject &obj) {
   if(obj.containsKey("network")) this->network = obj["network"];
   if(obj.containsKey("transceiver")) this->transceiver = obj["transceiver"];
   if(obj.containsKey("repeaters")) this->repeaters = obj["repeaters"];
-  if(obj.containsKey("mqtt")) this->mqtt = obj["mqtt"];
 }
 int8_t appver_t::compare(appver_t &ver) {
   if(this->major == ver.major && this->minor == ver.minor && this->build == ver.build) return 0;
@@ -198,7 +197,6 @@ bool ConfigSettings::begin() {
   this->WIFI.begin();
   this->Ethernet.begin();
   this->NTP.begin();
-  this->MQTT.begin();
   this->print();
   return true;
 }
@@ -294,12 +292,6 @@ uint16_t ConfigSettings::calcNetRecSize() {
     + this->IP.subnet.toString().length() + 3
     + this->IP.dns1.toString().length() + 3
     + this->IP.dns2.toString().length() + 3
-    + strlen(this->MQTT.protocol) + 3
-    + strlen(this->MQTT.hostname) + 3
-    + 6 // MQTT Port
-    + 6 // PubDisco
-    + strlen(this->MQTT.rootTopic) + 3
-    + strlen(this->MQTT.discoTopic) + 3
     + 4 // ETH.boardType
     + 4 // ETH.phyType
     + 4 // ETH.clkMode
@@ -308,83 +300,12 @@ uint16_t ConfigSettings::calcNetRecSize() {
     + 5 // ETH.MDCPin
     + 5; // ETH.MDIOPin
 }
-bool MQTTSettings::begin() {
-  this->load();
-  return true;
-}
-void MQTTSettings::toJSON(JsonResponse &json) {
-  json.addElem("enabled", this->enabled);
-  json.addElem("pubDisco", this->pubDisco);
-  json.addElem("protocol", this->protocol);
-  json.addElem("hostname", this->hostname);
-  json.addElem("port", (uint32_t)this->port);
-  json.addElem("username", this->username);
-  json.addElem("password", this->password);
-  json.addElem("rootTopic", this->rootTopic);
-  json.addElem("discoTopic", this->discoTopic);
-}
-
-bool MQTTSettings::toJSON(JsonObject &obj) {
-  obj["enabled"] = this->enabled;
-  obj["pubDisco"] = this->pubDisco;
-  obj["protocol"] = this->protocol;
-  obj["hostname"] = this->hostname;
-  obj["port"] = this->port;
-  obj["username"] = this->username;
-  obj["password"] = this->password;
-  obj["rootTopic"] = this->rootTopic;
-  obj["discoTopic"] = this->discoTopic;
-  return true;
-}
-bool MQTTSettings::fromJSON(JsonObject &obj) {
-  if(obj.containsKey("enabled")) this->enabled = obj["enabled"];
-  if(obj.containsKey("pubDisco")) this->pubDisco = obj["pubDisco"];
-  this->parseValueString(obj, "protocol", this->protocol, sizeof(this->protocol));
-  this->parseValueString(obj, "hostname", this->hostname, sizeof(this->hostname));
-  this->parseValueString(obj, "username", this->username, sizeof(this->username));
-  this->parseValueString(obj, "password", this->password, sizeof(this->password));
-  this->parseValueString(obj, "rootTopic", this->rootTopic, sizeof(this->rootTopic));
-  this->parseValueString(obj, "discoTopic", this->discoTopic, sizeof(this->discoTopic));
-  if(obj.containsKey("port")) this->port = obj["port"];
-  return true;
-}
-bool MQTTSettings::save() {
-  pref.begin("MQTT");
-  pref.clear();
-  pref.putString("protocol", this->protocol);
-  pref.putString("hostname", this->hostname);
-  pref.putShort("port", static_cast<int16_t>(this->port));
-  pref.putString("username", this->username);
-  pref.putString("password", this->password);
-  pref.putString("rootTopic", this->rootTopic);
-  pref.putBool("enabled", this->enabled);
-  pref.putBool("pubDisco", this->pubDisco);
-  pref.putString("discoTopic", this->discoTopic);
-  pref.end();
-  return true;
-}
-bool MQTTSettings::load() {
-  pref.begin("MQTT");
-  pref.getString("protocol", this->protocol, sizeof(this->protocol));
-  pref.getString("hostname", this->hostname, sizeof(this->hostname));
-  this->port = pref.getShort("port", 1883);
-  pref.getString("username", this->username, sizeof(this->username));
-  pref.getString("password", this->password, sizeof(this->password));
-  pref.getString("rootTopic", this->rootTopic, sizeof(this->rootTopic));
-  this->enabled = pref.getBool("enabled", false);
-  this->pubDisco = pref.getBool("pubDisco", false);
-  pref.getString("discoTopic", this->discoTopic, sizeof(this->discoTopic));
-  pref.end();
-  return true;
-}
 bool ConfigSettings::toJSON(JsonDocument &doc) {
   doc["fwVersion"] = this->fwVersion.name;
   JsonObject objWIFI = doc.createNestedObject("WIFI");
   this->WIFI.toJSON(objWIFI);
   JsonObject objNTP = doc.createNestedObject("NTP");
   this->NTP.toJSON(objNTP);
-  JsonObject objMQTT = doc.createNestedObject("MQTT");
-  this->MQTT.toJSON(objMQTT);
   return true;
 }
 bool NTPSettings::begin() {

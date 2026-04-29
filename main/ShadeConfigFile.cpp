@@ -289,7 +289,7 @@ bool ShadeConfigFile::restoreFile(SomfyShadeController *s, const char *filename,
   else {
     this->file.seek(this->file.position() + this->header.settingsRecordSize, SeekSet);
   }
-  if(opts.network || opts.mqtt) {
+  if(opts.network) {
     this->readNetRecord(opts);
   }
   else {
@@ -308,7 +308,6 @@ bool ShadeConfigFile::restoreFile(SomfyShadeController *s, const char *filename,
     settings.WIFI.save();
     settings.Ethernet.save();
   }
-  if(opts.mqtt) settings.MQTT.save();
   return true;
 }
 bool ShadeConfigFile::readNetRecord(restore_options_t &opts) {
@@ -340,22 +339,12 @@ bool ShadeConfigFile::readNetRecord(restore_options_t &opts) {
       this->skipValue(24); // dns2
     }
     if(this->header.version >= 22) {
-      if(opts.mqtt) {
-        this->readVarString(settings.MQTT.protocol, sizeof(settings.MQTT.protocol));
-        this->readVarString(settings.MQTT.hostname, sizeof(settings.MQTT.hostname));
-        settings.MQTT.port = this->readUInt16(1883);
-        settings.MQTT.pubDisco = this->readBool(false);
-        this->readVarString(settings.MQTT.rootTopic, sizeof(settings.MQTT.rootTopic));
-        this->readVarString(settings.MQTT.discoTopic, sizeof(settings.MQTT.discoTopic));
-      }
-      else {
-        this->skipValue(sizeof(settings.MQTT.protocol));
-        this->skipValue(sizeof(settings.MQTT.hostname));
-        this->skipValue(6); // Port
-        this->skipValue(6); // pubDisco
-        this->skipValue(sizeof(settings.MQTT.rootTopic));
-        this->skipValue(sizeof(settings.MQTT.discoTopic));
-      }
+      this->skipValue(10);  // protocol[10]
+      this->skipValue(65);  // hostname[65]
+      this->skipValue(6);   // port
+      this->skipValue(6);   // pubDisco
+      this->skipValue(65);  // rootTopic[65]
+      this->skipValue(65);  // discoTopic[65]
     }
     // Now lets check to see if we are the same board.  If we are then we will restore
     // the ethernet phy settings.
@@ -724,12 +713,6 @@ bool ShadeConfigFile::writeNetRecord() {
   this->writeVarString(settings.IP.subnet.toString().c_str());
   this->writeVarString(settings.IP.dns1.toString().c_str());
   this->writeVarString(settings.IP.dns2.toString().c_str());
-  this->writeVarString(settings.MQTT.protocol);
-  this->writeVarString(settings.MQTT.hostname);
-  this->writeUInt16(settings.MQTT.port);
-  this->writeBool(settings.MQTT.pubDisco);
-  this->writeVarString(settings.MQTT.rootTopic);
-  this->writeVarString(settings.MQTT.discoTopic);
   this->writeUInt8(settings.Ethernet.boardType);
   this->writeUInt8(static_cast<uint8_t>(settings.Ethernet.phyType));
   this->writeUInt8(static_cast<uint8_t>(settings.Ethernet.CLKMode));

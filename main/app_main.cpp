@@ -17,7 +17,6 @@
 #include "Sockets.h"
 #include "Utils.h"
 #include "SomfyShadeController.h"
-#include "MQTT.h"
 #include "GitOTA.h"
 #include "HomeKit.h"
 
@@ -27,7 +26,6 @@ SocketEmitter sockEmit;
 ControllerNetwork net;
 rebootDelay_t rebootDelay;
 SomfyShadeController somfy;
-MQTTClass mqtt;
 GitUpdater git;
 
 static const char *TAG = "Main";
