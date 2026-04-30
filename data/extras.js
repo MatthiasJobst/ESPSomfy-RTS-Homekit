@@ -580,12 +580,21 @@ class Firmware {
 var firmware = new Firmware();
 
 class HomeKit {
+    _updatePairingStatus(paired) {
+        let status = document.getElementById('spanHKPairedCount');
+        if (status) status.innerHTML = paired
+            ? '<span style="color:#4caf50">&#9679;</span> Paired'
+            : '<span style="color:#666">&#9679;</span> Not paired';
+        let btn = document.getElementById('btnHKResetPairings');
+        if (btn) btn.disabled = !paired;
+    }
     updateIcon() {
         getJSONSync('/homekit', (err, data) => {
             if (err) return;
+            let paired = data.started && (data.pairedCount || 0) > 0;
             let ico = document.getElementById('icoHomeKit');
-            if (!ico) return;
-            ico.classList.toggle('homekit-paired', data.started && (data.pairedCount || 0) > 0);
+            if (ico) ico.classList.toggle('homekit-paired', paired);
+            this._updatePairingStatus(paired);
         });
     }
     load() {
@@ -613,11 +622,7 @@ class HomeKit {
                     if (svg) { svg.style.background = '#fff'; svg.style.borderRadius = '4px'; }
                 } catch(e) { console.error('QR error:', e); }
             }
-            let count = document.getElementById('spanHKPairedCount');
-            if (count) {
-                let n = data.pairedCount || 0;
-                count.innerHTML = n === 0 ? 'None' : n === 1 ? '1 controller' : `${n} controllers`;
-            }
+            this._updatePairingStatus((data.pairedCount || 0) > 0);
         });
     }
     resetPairings() {
@@ -625,8 +630,7 @@ class HomeKit {
         postJSONSync('/homekit/resetPairings', {}, (err) => {
             if (err) ui.serviceError(err);
             else {
-                let count = document.getElementById('spanHKPairedCount');
-                if (count) count.innerHTML = 'None';
+                this._updatePairingStatus(false);
                 ui.infoMessage('All HomeKit pairings have been reset.');
             }
         });
