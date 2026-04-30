@@ -18,13 +18,11 @@
 #include "WResp.h"
 #include "Web.h"
 #include "GitOTA.h"
-#include "ControllerNetwork.h"
 
 extern ConfigSettings settings;
 extern SomfyShadeController somfy;
 extern Web webServer;
 extern GitUpdater git;
-extern ControllerNetwork net;
 
 #define WEB_MAX_RESPONSE 4096
 extern char g_content[WEB_MAX_RESPONSE];
@@ -76,7 +74,7 @@ void Web::handleShadeSortOrder(WebServer &server) {
 
 void Web::handleScanAPs(WebServer &server) {
   esp_task_wdt_delete(NULL);
-  if(net.softAPOpened) WiFi.disconnect(false);
+  if(WiFi.getMode() & WIFI_AP) WiFi.disconnect(false);
   int n = WiFi.scanNetworks(false, true);
   esp_task_wdt_add(NULL);
   ESP_LOGI(TAG, "Scanned %d networks", n);

@@ -455,7 +455,7 @@ void Web::handleDiscovery(WebServer &server) {
     resp.endArray();
     resp.endObject();
     resp.endResponse();
-    net.needsBroadcast = true;
+    net.emitSockets();
   }
   else
     server.send(500, g_encoding_text, "Invalid http method");
