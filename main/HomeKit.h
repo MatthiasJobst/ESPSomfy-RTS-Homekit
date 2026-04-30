@@ -29,8 +29,14 @@ public:
 
     bool isStarted() const { return _started; }
 
+    // Generate a setup code from the chip MAC, store it internally, and return it.
+    const char *prefab();
+    // Use a code that was already read from NVS.
+    void setCode(const char *code);
+
 private:
     bool _started = false;
+    char _setupCode[12] = "459-23-871";  // overridden by prefab() / setCode() before begin()
     char _qrPayload[64] = {};
 };
 

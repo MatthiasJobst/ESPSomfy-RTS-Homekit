@@ -7,20 +7,16 @@
 #include <hap_apple_servs.h>
 #include <hap_apple_chars.h>
 #include <esp_log.h>
+#include <esp_mac.h>
 #include <cstring>
 #include <cstdio>
 
 static const char *TAG = "HomeKit";
 
-// Default pairing setup code — override in your settings or via factory_nvs.
-// Format: xxx-xx-xxx  (digits only, no letters).
-#define HAP_SETUP_CODE  "459-23-871"
-#define HAP_SETUP_ID    "SMFY"
+#define HAP_SETUP_ID  "SMFY"
 
 extern ConfigSettings settings;
 extern SomfyShadeController somfy;
-
-HomeKitClass homekit;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -156,6 +152,21 @@ static hap_acc_t *createShadeAccessory(SomfyShade *shade) {
 // Public API
 // ---------------------------------------------------------------------------
 
+const char *HomeKitClass::prefab() {
+    uint8_t mac[6];
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    uint32_t n = ((uint32_t)mac[3] << 16) | ((uint32_t)mac[4] << 8) | mac[5];
+    snprintf(_setupCode, sizeof(_setupCode), "%03u-%02u-%03u",
+             (unsigned)(n / 100000u), (unsigned)((n / 1000u) % 100u), (unsigned)(n % 1000u));
+    ESP_LOGI(TAG, "HomeKit setup code (generated): %s", _setupCode);
+    return _setupCode;
+}
+
+void HomeKitClass::setCode(const char *code) {
+    strncpy(_setupCode, code, sizeof(_setupCode) - 1);
+    _setupCode[sizeof(_setupCode) - 1] = '\0';
+}
+
 void HomeKitClass::begin() {
     if(_started) return;
 
@@ -189,14 +200,13 @@ void HomeKitClass::begin() {
         }
     }
 
-    // Pairing code — for production, burn via factory_nvs_gen instead.
-    hap_set_setup_code(HAP_SETUP_CODE);
+    hap_set_setup_code(_setupCode);
     hap_set_setup_id(HAP_SETUP_ID);
 
     char *payload = esp_hap_get_setup_payload(
-        (char *)HAP_SETUP_CODE, (char *)HAP_SETUP_ID, false, HAP_CID_BRIDGE);
+        _setupCode, (char *)HAP_SETUP_ID, false, HAP_CID_BRIDGE);
     if(payload) {
-        ESP_LOGI(TAG, "Pair with HomeKit using setup code: %s", HAP_SETUP_CODE);
+        ESP_LOGI(TAG, "Pair with HomeKit using setup code: %s", _setupCode);
         ESP_LOGI(TAG, "Or scan QR payload: %s", payload);
         strncpy(_qrPayload, payload, sizeof(_qrPayload) - 1);
         free(payload);
@@ -224,7 +234,7 @@ void HomeKitClass::resetPairings() {
 
 void HomeKitClass::toJSON(JsonResponse &resp) {
     resp.addElem("started", _started);
-    resp.addElem("setupCode", (const char *)HAP_SETUP_CODE);
+    resp.addElem("setupCode", (const char *)_setupCode);
     resp.addElem("qrPayload", (const char *)_qrPayload);
     resp.addElem("pairedCount", (int8_t)(_started ? hap_get_paired_controller_count() : 0));
 }

@@ -3,7 +3,6 @@
 #include <ESPmDNS.h>
 #include <esp_wifi.h>
 #include "esp_log.h"
-#include "HomeKit.h"
 #include "ConfigSettings.h"
 #include "ControllerNetwork.h"
 #include "Web.h"
@@ -332,9 +331,6 @@ void ControllerNetwork::setConnected(conn_types_t connType) {
     ESP_LOGI(TAG, "MDNS Responder Started: serverId=%s", settings.serverId);
     MDNS.addService("http", "tcp", APP_HTTP_PORT);
   }
-  // begin() is idempotent (_started guard inside) — safe to call on every
-  // reconnect. ESP-IDF mDNS re-announces _hap._tcp automatically on WiFi reconnect.
-  homekit.begin();
   if(settings.ssdpBroadcast) {
     SSDP.begin();
   }

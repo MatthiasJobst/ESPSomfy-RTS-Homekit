@@ -20,6 +20,8 @@
 #include "MQTT.h"
 #include "GitOTA.h"
 #include "HomeKit.h"
+#include <nvs.h>
+#include "app_main.h"
 
 ConfigSettings settings;
 Web webServer;
@@ -29,6 +31,7 @@ rebootDelay_t rebootDelay;
 SomfyShadeController somfy;
 MQTTClass mqtt;
 GitUpdater git;
+HomeKitClass homekit;
 
 static const char *TAG = "Main";
 
@@ -41,6 +44,7 @@ static void mainLoop(void*) {
   if(LittleFS.begin(true)) ESP_LOGI(TAG, "File system mounted successfully");
   else ESP_LOGE(TAG, "Error mounting file system");
   settings.begin();
+  setCodeForHomeKit();
   if(WiFi.status() == WL_CONNECTED) WiFi.disconnect(true);
   vTaskDelay(pdMS_TO_TICKS(10));
   ESP_LOGI(TAG, "Initializing web server...");
@@ -57,8 +61,6 @@ static void mainLoop(void*) {
   esp_task_wdt_add(NULL);
   ESP_LOGI(TAG, "Initializing Somfy controller...");
   somfy.begin();
-  // homekit.begin() is deferred — called in ControllerNetwork::setConnected() after mDNS is up.
-  // Breadcrumb logging for hang diagnosis — set to ESP_LOG_INFO to disable.
 
   uint32_t iterMaxMs = 0;
   uint32_t iterMaxReportedAt = 0;
@@ -84,6 +86,7 @@ static void mainLoop(void*) {
       }
       webServer.loop();
       if(millis() - timing > 100) ESP_LOGI(TAG, "Timing WebServer: %ldms", millis() - timing);
+      if(!net.softAPOpened) homekit.begin();
     }
     // Poll WebSocket unconditionally — must run every iteration regardless of
     // WiFi/AP state so the HTTP-101 upgrade handshake is never starved.
@@ -106,6 +109,27 @@ static void mainLoop(void*) {
     }
   }
 }
+
+void setCodeForHomeKit() {
+  {
+    nvs_handle_t h;
+    char code[12] = {};
+    size_t len = sizeof(code);
+    bool found = nvs_open("homekit", NVS_READONLY, &h) == ESP_OK &&
+                 nvs_get_str(h, "setup_code", code, &len) == ESP_OK;
+    if (found) {
+      nvs_close(h);
+      homekit.setCode(code);
+    } else {
+      const char *generated = homekit.prefab();
+      if (nvs_open("homekit", NVS_READWRITE, &h) == ESP_OK){
+        nvs_set_str(h, "setup_code", generated);
+        nvs_commit(h);
+        nvs_close(h);
+      }
+    }
+  }
+} 
 
 // arduino-esp32 compiles loopTask() unconditionally; it references setup()/loop()
 // even when CONFIG_AUTOSTART_ARDUINO=n. These stubs satisfy the linker.
