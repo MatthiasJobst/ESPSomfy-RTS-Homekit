@@ -183,6 +183,65 @@ TEST_F(SomfyRemoteTest, RepeatFrame_RTS_80Bit_Calls80BitEncode) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// Rolling code — getNextRollingCode / setRollingCode / p_lastRollingCode
+// ══════════════════════════════════════════════════════════════════════════════
+
+TEST_F(SomfyRemoteTest, GetNextRollingCode_FirstCall_ReturnsOne) {
+    // NVS is empty (stub reset in SetUp); first call reads 0, increments to 1.
+    EXPECT_EQ(remote.getNextRollingCode(), 1u);
+}
+
+TEST_F(SomfyRemoteTest, GetNextRollingCode_ConsecutiveCalls_Increment) {
+    EXPECT_EQ(remote.getNextRollingCode(), 1u);
+    EXPECT_EQ(remote.getNextRollingCode(), 2u);
+    EXPECT_EQ(remote.getNextRollingCode(), 3u);
+}
+
+TEST_F(SomfyRemoteTest, GetNextRollingCode_UpdatesLastRollingCode) {
+    remote.getNextRollingCode();
+    EXPECT_EQ(remote.lastRollingCode, 1u);
+    remote.getNextRollingCode();
+    EXPECT_EQ(remote.lastRollingCode, 2u);
+}
+
+TEST_F(SomfyRemoteTest, GetNextRollingCode_PersistsAcrossInstances) {
+    // Advance the NVS counter for address 0x112233 to 3.
+    remote.getNextRollingCode();
+    remote.getNextRollingCode();
+    remote.getNextRollingCode();
+
+    // A fresh remote with the same address picks up where the old one left off.
+    SomfyLinkedRemote remote2;
+    remote2.setRemoteAddress(0x112233);
+    EXPECT_EQ(remote2.getNextRollingCode(), 4u);
+}
+
+TEST_F(SomfyRemoteTest, SetRollingCode_DifferentValue_UpdatesLastRollingCodeAndNvs) {
+    remote.setRollingCode(100u);
+    EXPECT_EQ(remote.lastRollingCode, 100u);
+
+    // A fresh remote with the same address reads the stored code + 1.
+    SomfyLinkedRemote remote2;
+    remote2.setRemoteAddress(0x112233);
+    EXPECT_EQ(remote2.getNextRollingCode(), 101u);
+}
+
+TEST_F(SomfyRemoteTest, SetRollingCode_SameValue_IsIdempotent) {
+    remote.setRollingCode(50u);
+    remote.setRollingCode(50u);  // second call must not change anything
+    EXPECT_EQ(remote.lastRollingCode, 50u);
+
+    // NVS was written only once; next increment from a fresh instance is 51.
+    SomfyLinkedRemote remote2;
+    remote2.setRemoteAddress(0x112233);
+    EXPECT_EQ(remote2.getNextRollingCode(), 51u);
+}
+
+TEST_F(SomfyRemoteTest, SetRollingCode_ReturnsNewCode) {
+    EXPECT_EQ(remote.setRollingCode(77u), 77u);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // SomfyFlag — uncovered methods
 // ══════════════════════════════════════════════════════════════════════════════
 

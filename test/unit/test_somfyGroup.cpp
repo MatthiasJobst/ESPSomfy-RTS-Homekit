@@ -223,7 +223,7 @@ TEST_F(GroupTest, FromJSON_BasicFields_Parsed) {
     EXPECT_EQ(somfy.groups[0].repeats, 3);
 }
 
-TEST_F(GroupTest, FromJSON_WithLinkedShades_Parsed) {
+TEST_F(GroupTest, FromJSON_WithLinkedShades_PopulatesLinkedShades) {
     somfy.groups[0].setGroupId(1);
     JsonDocument doc;
     JsonObject obj = doc.to<JsonObject>();
@@ -231,6 +231,21 @@ TEST_F(GroupTest, FromJSON_WithLinkedShades_Parsed) {
     arr.add(1);
     arr.add(2);
     EXPECT_TRUE(somfy.groups[0].fromJSON(obj));
+    EXPECT_TRUE(somfy.groups[0].hasShadeId(1));
+    EXPECT_TRUE(somfy.groups[0].hasShadeId(2));
+    EXPECT_FALSE(somfy.groups[0].hasShadeId(3));
+}
+
+TEST_F(GroupTest, FromJSON_WithLinkedShades_ClearsExistingBeforeRepopulating) {
+    somfy.groups[0].setGroupId(1);
+    somfy.groups[0].linkedShades[0] = 7;  // pre-existing shade that is not in the JSON
+    JsonDocument doc;
+    JsonObject obj = doc.to<JsonObject>();
+    JsonArray arr  = obj["linkedShades"].to<JsonArray>();
+    arr.add(3);
+    somfy.groups[0].fromJSON(obj);
+    EXPECT_TRUE(somfy.groups[0].hasShadeId(3));
+    EXPECT_FALSE(somfy.groups[0].hasShadeId(7));  // old entry must be gone
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

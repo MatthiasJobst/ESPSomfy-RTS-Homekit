@@ -173,12 +173,12 @@ bool SomfyGroup::fromJSON(JsonObject &obj) {
   if(obj.containsKey("flipCommands")) this->flipCommands = obj["flipCommands"].as<bool>();
   if(obj.containsKey("repeats")) this->repeats = obj["repeats"];
   if(obj.containsKey("linkedShades")) {
-    uint8_t linkedShades[SOMFY_MAX_GROUPED_SHADES];
-    memset(linkedShades, 0x00, sizeof(linkedShades));
+    memset(this->linkedShades, 0x00, sizeof(this->linkedShades));
     JsonArray arr = obj["linkedShades"];
     uint8_t i = 0;
     for(uint8_t shadeId : arr) {
-      linkedShades[i++] = shadeId;
+      if(i >= SOMFY_MAX_GROUPED_SHADES) break;
+      this->linkedShades[i++] = shadeId;
     }
   }
   return true;
