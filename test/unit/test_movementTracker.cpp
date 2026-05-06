@@ -8,6 +8,7 @@
 //  settingMyPos:      at-target handling, emitState change detection
 
 #include "TestableShade.h"
+#include "SomfyTransceiver.h"   // MOVE_REPEATS
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
@@ -315,6 +316,42 @@ TEST_F(MovementTrackerTest, Down_SettingPos_NotAtTiltTarget_MovesToTiltTarget) {
 
     shade.checkMovement();   // should not crash; tilt movement set up
     EXPECT_EQ(shade.getDirection(), 0);
+}
+
+// boostedStop=true → auto-stop My uses MOVE_REPEATS (HomeKit-initiated path).
+TEST_F(MovementTrackerTest, BoostedStop_AutoStop_UsesMoveRepeats) {
+    shade.repeats        = 3;
+    shade.currentPos     = 0.0f;
+    shade.target         = 60.0f;
+    shade.tiltTarget     = 60.0f;
+    shade.currentTiltPos = 60.0f;       // isAtTarget() == true
+    shade.setStartPos(0.0f);
+    shade.setMoveStart(0);
+    shade.setSettingPos(true);
+    shade.setBoostedStop(true);
+    test_clock_ms = 20000;              // overshoot 60% target
+
+    shade.checkMovement();
+    EXPECT_EQ(shade.lastFrame.cmd, somfy_commands::My);
+    EXPECT_EQ(shade.lastFrame.repeats, MOVE_REPEATS);
+    EXPECT_FALSE(shade.getBoostedStop()) << "flag must clear after consumption";
+}
+
+// boostedStop=false (default) → auto-stop My uses shade->repeats.
+TEST_F(MovementTrackerTest, NoBoost_AutoStop_UsesShadeRepeats) {
+    shade.repeats        = 3;
+    shade.currentPos     = 0.0f;
+    shade.target         = 60.0f;
+    shade.tiltTarget     = 60.0f;
+    shade.currentTiltPos = 60.0f;
+    shade.setStartPos(0.0f);
+    shade.setMoveStart(0);
+    shade.setSettingPos(true);
+    test_clock_ms = 20000;
+
+    shade.checkMovement();
+    EXPECT_EQ(shade.lastFrame.cmd, somfy_commands::My);
+    EXPECT_EQ(shade.lastFrame.repeats, 3u);
 }
 
 // target == 100 → My NOT sent (line 441/447 condition)

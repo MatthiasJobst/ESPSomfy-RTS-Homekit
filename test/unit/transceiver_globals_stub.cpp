@@ -34,6 +34,8 @@ rmt_stub_queued_t      rmt_stub_queue[RMT_STUB_QUEUE_MAX] = {};
 int                    rmt_stub_queue_count = 0;
 rmt_encoder_handle_t   rmt_stub_last_encoder = nullptr;
 int                    rmt_stub_fail_after  = 0;
+rmt_symbol_word_t      rmt_stub_captured_symbols[RMT_STUB_CAPTURED_MAX] = {};
+size_t                 rmt_stub_captured_symbol_count = 0;
 
 // ── Chip model stub ────────────────────────────────────────────────────────
 #include "esp_chip_info.h"

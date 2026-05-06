@@ -249,6 +249,8 @@ float SomfyShade::getMyTiltPos() const { return targetSequencer.myTiltPos; }
 void SomfyShade::setSettingPos(bool v)     { movementTracker.motionState.settingPos = v; }
 void SomfyShade::setSettingTiltPos(bool v) { movementTracker.motionState.settingTiltPos = v; }
 void SomfyShade::setSettingMyPos(bool v)   { movementTracker.motionState.settingMyPos = v; }
+void SomfyShade::setBoostedStop(bool v)    { movementTracker.motionState.boostedStop = v; }
+bool SomfyShade::getBoostedStop() const    { return movementTracker.motionState.boostedStop; }
 void SomfyShade::clearMotionState()        { movementTracker.motionState.clear(); }
 
 void SomfyShade::resetMovement(uint64_t t) {

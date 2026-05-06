@@ -11,8 +11,12 @@
 //   therefore runs to completion in a single encode() call, and the return
 //   value equals the exact symbol count:
 //
-//     n = (wakeup ? 1 : 0) + sync_count + 1(swsync) + bit_length
+//     n = (wakeup ? 2 : 0) + sync_count + 1(swsync) + bit_length
 //           + (bit_length == 56 && tail ? 1 : 0)
+//
+//   ST_WAKEUP emits two symbols: the 9415 µs HIGH wake-up pulse plus a
+//   second symbol holding the remainder of the 89565 µs LOW silence, since
+//   one half-symbol caps at ~32 ms.
 
 #include <gtest/gtest.h>
 #include "../../main/somfy/SomfyShadeController.h"
@@ -81,6 +85,7 @@ protected:
         if (rmt_stub_last_encoder)
             rmt_stub_last_encoder->reset(rmt_stub_last_encoder);
         rmt_stub_queue_count = 0;
+        rmt_stub_captured_symbol_count = 0;
     }
 
     void TearDown() override {
@@ -116,10 +121,10 @@ TEST_F(TransceiverEncoderTest, Begin_CapturesEncoderHandle) {
 // ── Symbol counts verify full state traversal ──────────────────────────────
 
 TEST_F(TransceiverEncoderTest, Encode_56bit_Wakeup_NoTail_SymbolCount) {
-    // n = 1(wakeup) + 2(sync) + 1(swsync) + 56(data) = 60
+    // n = 2(wakeup pulse + silence ext) + 2(sync) + 1(swsync) + 56(data) = 61
     enc_frame_t f{};
     f.bit_length = 56; f.sync_count = 2; f.wakeup = true; f.tail = false;
-    EXPECT_EQ(encode(f), 60u);
+    EXPECT_EQ(encode(f), 61u);
 }
 
 TEST_F(TransceiverEncoderTest, Encode_56bit_NoWakeup_NoTail_SymbolCount) {
@@ -129,7 +134,7 @@ TEST_F(TransceiverEncoderTest, Encode_56bit_NoWakeup_NoTail_SymbolCount) {
     EXPECT_EQ(encode(f), 64u);
 }
 
-TEST_F(TransceiverEncoderTest, Encode_WakeupAddsOneSymbol) {
+TEST_F(TransceiverEncoderTest, Encode_WakeupAddsTwoSymbols) {
     enc_frame_t base{};
     base.bit_length = 56; base.sync_count = 2; base.tail = false;
 
@@ -140,7 +145,8 @@ TEST_F(TransceiverEncoderTest, Encode_WakeupAddsOneSymbol) {
     base.wakeup = true;
     size_t with = encode(base);
 
-    EXPECT_EQ(with, without + 1u) << "wakeup=true should emit exactly one extra symbol";
+    EXPECT_EQ(with, without + 2u)
+        << "wakeup=true emits the HIGH pulse plus a silence-extension symbol";
 }
 
 TEST_F(TransceiverEncoderTest, Encode_56bit_WithTail_SymbolCount) {
@@ -152,10 +158,10 @@ TEST_F(TransceiverEncoderTest, Encode_56bit_WithTail_SymbolCount) {
 
 TEST_F(TransceiverEncoderTest, Encode_80bit_NoTail_EvenWithTailFlag) {
     // 80-bit frames never emit a tail regardless of tail flag.
-    // n = 1 + 12 + 1 + 80 = 94
+    // n = 2 + 12 + 1 + 80 = 95
     enc_frame_t f{};
     f.bit_length = 80; f.sync_count = 12; f.wakeup = true; f.tail = true;
-    EXPECT_EQ(encode(f), 94u);
+    EXPECT_EQ(encode(f), 95u);
 }
 
 TEST_F(TransceiverEncoderTest, Encode_80bit_RepeatSync6_SymbolCount) {
@@ -207,6 +213,58 @@ TEST_F(TransceiverEncoderTest, Reset_AllowsReencode) {
 
 TEST_F(TransceiverEncoderTest, Reset_ReturnsOK) {
     EXPECT_EQ(rmt_stub_last_encoder->reset(rmt_stub_last_encoder), ESP_OK);
+}
+
+// ── Wake-up timing matches Somfy RTS spec ──────────────────────────────────
+// Somfy RTS receivers expect, before the first hardware-sync pulse:
+//   - 9415 µs HIGH wake-up pulse
+//   - 89565 µs LOW silence (~90 ms) for AGC/AFC settling
+// A too-short silence causes unreliable reception on commercial Somfy motors,
+// even though our own RX path (which has looser tolerances) still decodes it.
+
+TEST_F(TransceiverEncoderTest, Encode_Wakeup_PulseHigh_MatchesSpec) {
+    enc_frame_t f{};
+    f.bit_length = 56; f.sync_count = 2; f.wakeup = true; f.tail = false;
+    encode(f);
+
+    ASSERT_GT(rmt_stub_captured_symbol_count, 0u);
+    const auto &s0 = rmt_stub_captured_symbols[0];
+    EXPECT_EQ(s0.level0, 1u) << "first emitted half-symbol must be the wake-up HIGH";
+    EXPECT_NEAR(s0.duration0, 9415, static_cast<int>(9415 * 0.1))
+        << "wake-up HIGH duration must match Somfy RTS spec (9415 µs ±10%)";
+}
+
+TEST_F(TransceiverEncoderTest, Encode_Wakeup_Silence_MatchesSpec) {
+    enc_frame_t f{};
+    f.bit_length = 56; f.sync_count = 2; f.wakeup = true; f.tail = false;
+    encode(f);
+
+    ASSERT_GT(rmt_stub_captured_symbol_count, 0u);
+
+    // Walk half-symbols [level, duration] in order, find the first HIGH
+    // (= wake-up pulse), then sum LOW durations until the next HIGH appears
+    // (= start of the first hardware-sync pulse).
+    enum { BEFORE_WAKEUP, IN_SILENCE, DONE } state = BEFORE_WAKEUP;
+    uint32_t silence = 0;
+    for (size_t i = 0; i < rmt_stub_captured_symbol_count && state != DONE; ++i) {
+        const auto &s = rmt_stub_captured_symbols[i];
+        const uint16_t lvl[2] = { (uint16_t)s.level0,    (uint16_t)s.level1 };
+        const uint16_t dur[2] = { (uint16_t)s.duration0, (uint16_t)s.duration1 };
+        for (int h = 0; h < 2 && state != DONE; ++h) {
+            if (state == BEFORE_WAKEUP) {
+                if (lvl[h] == 1) state = IN_SILENCE;
+            } else { // IN_SILENCE
+                if (lvl[h] == 0) silence += dur[h];
+                else state = DONE;
+            }
+        }
+    }
+
+    EXPECT_EQ(state, DONE)
+        << "encoder did not emit a hardware-sync HIGH after the wake-up silence";
+    EXPECT_NEAR(silence, 89565u, static_cast<uint32_t>(89565 * 0.1))
+        << "wake-up→sync silence must match Somfy RTS spec (89565 µs ±10%); "
+           "got " << silence << " µs";
 }
 
 // ── Del (via end()) ────────────────────────────────────────────────────────

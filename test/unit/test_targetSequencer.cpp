@@ -171,6 +171,33 @@ TEST_F(TargetSequencerTest, MoveToTarget_Roller_UsesMoveRepeats) {
     EXPECT_EQ(shade.getLastFrame().repeats, MOVE_REPEATS);
 }
 
+// ── boostedStop: moveToTargetForced opts the auto-stop into MOVE_REPEATS ───
+// Covers the contract that the MovementTracker reads to choose stop repeats.
+
+TEST_F(TargetSequencerTest, MoveToTargetForced_SetsBoostedStop) {
+    shade.currentPos = 50.0f;
+    shade.moveToTargetForced(80.0f);
+    EXPECT_TRUE(shade.getBoostedStop());
+}
+
+TEST_F(TargetSequencerTest, MoveToTarget_ClearsBoostedStop) {
+    // Simulate a prior forced move that left the flag set, then confirm a
+    // regular moveToTarget overrides it back to false.
+    shade.setBoostedStop(true);
+    shade.currentPos = 50.0f;
+    shade.moveToTarget(80.0f);
+    EXPECT_FALSE(shade.getBoostedStop());
+}
+
+TEST_F(TargetSequencerTest, MoveToTargetForced_NoMoveNeeded_DoesNotTouchBoostedStop) {
+    // moveDirection() returns My when target == currentPos → early return,
+    // no flag change. Pre-existing boostedStop value must survive.
+    shade.setBoostedStop(true);
+    shade.currentPos = 50.0f;
+    shade.moveToTargetForced(50.0f);  // no-op
+    EXPECT_TRUE(shade.getBoostedStop());
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // B. moveToTiltTarget
 // ══════════════════════════════════════════════════════════════════════════════

@@ -9,5 +9,10 @@ struct MotionState {
     bool settingPos     = false;
     bool settingTiltPos = false;
     bool settingMyPos   = false;
-    void clear() { settingPos = settingTiltPos = settingMyPos = false; }
+    // True when the in-flight programmatic move was started via a path that
+    // can't tolerate a missed stop (e.g. HomeKit's moveToTargetForced — no
+    // app-level retry). The auto-stop in MovementTracker reads this and uses
+    // MOVE_REPEATS instead of shade->repeats, then clears it.
+    bool boostedStop    = false;
+    void clear() { settingPos = settingTiltPos = settingMyPos = boostedStop = false; }
 };

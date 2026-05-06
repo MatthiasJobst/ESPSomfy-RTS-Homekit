@@ -83,10 +83,23 @@ extern rmt_encoder_handle_t rmt_stub_last_encoder;
 // Set > 0 to make rmt_transmit return ESP_FAIL after this many successes (then reset to 0).
 extern int rmt_stub_fail_after;
 
+// Symbols passed through rmt_stub_copy_encode are recorded here so tests can
+// inspect levels and durations of the actual on-air waveform the encoder
+// produces (not just the symbol count). Each SOMFY_WRITE_SYM call passes one
+// rmt_symbol_word_t; capture is bounded to avoid overflow on long bursts.
+#define RMT_STUB_CAPTURED_MAX 1024
+extern rmt_symbol_word_t rmt_stub_captured_symbols[RMT_STUB_CAPTURED_MAX];
+extern size_t            rmt_stub_captured_symbol_count;
+
 // Stub copy encoder: encode is a no-op returning COMPLETE, reset is a no-op.
 inline size_t    rmt_stub_copy_encode(rmt_encoder_t *, rmt_channel_handle_t,
-                                      const void *, size_t,
+                                      const void *data, size_t size,
                                       rmt_encode_state_t *s) {
+    if (data && size == sizeof(rmt_symbol_word_t)
+        && rmt_stub_captured_symbol_count < RMT_STUB_CAPTURED_MAX) {
+        rmt_stub_captured_symbols[rmt_stub_captured_symbol_count++] =
+            *static_cast<const rmt_symbol_word_t *>(data);
+    }
     *s = RMT_ENCODING_COMPLETE; return 1;
 }
 inline esp_err_t rmt_stub_copy_reset(rmt_encoder_t *) { return ESP_OK; }

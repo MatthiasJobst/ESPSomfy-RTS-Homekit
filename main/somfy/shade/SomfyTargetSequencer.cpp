@@ -53,6 +53,7 @@ void SomfyTargetSequencer::moveToTarget(float pos, float tilt) {
   ESP_LOGI(TAG, " using %s", translateSomfyCommand(cmd).c_str());
   shade->SomfyRemote::sendCommand(cmd, this->repeatCount());
   shade->setSettingPos(true);
+  shade->setBoostedStop(false);
   shade->p_target(pos);
   if(tilt >= 0) { shade->p_tiltTarget(tilt); shade->setSettingTiltPos(true); }
 }
@@ -70,6 +71,7 @@ void SomfyTargetSequencer::moveToTargetForced(float pos, float tilt) {
   ESP_LOGI(TAG, " using %s", translateSomfyCommand(cmd).c_str());
   shade->SomfyRemote::sendCommand(cmd, MOVE_REPEATS);
   shade->setSettingPos(true);
+  shade->setBoostedStop(true);
   shade->p_target(pos);
 }
 

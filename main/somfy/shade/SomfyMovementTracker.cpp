@@ -42,15 +42,20 @@ float SomfyMovementTracker::calcInterpolatedPos(float startPct, uint64_t elapsed
 void SomfyMovementTracker::handlePosTargetReached(float endpoint, uint64_t curTime) {
   shade->p_currentPos(shade->target);
   if(motionState.settingPos) {
+    // Boosted moves (e.g. HomeKit's moveToTargetForced) need their auto-stop
+    // delivered with the same repeat count as the start command — a missed
+    // stop would cause the shade to overshoot the intermediate target.
+    const uint8_t stopRepeats = motionState.boostedStop ? MOVE_REPEATS : shade->repeats;
     if(!shade->isAtTarget()) {
       ESP_LOGI(TAG, "We are not at our tilt target: %.2f", shade->tiltTarget);
-      if(shade->target != endpoint) shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
+      if(shade->target != endpoint) shade->SomfyRemote::sendCommand(somfy_commands::My, stopRepeats);
       delay(100);
       shade->moveToTiltTarget(shade->tiltTarget);
     }
     else {
-      if(shade->target != endpoint) shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
+      if(shade->target != endpoint) shade->SomfyRemote::sendCommand(somfy_commands::My, stopRepeats);
     }
+    motionState.boostedStop = false;
   }
   shade->p_direction(0);
   tiltStart    = curTime;

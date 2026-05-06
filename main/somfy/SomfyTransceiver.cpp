@@ -155,9 +155,16 @@ static size_t somfy_encode(rmt_encoder_t *enc, rmt_channel_handle_t chan,
         switch(e->state) {
 
         case ST_WAKEUP:
+            // Somfy RTS spec: 9415 µs HIGH + 89565 µs LOW silence before
+            // the first hardware-sync pulse. RMT's 15-bit duration field
+            // caps a half-symbol at 32767 µs, so the silence is split
+            // across two symbols (30000 + 30000 + 29565 = 89565 µs).
             if(f->wakeup) {
-                sym.level0 = 1; sym.duration0 = 10920;
-                sym.level1 = 0; sym.duration1 = 7357;
+                sym.level0 = 1; sym.duration0 = 9415;
+                sym.level1 = 0; sym.duration1 = 30000;
+                SOMFY_WRITE_SYM(e, chan, sym, ret_state, n);
+                sym.level0 = 0; sym.duration0 = 30000;
+                sym.level1 = 0; sym.duration1 = 29565;
                 SOMFY_WRITE_SYM(e, chan, sym, ret_state, n);
             }
             e->idx   = 0;
@@ -869,7 +876,7 @@ bool SomfyTransceiver::begin() {
         ch_cfg.gpio_num          = (gpio_num_t)this->config.TXPin;
         ch_cfg.clk_src           = RMT_CLK_SRC_DEFAULT;
         ch_cfg.resolution_hz     = 1000000; // 1 tick = 1 µs
-        ch_cfg.mem_block_symbols = 96; // one frame fits (56-bit ≤61 syms, 80-bit ≤94 syms)
+        ch_cfg.mem_block_symbols = 96; // one frame fits (56-bit ≤62 syms, 80-bit ≤95 syms)
         ch_cfg.trans_queue_depth = SOMFY_BURST_MAX; // queue the whole burst up-front
         ch_cfg.flags.with_dma    = false;
         ESP_ERROR_CHECK(rmt_new_tx_channel(&ch_cfg, &s_rmtTxChan));

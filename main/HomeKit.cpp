@@ -91,7 +91,9 @@ static int shade_write(hap_write_data_t write_data[], int count,
             *(w->status) = HAP_STATUS_SUCCESS;
 
         } else if(!strcmp(uuid, HAP_CHAR_UUID_HOLD_POSITION)) {
-            if(w->val.b) somfy.enqueueShadeCommand(shadeId, somfy_commands::Stop, shade->repeats);
+            // Match the boosted repeat count used for HomeKit Up/Down so a
+            // single HomeKit tap is delivered reliably with no app retry.
+            if(w->val.b) somfy.enqueueShadeCommand(shadeId, somfy_commands::Stop, MOVE_REPEATS);
             hap_char_update_val(w->hc, &w->val);
             *(w->status) = HAP_STATUS_SUCCESS;
 

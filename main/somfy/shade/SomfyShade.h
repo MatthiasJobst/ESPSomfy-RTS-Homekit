@@ -78,6 +78,8 @@ class SomfyShade : public SomfyRemote {
     void setSettingPos(bool v);
     void setSettingTiltPos(bool v);
     void setSettingMyPos(bool v);
+    void setBoostedStop(bool v);
+    bool getBoostedStop() const;
     void clearMotionState();
     // Movement interpolation reset — called at the start of every command frame
     void resetMovement(uint64_t t);

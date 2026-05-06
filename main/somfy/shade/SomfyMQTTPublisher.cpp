@@ -314,6 +314,10 @@ void SomfyMQTTPublisher::emitState(uint8_t num, const char *evt) {
   }
   json->endObject();
   sockEmit.endEmit(num);
+  // Push the same state to HomeKit so position/direction/target stay live.
+  // Without this, only publishState() (rare) updates HAP and the Home app
+  // shows "closing" forever even after the shade has reached its target.
+  homekit.notifyShadeState(shade);
 }
 
 void SomfyMQTTPublisher::emitCommand(uint8_t num, somfy_commands cmd, const char *source,
