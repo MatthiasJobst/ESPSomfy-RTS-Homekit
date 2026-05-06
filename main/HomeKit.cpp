@@ -61,15 +61,14 @@ static int __attribute__((used)) shade_identify(hap_acc_t *ha) {
 
 static int shade_write(hap_write_data_t write_data[], int count,
                        void *serv_priv, void *write_priv) {
-    // serv_priv holds the shadeId stored as (void*)(uintptr_t)shadeId
-    uint8_t shadeId = (uint8_t)(uintptr_t)serv_priv;
-    SomfyShade *shade = somfy.getShadeById(shadeId);
+    SomfyShade *shade = (SomfyShade *)serv_priv;
 
     if(!shade) {
-        ESP_LOGW(TAG, "Write for unknown shadeId %d", shadeId);
+        ESP_LOGW(TAG, "Write with null shade pointer");
         for(int i = 0; i < count; i++) *(write_data[i].status) = HAP_STATUS_RES_ABSENT;
         return HAP_FAIL;
     }
+    uint8_t shadeId = shade->getShadeId();
 
     for(int i = 0; i < count; i++) {
         hap_write_data_t *w = &write_data[i];
@@ -142,8 +141,9 @@ static hap_acc_t *createShadeAccessory(SomfyShade *shade) {
     // Add HoldPosition (Stop command)
     hap_serv_add_char(svc, hap_char_hold_position_create(false));
 
-    // Store shadeId as private data so the write callback can find the shade
-    hap_serv_set_priv(svc, (void *)(uintptr_t)shade->getShadeId());
+    // Store the shade pointer as private data so callbacks can find it directly.
+    // Pointers into somfy.shades[] are stable for the device lifetime.
+    hap_serv_set_priv(svc, shade);
     hap_serv_set_write_cb(svc, shade_write);
 
     hap_acc_add_serv(acc, svc);
@@ -249,8 +249,7 @@ void HomeKitClass::notifyShadeState(SomfyShade *shade) {
     while(acc) {
         hap_serv_t *svc = getWindowCoveringService(acc);
         if(svc) {
-            uint8_t id = (uint8_t)(uintptr_t)hap_serv_get_priv(svc);
-            if(id == shade->getShadeId()) {
+            if(hap_serv_get_priv(svc) == shade) {
                 int8_t pos = shade->transformPosition(shade->currentPos);
                 int8_t tgt = shade->transformPosition(shade->target);
                 uint8_t ps  = directionToPositionState(shade->direction);
@@ -291,8 +290,7 @@ void HomeKitClass::removeShade(SomfyShade *shade) {
     while(acc) {
         hap_serv_t *svc = getWindowCoveringService(acc);
         if(svc) {
-            uint8_t id = (uint8_t)(uintptr_t)hap_serv_get_priv(svc);
-            if(id == shade->getShadeId()) {
+            if(hap_serv_get_priv(svc) == shade) {
                 hap_remove_bridged_accessory(acc);
                 hap_update_config_number();
                 ESP_LOGI(TAG, "Removed shade id=%d from HomeKit", shade->getShadeId());
