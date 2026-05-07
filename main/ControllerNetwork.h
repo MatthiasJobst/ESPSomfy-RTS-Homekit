@@ -3,7 +3,7 @@
  * -----------------
  * This class manages network connectivity for the SomfyController project, handling both Ethernet and WiFi connections.
  * It provides logic for connection management, failover between interfaces, SoftAP setup, and network status reporting.
- * The class also integrates with mDNS, SSDP, and other network services to support device discovery and communication.
+ * The class also integrates with mDNS and other network services to support device discovery and communication.
  */
 #ifndef CONTROLLERNETWORK_H
 #define CONTROLLERNETWORK_H

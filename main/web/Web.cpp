@@ -4,10 +4,10 @@
 #include <Update.h>
 #include "esp_log.h"
 #include "mbedtls/md.h"
+#include "AppConfig.h"
 #include "ConfigSettings.h"
 #include "ConfigFile.h"
 #include "Utils.h"
-#include "SSDP.h"
 #include "SomfyShadeController.h"
 #include "WResp.h"
 #include "Web.h"
@@ -19,7 +19,6 @@
 #include "Sockets.h"
 
 extern ConfigSettings settings;
-extern SSDPClass SSDP;
 extern rebootDelay_t rebootDelay;
 extern SomfyShadeController somfy;
 extern Web webServer;
@@ -628,7 +627,6 @@ void Web::begin() {
   server.on("/groupCommand",       []() { webServer.handleGroupCommand(server); });
   server.on("/setPositions",       []() { webServer.handleSetPositions(server); });
   server.on("/setSensor",          []() { webServer.handleSetSensor(server); });
-  server.on("/upnp.xml",           []() { SSDP.schema(server.client()); });
   server.on("/",                   []() { webServer.handleStreamFile(server, "/index.html", g_encoding_html); });
   server.on("/login",              []() { webServer.handleLogin(server); });
   server.on("/loginContext",       []() { webServer.handleLoginContext(server); });

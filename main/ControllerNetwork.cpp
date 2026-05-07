@@ -3,12 +3,12 @@
 #include <ESPmDNS.h>
 #include <esp_wifi.h>
 #include "esp_log.h"
+#include "AppConfig.h"
 #include "ConfigSettings.h"
 #include "ControllerNetwork.h"
 #include "Web.h"
 #include "Sockets.h"
 #include "Utils.h"
-#include "SSDP.h"
 #include "MQTT.h"
 
 extern ConfigSettings settings;
@@ -20,15 +20,14 @@ extern ControllerNetwork net;
 extern SomfyShadeController somfy;
 
 static const char *TAG = "ControllerNetwork";
-static unsigned long _lastHeapEmit = 0;
+static unsigned long lastHeapEmit = 0;
 
-static bool _apScanning = false;
-static uint32_t _lastMaxHeap = 0;
-static uint32_t _lastHeap = 0;
+static bool apScanning = false;
+static uint32_t lastMaxHeap = 0;
+static uint32_t lastHeap = 0;
 int connectRetries = 0;
 
 void ControllerNetwork::end() {
-  SSDP.end();
   mqtt.end();
   sockEmit.end();
   delay(100);
@@ -87,13 +86,13 @@ void ControllerNetwork ::loop() {
   conn_types_t ctype = this->preferredConnType();
   this->connect(ctype); // Connection timeout handled in connect function as well as the opening of the Soft AP if needed.
   if(this->connecting()) return; // If we are currently attempting to connect to something then we need to bail here.
-  if(_apScanning) {
+  if(apScanning) {
     if(settings.WIFI.hidden ||                                    // This user has elected to use a hidden AP.
       (this->connected() && !settings.WIFI.roaming) ||            // We are already connected and should not be roaming.
       (this->softAPOpened && WiFi.softAPgetStationNum() != 0) ||  // The Soft AP is open and a user is connected.
       (ctype != conn_types_t::wifi)) {                            // The Ethernet link is up so we should ignore this scan.
       ESP_LOGI(TAG, "Cancelling WiFi STA Scan...");
-      _apScanning = false;
+      apScanning = false;
       WiFi.scanDelete();
     }
     else {
@@ -113,7 +112,7 @@ void ControllerNetwork ::loop() {
             }
           }
         }
-        _apScanning = false;
+        apScanning = false;
       }
     }
   }
@@ -125,8 +124,8 @@ void ControllerNetwork ::loop() {
       // going to continuously scan when there is no connection and our preferred connection is wifi.
       if(ctype == conn_types_t::wifi) {
         // Scan for an AP but only if we are not already scanning.
-        if(!_apScanning && WiFi.scanNetworks(true, false, true, 300, 0, settings.WIFI.ssid) == -1) {
-          _apScanning = true;
+        if(!apScanning && WiFi.scanNetworks(true, false, true, 300, 0, settings.WIFI.ssid) == -1) {
+          apScanning = true;
         }
       }
     }
@@ -134,8 +133,8 @@ void ControllerNetwork ::loop() {
       // Periodically look for a roaming AP.
       if(millis() > SSID_SCAN_INTERVAL + this->lastWifiScan) {
         ESP_LOGI(TAG, "Started scan for access points");
-        if(!_apScanning && WiFi.scanNetworks(true, false, true, 300, 0, settings.WIFI.ssid) == -1) {
-          _apScanning = true;
+        if(!apScanning && WiFi.scanNetworks(true, false, true, 300, 0, settings.WIFI.ssid) == -1) {
+          apScanning = true;
           this->lastWifiScan = millis();
         }
       }
@@ -152,15 +151,9 @@ void ControllerNetwork ::loop() {
   
   //sockEmit.loop();
   //mqtt.loop();
-  if(settings.ssdpBroadcast && this->connected()) {
-    if(!SSDP.isStarted) SSDP.begin();
-    if(SSDP.isStarted) SSDP.loop();
-  }
-  else if(!settings.ssdpBroadcast && SSDP.isStarted) SSDP.end();
 }
 
 bool ControllerNetwork::changeAP(const uint8_t *bssid, const int32_t channel) {
-  if(SSDP.isStarted) SSDP.end();
   mqtt.disconnect();
   //sockEmit.end();
   WiFi.disconnect(false, true);
@@ -201,6 +194,7 @@ void ControllerNetwork::emitSockets(uint8_t num) {
         json->addElem("channel", (int32_t)this->channel);
         json->endObject();
         sockEmit.endEmit(num);
+        // NOLINTNEXTLINE(bugprone-signed-char-misuse) — RSSI is signed dBm
         this->lastRSSI = static_cast<int>(WiFi.RSSI());
         this->lastChannel = WiFi.channel();
       }
@@ -239,6 +233,7 @@ void ControllerNetwork::setConnected(conn_types_t connType) {
     this->_connecting = false;
     this->ssid = WiFi.SSID();
     this->mac = WiFi.BSSIDstr();
+    // NOLINTNEXTLINE(bugprone-signed-char-misuse) — RSSI is signed dBm
     this->strength = static_cast<int>(WiFi.RSSI());
     this->channel = WiFi.channel();
     this->connectAttempts++;
@@ -307,34 +302,12 @@ void ControllerNetwork::setConnected(conn_types_t connType) {
     }
     ESP_LOGI(TAG, "Disconnected %d times", this->connectAttempts - 1);
   }
-  SSDP.setHTTPPort(APP_HTTP_PORT);
-  SSDP.setSchemaURL(0, SSDP_SCHEMA_URL);
-  SSDP.setChipId(0, this->getChipId());
-  SSDP.setDeviceType(0, SSDP_DEVICE_TYPE);
-  SSDP.setName(0, settings.hostname);
-  
-  //SSDP.setSerialNumber(0, "C2496952-5610-47E6-A968-2FC19737A0DB");
-  //SSDP.setUUID(0, settings.uuid);
-  SSDP.setModelName(0, SSDP_MODEL_NAME);
-  if(strlen(settings.chipModel) == 0) SSDP.setModelNumber(0, SSDP_MODEL_NUMBER_DEFAULT);
-  else {
-    char sModel[20] = "";
-    snprintf(sModel, sizeof(sModel), "ESP32-%s", settings.chipModel);
-    SSDP.setModelNumber(0, sModel);
-  }
-  SSDP.setModelURL(0, SSDP_MODEL_URL);
-  SSDP.setManufacturer(0, SSDP_MANUFACTURER);
-  SSDP.setManufacturerURL(0, SSDP_MANUFACTURER_URL);
-  SSDP.setURL(0, SSDP_PRESENTATION_URL);
-  SSDP.setActive(0, true);
   if(MDNS.begin(settings.hostname)) {
     ESP_LOGI(TAG, "MDNS Responder Started: serverId=%s", settings.serverId);
-    MDNS.addService("http", "tcp", APP_HTTP_PORT);
+    // _http._tcp is registered from app_main after homekit.begin(),
+    // because esp-homekit-sdk re-initialises mDNS during hap_init() and
+    // would otherwise drop any service registered here.
   }
-  if(settings.ssdpBroadcast) {
-    SSDP.begin();
-  }
-  else if(SSDP.isStarted) SSDP.end();
   this->emitSockets();
   settings.printAvailHeap();
   this->needsBroadcast = true;
@@ -409,14 +382,12 @@ void ControllerNetwork::updateHostname() {
       strcmp(settings.hostname, ETH.getHostname()) != 0) {
       ESP_LOGI(TAG, "Updating host name to %s...", settings.hostname);
       ETH.setHostname(settings.hostname);
-      MDNS.setInstanceName(settings.hostname);        
-      SSDP.setName(0, settings.hostname);
+      MDNS.setInstanceName(settings.hostname);
      }
      else if(strcmp(settings.hostname, WiFi.getHostname()) != 0) {
       ESP_LOGI(TAG, "Updating host name to %s...", settings.hostname);
       WiFi.setHostname(settings.hostname);
-      MDNS.setInstanceName(settings.hostname);        
-      SSDP.setName(0, settings.hostname);
+      MDNS.setInstanceName(settings.hostname);
      }
   }
 }
@@ -554,12 +525,10 @@ bool ControllerNetwork::openSoftAP() {
 }
 
 bool ControllerNetwork::connected() {
-  if(this->connecting()) return false;
-  else if(this->connType == conn_types_t::unset) return false;
-  else if(this->connType == conn_types_t::wifi) return WiFi.status() == WL_CONNECTED;
-  else if(this->connType == conn_types_t::ethernet) return ETH.linkUp();
-  else return this->connType != conn_types_t::unset;
-  return false;
+  if(this->connecting() || this->connType == conn_types_t::unset) return false;
+  if(this->connType == conn_types_t::wifi) return WiFi.status() == WL_CONNECTED;
+  if(this->connType == conn_types_t::ethernet) return ETH.linkUp();
+  return true;  // any other non-unset connType (e.g. ethernetpref)
 }
 
 bool ControllerNetwork::connecting() {
@@ -648,18 +617,18 @@ void ControllerNetwork::networkEvent(WiFiEvent_t event) {
 
 void ControllerNetwork::emitHeap(uint8_t num) {
   bool bEmit = false;
-  bool bTimeEmit = millis() - _lastHeapEmit > 15000;
+  bool bTimeEmit = millis() - lastHeapEmit > 15000;
   bool bRoomEmit = false;
   bool bValEmit = false;
   if(num != 255 || this->needsBroadcast) bEmit = true;
-  if(millis() - _lastHeapEmit > 15000) bTimeEmit = true;
+  if(millis() - lastHeapEmit > 15000) bTimeEmit = true;
   uint32_t freeHeap = ESP.getFreeHeap();
   uint32_t maxHeap = ESP.getMaxAllocHeap();
   uint32_t minHeap = ESP.getMinFreeHeap();
-  if(abs((int)(freeHeap - _lastHeap)) > 1500) bValEmit = true;
-  if(abs((int)(maxHeap - _lastMaxHeap)) > 1500) bValEmit = true;
+  if(abs((int)(freeHeap - lastHeap)) > 1500) bValEmit = true;
+  if(abs((int)(maxHeap - lastMaxHeap)) > 1500) bValEmit = true;
   bRoomEmit = sockEmit.activeClients(0) > 0;
-  if(bValEmit) bTimeEmit = millis() - _lastHeapEmit > 7000;
+  if(bValEmit) bTimeEmit = millis() - lastHeapEmit > 7000;
   if(bEmit || bTimeEmit || bRoomEmit || bValEmit) {
     JsonSockEvent *json = sockEmit.beginEmit("memStatus");
     json->beginObject();
@@ -670,9 +639,9 @@ void ControllerNetwork::emitHeap(uint8_t num) {
     json->endObject();
     if(num == 255 && bTimeEmit && bValEmit) {
       sockEmit.endEmit(num);
-      _lastHeapEmit = millis();
-      _lastHeap = freeHeap;
-      _lastMaxHeap = maxHeap;
+      lastHeapEmit = millis();
+      lastHeap = freeHeap;
+      lastMaxHeap = maxHeap;
       //ESP_LOGI(TAG, "BROAD HEAP: Emit:%d TimeEmit:%d ValEmit:%d", bEmit, bTimeEmit, bValEmit);
     }
     else if(num != 255) {

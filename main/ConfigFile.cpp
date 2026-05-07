@@ -178,7 +178,7 @@ bool ConfigFile::readVarString(char *buff, size_t len) {
 }
 bool ConfigFile::writeString(const char *val, size_t len, const char tok) {
   if(!this->isOpen()) return false;
-  int slen = strlen(val);
+  size_t slen = strlen(val);
   if(slen > 0)
     if(this->file.write((uint8_t *)val, slen) != slen) return false;
   // Now we need to pad the end of the string so that it is of a fixed length.
@@ -192,7 +192,7 @@ bool ConfigFile::writeString(const char *val, size_t len, const char tok) {
 }
 bool ConfigFile::writeVarString(const char *val, const char tok) {
   if(!this->isOpen()) return false;
-  int slen = strlen(val);
+  size_t slen = strlen(val);
   this->writeChar(CFG_TOK_QUOTE);
   if(slen > 0) if(this->file.write((uint8_t *)val, slen) != slen) return false;
   this->writeChar(CFG_TOK_QUOTE);

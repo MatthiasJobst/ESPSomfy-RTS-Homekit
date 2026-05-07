@@ -35,11 +35,11 @@ int8_t appver_t::compare(appver_t &ver) {
   return 0;
 }
 void appver_t::copy(appver_t &ver) {
-  strcpy(this->name, ver.name);
+  strlcpy(this->name, ver.name, sizeof(this->name));
   this->major = ver.major;
   this->minor = ver.minor;
   this->build = ver.build;
-  strcpy(this->suffix, ver.suffix);
+  strlcpy(this->suffix, ver.suffix, sizeof(this->suffix));
 }
 void appver_t::parse(const char *ver) {
   // Now lets parse this pig.
@@ -207,7 +207,7 @@ bool ConfigSettings::load() {
   this->getAppVersion();
   pref.begin("CFG");
   pref.getString("hostname", this->hostname, sizeof(this->hostname));
-  this->ssdpBroadcast = pref.getBool("ssdpBroadcast", true);
+  if(pref.isKey("ssdpBroadcast")) pref.remove("ssdpBroadcast");
   this->checkForUpdate = pref.getBool("checkForUpdate", true);
   this->connType = static_cast<conn_types_t>(pref.getChar("connType", 0x00));
   //ESP_LOGI(TAG, "Preference GFG Free Entries: %d", pref.freeEntries());
@@ -217,9 +217,8 @@ bool ConfigSettings::load() {
     this->connType = conn_types_t::wifi;
     pref.begin("WIFI");
     pref.getString("hostname", this->hostname, sizeof(this->hostname));
-    this->ssdpBroadcast = pref.getBool("ssdpBroadcast", true);
     pref.remove("hostname");
-    pref.remove("ssdpBroadcast");
+    if(pref.isKey("ssdpBroadcast")) pref.remove("ssdpBroadcast");
     pref.end();
     this->save();    
   }
@@ -239,14 +238,12 @@ bool ConfigSettings::getAppVersion() {
 bool ConfigSettings::save() {
   pref.begin("CFG");
   pref.putString("hostname", this->hostname);
-  pref.putBool("ssdpBroadcast", this->ssdpBroadcast);
   pref.putChar("connType", static_cast<int8_t>(this->connType));
   pref.putBool("checkForUpdate", this->checkForUpdate);
   pref.end();
   return true;
 }
 bool ConfigSettings::toJSON(JsonObject &obj) {
-  obj["ssdpBroadcast"] = this->ssdpBroadcast;
   obj["hostname"] = this->hostname;
   obj["connType"] = static_cast<uint8_t>(this->connType);
   obj["chipModel"] = this->chipModel;
@@ -254,7 +251,6 @@ bool ConfigSettings::toJSON(JsonObject &obj) {
   return true;
 }
 void ConfigSettings::toJSON(JsonResponse &json) {
-  json.addElem("ssdpBroadcast", this->ssdpBroadcast);
   json.addElem("hostname", this->hostname);
   json.addElem("connType", static_cast<uint8_t>(this->connType));
   json.addElem("chipModel", this->chipModel);
@@ -263,7 +259,6 @@ void ConfigSettings::toJSON(JsonResponse &json) {
 
 bool ConfigSettings::requiresAuth() { return this->Security.type != security_types::None; }
 bool ConfigSettings::fromJSON(JsonObject &obj) {
-    if(obj.containsKey("ssdpBroadcast")) this->ssdpBroadcast = obj["ssdpBroadcast"];
     if(obj.containsKey("hostname")) this->parseValueString(obj, "hostname", this->hostname, sizeof(this->hostname));
     if(obj.containsKey("connType")) this->connType = static_cast<conn_types_t>(obj["connType"].as<uint8_t>());
     if(obj.containsKey("checkForUpdate")) this->checkForUpdate = obj["checkForUpdate"];
@@ -283,7 +278,6 @@ uint16_t ConfigSettings::calcSettingsRecSize() {
     + strlen(this->hostname) + 3
     + strlen(this->NTP.ntpServer) + 3
     + strlen(this->NTP.posixZone) + 3
-    + 6  // ssdpbroadcast
     + 6; // updateCheck
 }
 uint16_t ConfigSettings::calcNetRecSize() {
@@ -698,13 +692,13 @@ void EthernetSettings::toJSON(JsonResponse &json) {
 }
 
 bool EthernetSettings::usesPin(uint8_t pin) {
-  if((this->CLKMode == 0 || this->CLKMode == 1) && pin == 0) return true;
-  else if(this->CLKMode == 2 && pin == 16) return true;
-  else if(this->CLKMode == 3 && pin == 17) return true;
-  else if(this->PWRPin == static_cast<int8_t>(pin)) return true;
-  else if(this->MDCPin == static_cast<int8_t>(pin)) return true;
-  else if(this->MDIOPin == static_cast<int8_t>(pin)) return true;
-  return false;  
+  // Index matches eth_clock_mode_t: GPIO0_IN, GPIO0_OUT, GPIO16_OUT, GPIO17_OUT.
+  static constexpr int8_t clkPins[] = {0, 0, 16, 17};
+  int8_t p = static_cast<int8_t>(pin);
+  return (this->CLKMode < 4 && p == clkPins[this->CLKMode])
+      || p == this->PWRPin
+      || p == this->MDCPin
+      || p == this->MDIOPin;
 }
 bool EthernetSettings::save() {
   pref.begin("ETH");

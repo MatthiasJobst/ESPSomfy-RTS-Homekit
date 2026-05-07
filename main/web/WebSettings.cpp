@@ -142,7 +142,7 @@ void Web::handleSetGeneral(WebServer &server) {
   if (!parseBody(server, doc, obj)) return;
   HTTPMethod method = server.method();
   if (method == HTTP_POST || method == HTTP_PUT) {
-    if (obj.containsKey("hostname") || obj.containsKey("ssdpBroadcast") || obj.containsKey("checkForUpdate")) {
+    if (obj.containsKey("hostname") || obj.containsKey("checkForUpdate")) {
       bool checkForUpdate = settings.checkForUpdate;
       settings.fromJSON(obj);
       settings.save();

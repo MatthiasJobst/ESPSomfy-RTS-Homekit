@@ -10,7 +10,9 @@
 #include <LittleFS.h>
 #include <esp_task_wdt.h>
 #include <esp_system.h>
+#include <mdns.h>
 #include "esp_log.h"
+#include "AppConfig.h"
 #include "ConfigSettings.h"
 #include "ControllerNetwork.h"
 #include "Web.h"
@@ -87,6 +89,18 @@ static void mainLoop(void*) {
       webServer.loop();
       if(millis() - timing > 100) ESP_LOGI(TAG, "Timing WebServer: %ldms", millis() - timing);
       if(!net.softAPOpened) homekit.begin();
+      // esp-homekit-sdk's hap_mdns_init() hard-codes the mDNS hostname to
+      // "MyHost", so <hostname>.local stops resolving once HAP starts.
+      // Restore our hostname and register _http._tcp (which would also be
+      // dropped if registered before hap_init()).
+      static bool httpMdnsRegistered = false;
+      if(!httpMdnsRegistered && homekit.isStarted()) {
+        mdns_hostname_set(settings.hostname);
+        if(mdns_service_add(NULL, "_http", "_tcp", APP_HTTP_PORT, NULL, 0) == ESP_OK) {
+          ESP_LOGI(TAG, "mDNS _http._tcp registered, hostname=%s", settings.hostname);
+          httpMdnsRegistered = true;
+        }
+      }
     }
     // Poll WebSocket unconditionally — must run every iteration regardless of
     // WiFi/AP state so the HTTP-101 upgrade handshake is never starved.

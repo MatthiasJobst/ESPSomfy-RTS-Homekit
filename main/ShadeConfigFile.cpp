@@ -8,7 +8,7 @@ extern ConfigSettings settings;
 
 static const char *TAG = "ShadeConfigFile";
 
-#define SHADE_HDR_VER 24
+#define SHADE_HDR_VER 25
 #define SHADE_HDR_SIZE 76
 #define SHADE_REC_SIZE 276
 #define GROUP_REC_SIZE 200
@@ -417,7 +417,8 @@ bool ShadeConfigFile::readSettingsRecord() {
     this->readVarString(settings.hostname, sizeof(settings.hostname));
     this->readVarString(settings.NTP.ntpServer, sizeof(settings.NTP.ntpServer));
     this->readVarString(settings.NTP.posixZone, sizeof(settings.NTP.posixZone));
-    settings.ssdpBroadcast = this->readBool(false);
+    // v24 and earlier persisted ssdpBroadcast here; consume and discard to keep the layout aligned.
+    if(this->header.version < 25) this->readBool(false);
     if(this->header.version >= 20) settings.checkForUpdate = this->readBool(true);
     if(this->file.position() != startPos + this->header.settingsRecordSize) {
       ESP_LOGI(TAG, "Reading to end of settings record");
@@ -712,7 +713,6 @@ bool ShadeConfigFile::writeSettingsRecord() {
   this->writeVarString(settings.hostname);
   this->writeVarString(settings.NTP.ntpServer);
   this->writeVarString(settings.NTP.posixZone);
-  this->writeBool(settings.ssdpBroadcast);
   this->writeBool(settings.checkForUpdate, CFG_REC_END);
   return true;
 }

@@ -27,7 +27,6 @@ idf_component_register(
         "somfy/shade/SomfyJSONSerializer.cpp"
         "somfy/shade/SomfyShade.cpp"
         "somfy/SomfyShadeController.cpp"
-        "SSDP.cpp"
         "Utils.cpp"
         "WResp.cpp"
         "web/Web.cpp"

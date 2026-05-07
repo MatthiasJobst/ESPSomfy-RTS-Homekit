@@ -75,7 +75,6 @@ class WifiSettings: BaseSettings {
     bool hidden = false;
     char ssid[65] = "";
     char passphrase[65] = "";
-    //bool ssdpBroadcast = true;
     bool begin();
     bool fromJSON(JsonObject &obj);
     bool toJSON(JsonObject &obj);
@@ -180,7 +179,6 @@ class ConfigSettings: BaseSettings {
     conn_types_t connType = conn_types_t::unset;
     appver_t fwVersion;
     appver_t appVersion;
-    bool ssdpBroadcast = true;
     bool checkForUpdate = true;
     uint8_t status;
     IPSettings IP;
