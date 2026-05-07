@@ -2,25 +2,11 @@
 # Only report diagnostics for project source files, not ESP-IDF or managed_components.
 HeaderFilterRegex: '.*/SomfyController/main/.*'
 
-Checks: >
-  clang-diagnostic-*,
-  clang-analyzer-*,
-  bugprone-*,
-  performance-*,
-  -bugprone-easily-swappable-parameters,
-  -bugprone-macro-parentheses,
-  -modernize-*,
-  -readability-avoid-const-params-in-decls,
-  -readability-braces-around-statements,
-  -readability-convert-member-functions-to-static,
-  -readability-else-after-return,
-  -readability-function-cognitive-complexity,
-  -readability-identifier-length,
-  -readability-implicit-bool-conversion,
-  -readability-isolate-declaration,
-  -readability-magic-numbers,
-  -readability-make-member-function-const,
-  -readability-misplaced-array-index,
-  -readability-redundant-casting,
-  -readability-static-accessed-through-instance,
-  -readability-uppercase-literal-suffix
+CheckOptions:
+  # int8_t (RSSI dBm, downloadFile error codes, etc.) is intentionally signed;
+  # exclude it from bugprone-signed-char-misuse so we don't have to NOLINT every site.
+  # NOTE: option name has a typo in clang-tidy 19.x — "Typdefs" not "Typedefs".
+  # https://github.com/llvm/llvm-project — fixed upstream; revisit once we move to a newer toolchain.
+  bugprone-signed-char-misuse.CharTypdefsToIgnore: 'int8_t'
+
+Checks: 'clang-diagnostic-*,clang-analyzer-*,bugprone-*,performance-*,-bugprone-easily-swappable-parameters,-bugprone-macro-parentheses,-clang-diagnostic-unused-command-line-argument,-modernize-*,-readability-avoid-const-params-in-decls,-readability-braces-around-statements,-readability-convert-member-functions-to-static,-readability-else-after-return,-readability-function-cognitive-complexity,-readability-identifier-length,-readability-implicit-bool-conversion,-readability-isolate-declaration,-readability-magic-numbers,-readability-make-member-function-const,-readability-misplaced-array-index,-readability-redundant-casting,-readability-static-accessed-through-instance,-readability-uppercase-literal-suffix'

@@ -111,7 +111,7 @@ char * Timestamp::getISOTime(time_t epoch) {
   return this->formatISO(dt, this->tzOffset());
 }
 char * Timestamp::formatISO(struct tm *dt, int tz) {
-  int tzHrs = floor(tz/100);
+  int tzHrs = tz / 100;  // tz is int — integer division already truncates; floor() was a no-op
   int tzMin = tz - (tzHrs * 100);
   int ms = static_cast<int>(millis() % 1000);
   snprintf(this->_timeBuffer, sizeof(this->_timeBuffer), "%04d-%02d-%02dT%02d:%02d:%02d.%03d%s%02d%02d", 
@@ -122,7 +122,8 @@ int Timestamp::calcTZOffset(time_t *dt) {
   tm tmLocal, tmUTC;
   gmtime_r(dt, &tmUTC);
   localtime_r(dt, &tmLocal);
-  long diff = mktime(&tmLocal) - mktime(&tmUTC);
+  // UTC offsets fit comfortably in long (max ±14h = ±50400s); explicit cast silences the time_t→long narrowing warning.
+  long diff = static_cast<long>(mktime(&tmLocal) - mktime(&tmUTC));
   if(tmLocal.tm_isdst) diff += 3600;
   int hrs = (int)((diff/3600) * 100);
   int mins = diff - (hrs * 36);

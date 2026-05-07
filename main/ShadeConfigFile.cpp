@@ -542,8 +542,8 @@ bool ShadeConfigFile::readShadeRecord(SomfyShade *shade) {
     shade->currentPos = shade->currentPos * 100;
     shade->currentTiltPos = shade->currentTiltPos * 100;
   }
-  shade->target = floor(shade->currentPos);
-  shade->tiltTarget = floor(shade->currentTiltPos);
+  shade->target = floorf(shade->currentPos);
+  shade->tiltTarget = floorf(shade->currentTiltPos);
   if(this->header.version >= 9) shade->flipCommands = this->readBool(false);
   if(this->header.version >= 10) shade->setFlipPosition(this->readBool(false));
   if(this->header.version >= 12) shade->repeats = this->readUInt8(1);

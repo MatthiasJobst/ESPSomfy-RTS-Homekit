@@ -137,7 +137,7 @@ void MQTTClass::receive(const char *topic, byte*payload, uint32_t length) {
       }
       else if(strncmp(command, "myTiltPos", sizeof(command)) == 0) {
         if(val >= 0 && val <= 100)
-          shade->setMyPosition(shade->getMyPos(), static_cast<int8_t>(val));
+          shade->setMyPosition(static_cast<int8_t>(shade->getMyPos()), static_cast<int8_t>(val));
       }
       else if(strncmp(command, "sunFlag", sizeof(command)) == 0) {
         if(val > 0) somfy.enqueueShadeCommand(shadeId, somfy_commands::SunFlag, shade->repeats);

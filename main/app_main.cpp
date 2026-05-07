@@ -23,7 +23,8 @@
 #include "GitOTA.h"
 #include "HomeKit.h"
 #include <nvs.h>
-#include "app_main.h"
+
+static void setCodeForHomeKit();
 
 ConfigSettings settings;
 Web webServer;
@@ -124,7 +125,7 @@ static void mainLoop(void*) {
   }
 }
 
-void setCodeForHomeKit() {
+static void setCodeForHomeKit() {
   {
     nvs_handle_t h;
     char code[12] = {};

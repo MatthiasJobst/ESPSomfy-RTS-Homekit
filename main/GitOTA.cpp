@@ -41,43 +41,33 @@ void GitRelease::setReleaseProperty(const char *key, const char *val) {
   }
 }
 void GitRelease::setAssetProperty(const char *key, const char *val) {
-  if(strcmp(key, "name") == 0) {
-    ESP_LOGI(TAG, "Asset Key:[%s] Value:[%s]", key, val);
-    if(strstr(val, "littlefs.bin")) this->hasFS = true;
-    else if(strstr(val, "esp32.bin")) {
-      if(strlen(this->hwVersions)) strcat(this->hwVersions, ",");
-      strcat(this->hwVersions, "32");
-    }
-    else if(strstr(val, "esp32s3.bin")) {
-      if(strlen(this->hwVersions)) strcat(this->hwVersions, ",");
-      strcat(this->hwVersions, "s3");
-    }
-    else if(strstr(val, "esp32s2.bin")) {
-      if(strlen(this->hwVersions)) strcat(this->hwVersions, ",");
-      strcat(this->hwVersions, "s2");
-    }
-    else if(strstr(val, "esp32c3.bin")) {
-      if(strlen(this->hwVersions)) strcat(this->hwVersions, ",");
-      strcat(this->hwVersions, "c3");
-    }
-    else if(strstr(val, "esp32c2.bin")) {
-      if(strlen(this->hwVersions)) strcat(this->hwVersions, ",");
-      strcat(this->hwVersions, "c2");
-    }
-    else if(strstr(val, "esp32c6.bin")) {
-      if(strlen(this->hwVersions)) strcat(this->hwVersions, ",");
-      strcat(this->hwVersions, "c6");
-    }
-    else if(strstr(val, "esp32h2.bin")) {
-      if(strlen(this->hwVersions)) strcat(this->hwVersions, ",");
-      strcat(this->hwVersions, "h2");
+  if(strcmp(key, "name") != 0) return;
+  ESP_LOGI(TAG, "Asset Key:[%s] Value:[%s]", key, val);
+  if(strstr(val, "littlefs.bin")) {
+    this->hasFS = true;
+    return;
+  }
+  static const struct { const char *suffix; const char *tag; } chipMap[] = {
+    {"esp32.bin",   "32"},
+    {"esp32s3.bin", "s3"},
+    {"esp32s2.bin", "s2"},
+    {"esp32c3.bin", "c3"},
+    {"esp32c2.bin", "c2"},
+    {"esp32c6.bin", "c6"},
+    {"esp32h2.bin", "h2"},
+  };
+  for(const auto &m : chipMap) {
+    if(strstr(val, m.suffix)) {
+      if(this->hwVersions[0]) strlcat(this->hwVersions, ",", sizeof(this->hwVersions));
+      strlcat(this->hwVersions, m.tag, sizeof(this->hwVersions));
+      return;
     }
   }
 }
 void GitRelease::toJSON(JsonResponse &json) {
   Timestamp ts;
   char buff[20];
-  sprintf(buff, "%" PRIu64, this->id);
+  snprintf(buff, sizeof(buff), "%" PRIu64, this->id);
   json.addElem("id", buff);
   json.addElem("name", this->name);
   json.addElem("date", ts.getISOTime(this->releaseDate));
@@ -100,14 +90,14 @@ int16_t GitRepo::getReleases(uint8_t num) {
   uint8_t count = min((uint8_t)GIT_MAX_RELEASES, num);
   char url[128];
   memset(this->releases, 0x00, sizeof(GitRelease) * GIT_MAX_RELEASES);
-  sprintf(url, "https://api.github.com/repos/" GIT_REPO "/releases?per_page=%d&page=1", count);
+  snprintf(url, sizeof(url), "https://api.github.com/repos/" GIT_REPO "/releases?per_page=%d&page=1", count);
   GitRelease *main = &this->releases[GIT_MAX_RELEASES];
   main->releaseDate = Timestamp::now();
   main->id = 1;
   main->main = true;
-  strcpy(main->version.name, "main");
-  strcpy(main->name, "Main");
-  strcpy(main->hwVersions, "32,s3");
+  strlcpy(main->version.name, "main", sizeof(main->version.name));
+  strlcpy(main->name, "Main", sizeof(main->name));
+  strlcpy(main->hwVersions, "32,s3", sizeof(main->hwVersions));
   HTTPClient https;
   https.setReuse(false);
   if(https.begin(sclient, url)) {
@@ -406,40 +396,31 @@ void GitUpdater::emitDownloadProgress(uint8_t num, size_t total, size_t loaded, 
   json->addElem("error", (uint32_t)this->error);
   json->endObject();
   sockEmit.endEmit(num);
-  /*
-  char buf[420];
-  snprintf(buf, sizeof(buf), "{\"ver\":\"%s\",\"part\":%d,\"file\":\"%s\",\"total\":%d,\"loaded\":%d, \"error\":%d}", this->targetRelease, this->partition, this->currentFile, total, loaded, this->error);
-  if(num >= 255) sockEmit.sendToClients(evt, buf);
-  else sockEmit.sendToClient(num, evt, buf);
-  */
   sockEmit.loop();
   webServer.loop();
 }
 void GitUpdater::setFirmwareFile() {
     esp_chip_info_t ci;
     esp_chip_info(&ci);
+    const char *bin = "SomfyController.esp32.bin";  // safe default for unknown / future chips
     switch(ci.model) {
-      case esp_chip_model_t::CHIP_ESP32S3:
-        strcpy(this->currentFile, "SomfyController.esp32s3.bin");
-        break;
-      case esp_chip_model_t::CHIP_ESP32S2:
-        strcpy(this->currentFile, "SomfyController.esp32s2.bin");
-        break;
-      case esp_chip_model_t::CHIP_ESP32C3:
-        strcpy(this->currentFile, "SomfyController.esp32c3.bin");
-        break;
-      default:
-        strcpy(this->currentFile, "SomfyController.esp32.bin");
-        break;
+      case esp_chip_model_t::CHIP_ESP32S3: bin = "SomfyController.esp32s3.bin"; break;
+      case esp_chip_model_t::CHIP_ESP32S2: bin = "SomfyController.esp32s2.bin"; break;
+      case esp_chip_model_t::CHIP_ESP32C3: bin = "SomfyController.esp32c3.bin"; break;
+      case esp_chip_model_t::CHIP_ESP32C2: bin = "SomfyController.esp32c2.bin"; break;
+      case esp_chip_model_t::CHIP_ESP32C6: bin = "SomfyController.esp32c6.bin"; break;
+      case esp_chip_model_t::CHIP_ESP32H2: bin = "SomfyController.esp32h2.bin"; break;
+      default: break;
     }
+    strlcpy(this->currentFile, bin, sizeof(this->currentFile));
 }
 
 bool GitUpdater::beginUpdate(const char *version) {
   ESP_LOGI(TAG, "Begin update called...");
-  if(strcmp(version, "Main") == 0) strcpy(this->baseUrl, "https://github.com/" GIT_REPO "/releases/latest/download/");
-  else sprintf(this->baseUrl, "https://github.com/" GIT_REPO "/releases/download/%s/", version);
+  if(strcmp(version, "Main") == 0) strlcpy(this->baseUrl, "https://github.com/" GIT_REPO "/releases/latest/download/", sizeof(this->baseUrl));
+  else snprintf(this->baseUrl, sizeof(this->baseUrl), "https://github.com/" GIT_REPO "/releases/download/%s/", version);
   
-  strcpy(this->targetRelease, version);
+  strlcpy(this->targetRelease, version, sizeof(this->targetRelease));
   this->emitUpdateCheck();
   this->setFirmwareFile();
   this->partition = U_FLASH;
@@ -448,7 +429,7 @@ bool GitUpdater::beginUpdate(const char *version) {
   this->error = static_cast<int16_t>(this->downloadFile());
   if(this->error == 0 && !this->cancelled) {
     somfy.commit();
-    strcpy(this->currentFile, "SomfyController.littlefs.bin");
+    strlcpy(this->currentFile, "SomfyController.littlefs.bin", sizeof(this->currentFile));
     this->partition = U_SPIFFS;
     this->lockFS = true;
     this->error = static_cast<int16_t>(this->downloadFile());
@@ -467,8 +448,8 @@ bool GitUpdater::beginUpdate(const char *version) {
   return true;
 }
 bool GitUpdater::recoverFilesystem() {
-  sprintf(this->baseUrl, "https://github.com/" GIT_REPO "/releases/download/%s/", settings.fwVersion.name);
-  strcpy(this->currentFile, "SomfyController.littlefs.bin");
+  snprintf(this->baseUrl, sizeof(this->baseUrl), "https://github.com/" GIT_REPO "/releases/download/%s/", settings.fwVersion.name);
+  strlcpy(this->currentFile, "SomfyController.littlefs.bin", sizeof(this->currentFile));
   this->status = GIT_UPDATING;
   this->partition = U_SPIFFS;
   this->lockFS = true;
@@ -491,7 +472,7 @@ int8_t GitUpdater::downloadFile() {
   sclient.setInsecure();
   HTTPClient https;
   char url[196];
-  sprintf(url, "%s%s", this->baseUrl, this->currentFile);
+  snprintf(url, sizeof(url), "%s%s", this->baseUrl, this->currentFile);
   ESP_LOGI(TAG, "%s", url);
   if(https.begin(sclient, url)) {
     https.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
@@ -535,7 +516,7 @@ int8_t GitUpdater::downloadFile() {
                 return static_cast<int8_t>(-(Update.getError() + UPDATE_ERR_OFFSET));
               }
               // Calculate the percentage.
-              uint8_t p = (uint8_t)floor(((float)total / (float)len) * 100.0f);
+              uint8_t p = (uint8_t)floorf(((float)total / (float)len) * 100.0f);
               if(p != pct) {
                 pct = p;
                 ESP_LOGI(TAG, "LEN:%d TOTAL:%d %d%%", len, total, pct);

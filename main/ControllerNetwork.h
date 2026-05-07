@@ -9,6 +9,8 @@
 #define CONTROLLERNETWORK_H
 
 #include <Arduino.h>
+#include <WiFi.h>             // WiFiEvent_t
+#include "ConfigSettings.h"   // conn_types_t
 
 #define CONNECT_TIMEOUT 20000
 #define SSID_SCAN_INTERVAL 60000

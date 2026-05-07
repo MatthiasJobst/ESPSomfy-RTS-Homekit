@@ -194,7 +194,6 @@ void ControllerNetwork::emitSockets(uint8_t num) {
         json->addElem("channel", (int32_t)this->channel);
         json->endObject();
         sockEmit.endEmit(num);
-        // NOLINTNEXTLINE(bugprone-signed-char-misuse) — RSSI is signed dBm
         this->lastRSSI = static_cast<int>(WiFi.RSSI());
         this->lastChannel = WiFi.channel();
       }
@@ -233,7 +232,6 @@ void ControllerNetwork::setConnected(conn_types_t connType) {
     this->_connecting = false;
     this->ssid = WiFi.SSID();
     this->mac = WiFi.BSSIDstr();
-    // NOLINTNEXTLINE(bugprone-signed-char-misuse) — RSSI is signed dBm
     this->strength = static_cast<int>(WiFi.RSSI());
     this->channel = WiFi.channel();
     this->connectAttempts++;
