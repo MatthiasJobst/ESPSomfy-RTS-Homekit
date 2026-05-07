@@ -250,6 +250,74 @@ TEST_F(TransceiverRxTest, BitLength80_WhenHwSync12) {
         << "hw_sync count >17 should select 80-bit frame length";
 }
 
+// ── Bit-length classifier matrix (Tahoma capture documentation) ──────────────
+// SDR capture of a Tahoma controller, three transmissions per command:
+//   tx #1 (initial):    ~13 hw-sync symbols + sw_sync + 80-bit data
+//   tx #2/#3 (repeats): ~6-7 hw-sync symbols + sw_sync + 80-bit data
+//
+// Classifier (SomfyTransceiver.cpp:336):
+//   bit_length = (cpt_synchro_hw == 12 || cpt_synchro_hw == 13 ||
+//                 cpt_synchro_hw > 17) ? 80 : 56
+// where cpt_synchro_hw = 2 × hw-sync symbol count emitted by sendHwSync(N).
+//
+// Use this matrix to pin actual hardware behaviour. If a real Tahoma repeat
+// produces 7 symbols (cpt_synchro_hw=14), it is currently classified as 56-bit
+// — colliding with standard 56-bit RTS repeats and requiring a separate
+// disambiguator (e.g. carry bit_length forward from the first frame of the
+// same address). 6 symbols (cpt_synchro_hw=12) lands cleanly on the 80-bit
+// branch.
+struct BitLenCase {
+    uint8_t hwSyncSymbols;
+    uint8_t expectedBitLength;
+    const char *origin;
+};
+
+class TransceiverRxBitLengthMatrix
+    : public TransceiverRxTest,
+      public ::testing::WithParamInterface<BitLenCase> {};
+
+TEST_P(TransceiverRxBitLengthMatrix, ClassifiesByHwSyncCount) {
+    const BitLenCase c = GetParam();
+
+    somfy_frame_t tx;
+    tx.remoteAddress = 0xA0B0C0;
+    tx.rollingCode   = 0x0001;
+    tx.cmd           = somfy_commands::My;
+    tx.proto         = radio_proto::RTS;
+    tx.bitLength     = 56;     // payload encoder is 56-bit; we feed enough
+                                // bits to satisfy `expectedBitLength` so the
+                                // ISR pushes a queue entry.
+    tx.encKey        = 0xA0;
+    uint8_t encoded[10] = {};
+    tx.encodeFrame(encoded);
+
+    sendWakeup();
+    sendHwSync(c.hwSyncSymbols);
+    sendSwSync();
+    sendDataBits(encoded, c.expectedBitLength);
+
+    somfy_rx_t rx;
+    somfy.transceiver.receive(&rx);
+    EXPECT_EQ(rx.bit_length, c.expectedBitLength)
+        << "hwSyncSymbols=" << static_cast<int>(c.hwSyncSymbols)
+        << " (cpt_synchro_hw=" << 2 * static_cast<int>(c.hwSyncSymbols) << ")"
+        << " — " << c.origin;
+}
+
+INSTANTIATE_TEST_SUITE_P(BitLengthBuckets, TransceiverRxBitLengthMatrix,
+    ::testing::Values(
+        BitLenCase{ 2u, 56u, "standard 56-bit first tx (hw=4)"},
+        BitLenCase{ 7u, 56u, "standard 56-bit repeat (hw=14)"},
+        BitLenCase{ 6u, 80u, "80-bit via hw==12 — Tahoma repeat hypothesis A"},
+        BitLenCase{12u, 80u, "80-bit via hw>17 path (hw=24)"},
+        BitLenCase{13u, 80u, "80-bit via hw>17 — Tahoma first tx (hw=26)"}
+    ),
+    [](const ::testing::TestParamInfo<BitLenCase> &info) {
+        return std::string("Sym") + std::to_string(info.param.hwSyncSymbols)
+             + "_Bits" + std::to_string(info.param.expectedBitLength);
+    }
+);
+
 // ── Queue overflow ────────────────────────────────────────────────────────────
 
 // Helper: send one complete 56-bit frame with the given command.

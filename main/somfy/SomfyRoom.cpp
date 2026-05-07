@@ -14,6 +14,7 @@ extern MQTTClass mqtt;
 
 void SomfyRoom::clear() {
   this->roomId = 0;
+  this->sortOrder = 0;
   strcpy(this->name, "");
 }
 

@@ -17,6 +17,8 @@ extern GitUpdater git;
 void SomfyShade::clear() {
   this->setShadeId(255);
   this->setRemoteAddress(0);
+  this->sortOrder = 0;
+  this->roomId    = 0;
   movementTracker.moveStart    = 0;
   movementTracker.tiltStart    = 0;
   this->flagManager = SomfyFlagManager{};
@@ -49,7 +51,6 @@ void SomfyShade::clear() {
   commandProcessor.stepSize = 100;
   movementTracker.lastMovement = 0;
   this->repeats = 1;
-  this->sortOrder = (int8_t)255;
 }
 
 bool SomfyShade::linkRemote(uint32_t address, uint16_t rollingCode) {

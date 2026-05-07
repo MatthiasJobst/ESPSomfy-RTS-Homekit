@@ -325,6 +325,47 @@ TEST_F(ControllerTest, AddShade_SortOrderIsMaxPlusOne) {
     EXPECT_EQ(s->sortOrder, 4);
 }
 
+// Regression: SomfyShade::clear() must reset sortOrder. Prior to the fix it
+// left a stale (int8_t)255 sentinel that — once the field type widened to
+// uint8_t — read as 255 and poisoned getMaxShadeOrder() (whose int8_t return
+// then wrapped 255 → -1, giving the next shade sortOrder 0 instead of max+1).
+TEST_F(ControllerTest, Clear_ResetsSortOrderToZero) {
+    somfy.shades[0].sortOrder = 99;
+    somfy.shades[0].clear();
+    EXPECT_EQ(somfy.shades[0].sortOrder, 0u);
+}
+
+// Boundary: with no shades populated, getMaxShadeOrder() returns -1 and the
+// first auto-assigned sortOrder lands at 0.
+TEST_F(ControllerTest, AddShade_EmptyArray_FirstSortOrderIsZero) {
+    auto *s = somfy.addShade();
+    ASSERT_NE(s, nullptr);
+    EXPECT_EQ(s->sortOrder, 0u);
+}
+
+// Sweep the realistic range of sortOrder values. SOMFY_MAX_SHADES=32, so
+// practical sortOrder never exceeds 31 — but we cover the field boundaries
+// the controller logic actually traverses.
+class AddShadeSortOrderTest
+    : public ControllerTest,
+      public ::testing::WithParamInterface<uint8_t> {};
+
+TEST_P(AddShadeSortOrderTest, NewShadeIsMaxPlusOne) {
+    const uint8_t existing = GetParam();
+    somfy.shades[0].setShadeId(1);
+    somfy.shades[0].sortOrder = existing;
+    auto *s = somfy.addShade();
+    ASSERT_NE(s, nullptr);
+    EXPECT_EQ(s->sortOrder, existing + 1);
+}
+
+INSTANTIATE_TEST_SUITE_P(SortOrderRange, AddShadeSortOrderTest,
+    ::testing::Values(uint8_t{0}, uint8_t{1}, uint8_t{5}, uint8_t{30}),
+    [](const ::testing::TestParamInfo<uint8_t> &info) {
+        return std::string("Existing") + std::to_string(info.param);
+    }
+);
+
 TEST_F(ControllerTest, AddShade_NoIdAvailable_ReturnsNull) {
     for (uint8_t i = 0; i < SOMFY_MAX_SHADES - 2; i++)
         somfy.shades[i].setShadeId(i + 1);

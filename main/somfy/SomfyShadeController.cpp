@@ -359,8 +359,11 @@ SomfyShade *SomfyShadeController::addShade() {
   if(shadeId == 255) return nullptr;
   SomfyShade *shade = &this->shades[shadeId - 1];
   if(shade) {
-    shade->setShadeId(shadeId);
+    // Compute the max BEFORE assigning the new id, so the new (still id=255)
+    // slot is skipped by getMaxShadeOrder() and doesn't contribute its own
+    // freshly-cleared sortOrder=0 to the max.
     shade->sortOrder = static_cast<int8_t>(this->getMaxShadeOrder() + 1);
+    shade->setShadeId(shadeId);
     ESP_LOGI(TAG, "Sort order set to %d", shade->sortOrder);
     this->isDirty = true;
   }
@@ -409,9 +412,10 @@ SomfyRoom *SomfyShadeController::addRoom() {
   if(roomId == 0) return nullptr;
   SomfyRoom *room = &this->rooms[roomId - 1];
   if(room) {
-    room->roomId = roomId;
+    // See addShade(): compute max before assigning id so the new slot is skipped.
     room->sortOrder = static_cast<int8_t>(this->getMaxRoomOrder() + 1);
-    this->isDirty = true;
+    room->roomId    = roomId;
+    this->isDirty   = true;
   }
   return room;
 }
@@ -436,8 +440,9 @@ SomfyGroup *SomfyShadeController::addGroup() {
   if(groupId == 255) return nullptr;
   SomfyGroup *group = &this->groups[groupId - 1];
   if(group) {
-    group->setGroupId(groupId);
+    // See addShade(): compute max before assigning id so the new slot is skipped.
     group->sortOrder = static_cast<int8_t>(this->getMaxGroupOrder() + 1);
+    group->setGroupId(groupId);
     this->isDirty = true;
   }
   return group;

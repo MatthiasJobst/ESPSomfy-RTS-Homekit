@@ -20,6 +20,7 @@ void SomfyGroup::clear() {
   this->setRemoteAddress(0);
   this->repeats = 0;
   this->roomId = 0;
+  this->sortOrder = 0;
   this->name[0] = 0x00;
   memset(&this->linkedShades, 0x00, sizeof(this->linkedShades));
 }
