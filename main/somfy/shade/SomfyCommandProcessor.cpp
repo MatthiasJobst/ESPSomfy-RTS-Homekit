@@ -24,7 +24,7 @@ void SomfyCommandProcessor::processWaitingFrame() {
           shade->lastFrame.processed = true;
           // Simply move the shade up by 1%.
           if(shade->currentPos > 0) {
-            shade->p_target(floor(shade->currentPos) - 1);
+            shade->p_target(floorf(shade->currentPos) - 1);
             shade->setMovement(-1);
             shade->emitCommand(cmd, "remote", shade->lastFrame.remoteAddress);
           }
@@ -33,7 +33,7 @@ void SomfyCommandProcessor::processWaitingFrame() {
           shade->lastFrame.processed = true;
           // Simply move the shade down by 1%.
           if(shade->currentPos < 100) {
-            shade->p_target(floor(shade->currentPos) + 1);
+            shade->p_target(floorf(shade->currentPos) + 1);
             shade->setMovement(1);
             shade->emitCommand(cmd, "remote", shade->lastFrame.remoteAddress);
           }
@@ -86,7 +86,7 @@ void SomfyCommandProcessor::processWaitingFrame() {
         break;
       case somfy_commands::My:
         if(shade->lastFrame.repeats >= SETMY_REPEATS && shade->isIdle()) {
-          if(floor(shade->getMyPos()) == floor(shade->currentPos)) {
+          if(floorf(shade->getMyPos()) == floorf(shade->currentPos)) {
             // We are clearing it.
             shade->p_myPos(-1);
             shade->p_myTiltPos(-1);

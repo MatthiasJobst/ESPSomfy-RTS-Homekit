@@ -16,9 +16,7 @@ void SomfyGPIOControl::setGPIOs(radio_proto proto,
     uint8_t p_off = (this->gpioFlags & (uint8_t)gpio_flags_t::LowLevelTrigger) == 0x00 ? LOW  : HIGH;
 
     int8_t dir = direction;
-    if(dir == 0 && tiltType == tilt_types::integrated)
-      dir = tiltDirection;
-    else if(tiltType == tilt_types::tiltonly)
+    if(tiltType == tilt_types::tiltonly || (dir == 0 && tiltType == tilt_types::integrated))
       dir = tiltDirection;
 
     if(shadeType == shade_types::drycontact) {
@@ -154,8 +152,7 @@ bool SomfyGPIOControl::usesPin(uint8_t pin,
     if(proto == radio_proto::GP_Relay && (this->gpioUp == pin || this->gpioDown == pin)) return true;
   }
   else {
-    if(this->gpioUp == pin) return true;
-    else if(proto == radio_proto::GP_Remote && this->gpioMy == pin) return true;
+    if(this->gpioUp == pin || (proto == radio_proto::GP_Remote && this->gpioMy == pin)) return true;
   }
   return false;
 }

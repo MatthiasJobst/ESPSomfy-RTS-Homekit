@@ -5,6 +5,9 @@
 // (processFrame external-command abort).
 #pragma once
 
+#include <stdint.h>            // uint8_t / int8_t
+#include "../SomfyFrame.h"     // somfy_commands
+
 class SomfyShade;  // forward declaration — full type in SomfyShade.h
 
 class SomfyTargetSequencer {

@@ -330,13 +330,10 @@ void RECEIVE_ATTR SomfyTransceiver::handleReceive() {
             somfy_rx.previous_bit = 0x00;
             somfy_rx.waiting_half_symbol = false;
             somfy_rx.cpt_bits = 0;
-            // Keep an eye on this as it is possible that we might get fewer or more synchro bits.
-            if (somfy_rx.cpt_synchro_hw <= 7) somfy_rx.bit_length = 56;
-            else if (somfy_rx.cpt_synchro_hw == 14) somfy_rx.bit_length = 56;
-            else if (somfy_rx.cpt_synchro_hw == 13) somfy_rx.bit_length = 80; // The RS485 device sends this sync.
-            else if (somfy_rx.cpt_synchro_hw == 12) somfy_rx.bit_length = 80;
-            else if (somfy_rx.cpt_synchro_hw > 17) somfy_rx.bit_length = 80;
-            else somfy_rx.bit_length = 56;
+            // 80-bit frames give 12, 13 (RS485 device) or 24+ hw-sync bits.
+            // 56-bit frames give 4 or 14. Everything else falls back to 56.
+            const uint8_t hw = somfy_rx.cpt_synchro_hw;
+            somfy_rx.bit_length = (hw == 12 || hw == 13 || hw > 17) ? 80 : 56;
             //somfy_rx.bit_length = 80;
             somfy_rx.status = receiving_data;
         }
@@ -561,9 +558,9 @@ void SomfyTransceiver::clearReceived(void) {
 }
 
 void SomfyTransceiver::enableReceive(void) {
-    uint32_t timing = millis();
     if(rxmode > 0) return;
     if(this->config.enabled) {
+      [[maybe_unused]] uint32_t timing = millis();  // read by ESP_LOGD below; no-op in non-DEBUG builds
       rxmode = 1;
       gpio_set_direction((gpio_num_t)this->config.RXPin, GPIO_MODE_INPUT);
       interruptPin = this->config.RXPin;

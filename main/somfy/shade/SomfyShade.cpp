@@ -65,11 +65,11 @@ bool SomfyShade::unlinkRemote(uint32_t address) {
   return commandTransmitter.unlinkRemote(address);
 }
 
-bool SomfyShade::isAtTarget() { 
-  float epsilon = .00001;
-  if(this->tiltType == tilt_types::tiltonly) return fabs(this->currentTiltPos - this->tiltTarget) < epsilon;
-  else if(this->tiltType == tilt_types::none) return fabs(this->currentPos - this->target) < epsilon;
-  return fabs(this->currentPos - this->target) < epsilon && fabs(this->currentTiltPos - this->tiltTarget) < epsilon; 
+bool SomfyShade::isAtTarget() {
+  constexpr float epsilon = 0.00001f;
+  if(this->tiltType == tilt_types::tiltonly) return fabsf(this->currentTiltPos - this->tiltTarget) < epsilon;
+  else if(this->tiltType == tilt_types::none) return fabsf(this->currentPos - this->target) < epsilon;
+  return fabsf(this->currentPos - this->target) < epsilon && fabsf(this->currentTiltPos - this->tiltTarget) < epsilon;
 }
 
 bool SomfyShade::isInGroup() {
@@ -111,14 +111,14 @@ bool SomfyShade::publish(const char *topic, bool val,    bool retain) { return m
 float SomfyShade::p_currentPos(float pos) {
   float old = this->currentPos;
   this->currentPos = pos;
-  if(floor(old) != floor(pos)) this->publish("position", this->transformPosition(static_cast<uint8_t>(floor(this->currentPos))));
+  if(floorf(old) != floorf(pos)) this->publish("position", this->transformPosition(static_cast<uint8_t>(floorf(this->currentPos))));
   return old;
 }
 
 float SomfyShade::p_currentTiltPos(float pos) {
   float old = this->currentTiltPos;
   this->currentTiltPos = pos;
-  if(floor(old) != floor(pos)) this->publish("tiltPosition", this->transformPosition(static_cast<uint8_t>(floor(this->currentTiltPos))));
+  if(floorf(old) != floorf(pos)) this->publish("tiltPosition", this->transformPosition(static_cast<uint8_t>(floorf(this->currentTiltPos))));
   return old;
 }
 
@@ -219,7 +219,7 @@ void SomfyShade::emitCommand(uint8_t num, somfy_commands cmd, const char *source
 
 int8_t SomfyShade::transformPosition(float fpos) {
   if(fpos < 0) return -1;
-  return static_cast<int8_t>(mqttPublisher.flipPosition && fpos >= 0.00f ? floor(100.0f - fpos) : floor(fpos));
+  return static_cast<int8_t>(mqttPublisher.flipPosition && fpos >= 0.00f ? floorf(100.0f - fpos) : floorf(fpos));
 }
 
 bool SomfyShade::isIdle() { 

@@ -87,7 +87,7 @@ void SomfyTargetSequencer::moveToTiltTarget(float target) {
     // Only send a command if the lift is not moving.
     if(shade->currentPos == shade->target || shade->tiltType == tilt_types::tiltmotor) {
       if(cmd != somfy_commands::My) {
-        ESP_LOGI(TAG, "Moving Tilt to %f%% from %f%% using %s", target, shade->currentTiltPos, translateSomfyCommand(cmd));
+        ESP_LOGI(TAG, "Moving Tilt to %f%% from %f%% using %s", target, shade->currentTiltPos, translateSomfyCommand(cmd).c_str());
         shade->SomfyRemote::sendCommand(cmd, shade->tiltType == tilt_types::tiltmotor ? TILT_REPEATS : shade->repeats);
       }
       // If the blind is currently moving then the command to stop it
@@ -132,14 +132,14 @@ void SomfyTargetSequencer::setMyPosition(int8_t pos, int8_t tilt) {
   if(!shade->isIdle()) return;
   if(shade->tiltType == tilt_types::tiltonly) {
     shade->p_myPos(-1.0f);
-    if(tilt != floor(shade->currentTiltPos)) {
+    if(tilt != static_cast<int8_t>(floorf(shade->currentTiltPos))) {
       shade->setSettingMyPos(true);
-      if(tilt == floor(myTiltPos))
+      if(tilt == static_cast<int8_t>(floorf(myTiltPos)))
         moveToMyPosition();
       else
         moveToTarget(100, tilt);
     }
-    else if(tilt == floor(myTiltPos)) {
+    else if(tilt == static_cast<int8_t>(floorf(myTiltPos))) {
       if(shade->currentTiltPos != myTiltPos) {
         shade->setSettingMyPos(true);
         moveToMyPosition();
@@ -159,14 +159,14 @@ void SomfyTargetSequencer::setMyPosition(int8_t pos, int8_t tilt) {
   }
   else if(shade->tiltType != tilt_types::none) {
     if(tilt < 0) tilt = 0;
-    if(pos != floor(shade->currentPos) || tilt != floor(shade->currentTiltPos)) {
+    if(pos != static_cast<int8_t>(floorf(shade->currentPos)) || tilt != static_cast<int8_t>(floorf(shade->currentTiltPos))) {
       shade->setSettingMyPos(true);
-      if(pos == floor(myPos) && tilt == floor(myTiltPos))
+      if(pos == static_cast<int8_t>(floorf(myPos)) && tilt == static_cast<int8_t>(floorf(myTiltPos)))
         moveToMyPosition();
       else
         moveToTarget(pos, tilt);
     }
-    else if(pos == floor(myPos) && tilt == floor(myTiltPos)) {
+    else if(pos == static_cast<int8_t>(floorf(myPos)) && tilt == static_cast<int8_t>(floorf(myTiltPos))) {
       if(shade->currentPos != myPos || shade->currentTiltPos != myTiltPos) {
         shade->setSettingMyPos(true);
         moveToMyPosition();
@@ -186,14 +186,14 @@ void SomfyTargetSequencer::setMyPosition(int8_t pos, int8_t tilt) {
     shade->emitState();
   }
   else {
-    if(pos != floor(shade->currentPos)) {
+    if(pos != static_cast<int8_t>(floorf(shade->currentPos))) {
       shade->setSettingMyPos(true);
-      if(pos == floor(myPos))
+      if(pos == static_cast<int8_t>(floorf(myPos)))
         moveToMyPosition();
       else
         moveToTarget(pos);
     }
-    else if(pos == floor(myPos)) {
+    else if(pos == static_cast<int8_t>(floorf(myPos))) {
       if(myPos != shade->currentPos) {
         shade->setSettingMyPos(true);
         moveToMyPosition();

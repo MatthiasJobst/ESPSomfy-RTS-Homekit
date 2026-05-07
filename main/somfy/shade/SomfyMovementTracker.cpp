@@ -32,7 +32,7 @@ void SomfyMovementTracker::tickFlagTimers(uint64_t curTime) {
 
 float SomfyMovementTracker::calcInterpolatedPos(float startPct, uint64_t elapsed, int32_t totalTime, int8_t dir) {
   // msFromStart: distance already travelled in ms, clamped to [0, totalTime]
-  int32_t msFromStart = (int32_t)floor((startPct / 100.0f) * static_cast<float>(totalTime));
+  int32_t msFromStart = (int32_t)floorf((startPct / 100.0f) * static_cast<float>(totalTime));
   if(dir < 0) msFromStart = totalTime - msFromStart;  // up: invert so 0 = "just started from 100"
   msFromStart = min(totalTime, msFromStart + (int32_t)elapsed);
   float ratio = min(max(0.0f, (float)msFromStart / (float)totalTime), 1.0f);
@@ -92,8 +92,8 @@ void SomfyMovementTracker::checkMovement() {
   // Snapshot pre-tick state for the emit-state diff at the bottom.
   int8_t  currDir     = shade->direction;
   int8_t  currTiltDir = shade->tiltDirection;
-  uint8_t currPos     = floor(shade->currentPos);
-  uint8_t currTiltPos = floor(shade->currentTiltPos);
+  uint8_t currPos     = static_cast<uint8_t>(floorf(shade->currentPos));
+  uint8_t currTiltPos = static_cast<uint8_t>(floorf(shade->currentTiltPos));
 
   // Compute directions from current pos vs target. Intentionally called before
   // tickFlagTimers so direction is stable for one tick when a flag overrides the target.
@@ -181,8 +181,8 @@ void SomfyMovementTracker::checkMovement() {
     shade->commitMyPosition();
     shade->emitState();
   }
-  else if(currDir != shade->direction || currPos != floor(shade->currentPos) ||
-          currTiltDir != shade->tiltDirection || currTiltPos != floor(shade->currentTiltPos)) {
+  else if(currDir != shade->direction || currPos != static_cast<uint8_t>(floorf(shade->currentPos)) ||
+          currTiltDir != shade->tiltDirection || currTiltPos != static_cast<uint8_t>(floorf(shade->currentTiltPos))) {
     shade->emitState();
   }
 }

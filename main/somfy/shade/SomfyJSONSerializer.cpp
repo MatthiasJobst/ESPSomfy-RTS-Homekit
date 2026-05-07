@@ -14,28 +14,18 @@ int8_t SomfyJSONSerializer::validateJSON(JsonObject &obj) {
   shade_types type = shade->shadeType;
   if(obj.containsKey("shadeType")) {
     if(obj["shadeType"].is<const char *>()) {
-      if(strncmp(obj["shadeType"].as<const char *>(), "roller", 7) == 0)
-        type = shade_types::roller;
-      else if(strncmp(obj["shadeType"].as<const char *>(), "ldrapery", 9) == 0)
-        type = shade_types::ldrapery;
-      else if(strncmp(obj["shadeType"].as<const char *>(), "rdrapery", 9) == 0)
-        type = shade_types::rdrapery;
-      else if(strncmp(obj["shadeType"].as<const char *>(), "cdrapery", 9) == 0)
-        type = shade_types::cdrapery;
-      else if(strncmp(obj["shadeType"].as<const char *>(), "garage1", 7) == 0)
-        type = shade_types::garage1;
-      else if(strncmp(obj["shadeType"].as<const char *>(), "garage3", 7) == 0)
-        type = shade_types::garage3;
-      else if(strncmp(obj["shadeType"].as<const char *>(), "blind", 5) == 0)
-        type = shade_types::blind;
-      else if(strncmp(obj["shadeType"].as<const char *>(), "awning", 7) == 0)
-        type = shade_types::awning;
-      else if(strncmp(obj["shadeType"].as<const char *>(), "shutter", 8) == 0)
-        type = shade_types::shutter;
-      else if(strncmp(obj["shadeType"].as<const char *>(), "drycontact2", 12) == 0)
-        type = shade_types::drycontact2;
-      else if(strncmp(obj["shadeType"].as<const char *>(), "drycontact", 11) == 0)
-        type = shade_types::drycontact;
+      const char *s = obj["shadeType"].as<const char *>();
+      if(strcmp(s, "roller") == 0)           type = shade_types::roller;
+      else if(strcmp(s, "ldrapery") == 0)    type = shade_types::ldrapery;
+      else if(strcmp(s, "rdrapery") == 0)    type = shade_types::rdrapery;
+      else if(strcmp(s, "cdrapery") == 0)    type = shade_types::cdrapery;
+      else if(strcmp(s, "garage1") == 0)     type = shade_types::garage1;
+      else if(strcmp(s, "garage3") == 0)     type = shade_types::garage3;
+      else if(strcmp(s, "blind") == 0)       type = shade_types::blind;
+      else if(strcmp(s, "awning") == 0)      type = shade_types::awning;
+      else if(strcmp(s, "shutter") == 0)     type = shade_types::shutter;
+      else if(strcmp(s, "drycontact2") == 0) type = shade_types::drycontact2;
+      else if(strcmp(s, "drycontact") == 0)  type = shade_types::drycontact;
     }
     else {
       shade->shadeType = static_cast<shade_types>(obj["shadeType"].as<uint8_t>());
@@ -109,28 +99,18 @@ int8_t SomfyJSONSerializer::fromJSON(JsonObject &obj) {
 
     if(obj.containsKey("shadeType")) {
       if(obj["shadeType"].is<const char *>()) {
-        if(strncmp(obj["shadeType"].as<const char *>(), "roller", 7) == 0)
-          shade->shadeType = shade_types::roller;
-        else if(strncmp(obj["shadeType"].as<const char *>(), "ldrapery", 9) == 0)
-          shade->shadeType = shade_types::ldrapery;
-        else if(strncmp(obj["shadeType"].as<const char *>(), "rdrapery", 9) == 0)
-          shade->shadeType = shade_types::rdrapery;
-        else if(strncmp(obj["shadeType"].as<const char *>(), "cdrapery", 9) == 0)
-          shade->shadeType = shade_types::cdrapery;
-        else if(strncmp(obj["shadeType"].as<const char *>(), "garage1", 7) == 0)
-          shade->shadeType = shade_types::garage1;
-        else if(strncmp(obj["shadeType"].as<const char *>(), "garage3", 7) == 0)
-          shade->shadeType = shade_types::garage3;
-        else if(strncmp(obj["shadeType"].as<const char *>(), "blind", 5) == 0)
-          shade->shadeType = shade_types::blind;
-        else if(strncmp(obj["shadeType"].as<const char *>(), "awning", 7) == 0)
-          shade->shadeType = shade_types::awning;
-        else if(strncmp(obj["shadeType"].as<const char *>(), "shutter", 8) == 0)
-          shade->shadeType = shade_types::shutter;
-        else if(strncmp(obj["shadeType"].as<const char *>(), "drycontact2", 12) == 0)
-          shade->shadeType = shade_types::drycontact2;
-        else if(strncmp(obj["shadeType"].as<const char *>(), "drycontact", 11) == 0)
-          shade->shadeType = shade_types::drycontact;
+        const char *s = obj["shadeType"].as<const char *>();
+        if(strcmp(s, "roller") == 0)           shade->shadeType = shade_types::roller;
+        else if(strcmp(s, "ldrapery") == 0)    shade->shadeType = shade_types::ldrapery;
+        else if(strcmp(s, "rdrapery") == 0)    shade->shadeType = shade_types::rdrapery;
+        else if(strcmp(s, "cdrapery") == 0)    shade->shadeType = shade_types::cdrapery;
+        else if(strcmp(s, "garage1") == 0)     shade->shadeType = shade_types::garage1;
+        else if(strcmp(s, "garage3") == 0)     shade->shadeType = shade_types::garage3;
+        else if(strcmp(s, "blind") == 0)       shade->shadeType = shade_types::blind;
+        else if(strcmp(s, "awning") == 0)      shade->shadeType = shade_types::awning;
+        else if(strcmp(s, "shutter") == 0)     shade->shadeType = shade_types::shutter;
+        else if(strcmp(s, "drycontact2") == 0) shade->shadeType = shade_types::drycontact2;
+        else if(strcmp(s, "drycontact") == 0)  shade->shadeType = shade_types::drycontact;
       }
       else {
         shade->shadeType = static_cast<shade_types>(obj["shadeType"].as<uint8_t>());
