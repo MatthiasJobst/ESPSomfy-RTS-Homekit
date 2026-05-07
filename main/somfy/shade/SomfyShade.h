@@ -28,7 +28,7 @@ class SomfyShade : public SomfyRemote {
     SomfyCommandProcessor   commandProcessor;
     SomfyMovementTracker    movementTracker;
     uint8_t roomId = 0;
-    int8_t sortOrder = 0;
+    uint8_t sortOrder = 0;
     shade_types shadeType = shade_types::roller;
     tilt_types tiltType = tilt_types::none;
     float currentPos = 0.0f;

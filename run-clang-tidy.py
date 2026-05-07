@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """
-Run clang-tidy on the project's own source files (main/ and components/).
+Run clang-tidy on the project's own source files (main/ only — see SKIP_DIRS
+for why all current components/ subtrees are skipped).
 
 The ESP-IDF build uses an Xtensa cross-compiler with GCC-specific flags that
 clang-tidy doesn't understand.  This script rewrites compile_commands.json to:
-  - Keep only entries under main/ and components/ (not managed_components/).
+  - Keep only entries under main/ and components/, but skip vendor subtrees
+    inside components/ (see SKIP_DIRS) — we don't fix findings in third-party
+    code. managed_components/ is excluded as well.
   - Strip flags clang doesn't know (e.g. -mlongcalls, -fstrict-volatile-bitfields).
   - Replace the Xtensa compiler path with "clang++" so clang-tidy picks up the
     right implicit include paths for each entry's language.
@@ -16,7 +19,7 @@ Usage:
 Examples:
     python3 run-clang-tidy.py                     # all project files
     python3 run-clang-tidy.py main/MQTT.cpp        # single file
-    python3 run-clang-tidy.py --fix               # apply fixes
+    python3 run-clang-tidy.py -fix                # apply fixes
 """
 
 import json
@@ -33,6 +36,19 @@ COMPILE_DB   = os.path.join(PROJECT_ROOT, "build", "compile_commands.json")
 KEEP_DIRS = (
     os.path.join(PROJECT_ROOT, "main"),
     os.path.join(PROJECT_ROOT, "components"),
+)
+
+# Vendor subtrees inside components/. These are third-party copies we don't
+# fix findings in; their headers still get included transitively but their
+# own .cpp files are excluded from analysis.  CC1101 is mostly upstream
+# Elechouse code with three small project-owned patches in SpiStart/Reset/Init
+# — those are stable and small enough that losing lint coverage is acceptable.
+SKIP_DIRS = (
+    os.path.join(PROJECT_ROOT, "components", "ArduinoJson"),
+    os.path.join(PROJECT_ROOT, "components", "CC1101"),
+    os.path.join(PROJECT_ROOT, "components", "PubSubClient"),
+    os.path.join(PROJECT_ROOT, "components", "WebSockets"),
+    os.path.join(PROJECT_ROOT, "components", "esp-homekit-sdk"),
 )
 
 # Flags that are GCC- or Xtensa-specific and unknown / harmful to clang.
@@ -158,6 +174,7 @@ def main() -> None:
         rewrite_entry(e, extra_isystem)
         for e in db
         if any(e["file"].startswith(d) for d in KEEP_DIRS)
+        and not any(e["file"].startswith(d) for d in SKIP_DIRS)
     ]
 
     if not filtered:
@@ -184,15 +201,32 @@ def main() -> None:
     if not file_args:
         file_args = [e["file"] for e in filtered]
 
-    # Prefer the ESP-IDF bundled clang-tidy (matches the toolchain version),
-    # fall back to whatever is on PATH.
-    esp_clang_tidy = os.path.expanduser(
-        "~/.espressif/tools/esp-clang/esp-19.1.2_20250312/esp-clang/bin/clang-tidy"
-    )
-    clang_tidy_bin = esp_clang_tidy if os.path.isfile(esp_clang_tidy) else "clang-tidy"
+    # Prefer the ESP-IDF bundled toolchain (newest version on disk); fall back
+    # to whatever is on PATH. We use run-clang-tidy for parallelism and point
+    # it at the matching clang-tidy binary so versions stay in lock-step.
+    import glob
+    esp_clang_dirs = sorted(glob.glob(os.path.expanduser(
+        "~/.espressif/tools/esp-clang/esp-*/esp-clang/bin"
+    )))
+    esp_clang_dir  = esp_clang_dirs[-1] if esp_clang_dirs else ""
+    run_clang_tidy = os.path.join(esp_clang_dir, "run-clang-tidy") if esp_clang_dir else "run-clang-tidy"
+    clang_tidy_bin = os.path.join(esp_clang_dir, "clang-tidy")     if esp_clang_dir else "clang-tidy"
 
-    cmd = [clang_tidy_bin, "-p", tmp_dir] + extra_args + file_args
-    print("Running:", " ".join(cmd[:4]), f"[{len(file_args)} file(s)]")
+    # run-clang-tidy matches positional args as regex against source paths.
+    # If the caller passed explicit files, escape them so '.' and '+' don't
+    # match unintended characters; otherwise omit and run-clang-tidy will
+    # analyse every entry in the DB.
+    explicit_files = [a for a in sys.argv[1:] if not a.startswith("-")]
+    file_regex = [re.escape(os.path.abspath(p)) for p in explicit_files]
+
+    cmd  = [run_clang_tidy, "-p", tmp_dir, "-clang-tidy-binary", clang_tidy_bin]
+    # clang-tidy children don't see a TTY through run-clang-tidy's pool, so
+    # they auto-disable color. Force it on when *our* stdout is a terminal.
+    if sys.stdout.isatty():
+        cmd.append("-use-color")
+    cmd += extra_args + file_regex
+    print("Running:", " ".join(cmd[:5]),
+          f"[{len(file_regex) or len(filtered)} file(s)]")
     result = subprocess.run(cmd)
     sys.exit(result.returncode)
 

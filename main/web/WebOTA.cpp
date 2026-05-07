@@ -61,7 +61,7 @@ void Web::handleDownloadFirmware(WebServer &server) {
         rel->toJSON(resp);
         resp.endObject();
         resp.endResponse();
-        strcpy(git.targetRelease, rel->name);
+        strlcpy(git.targetRelease, rel->name, sizeof(git.targetRelease));
         git.status = GIT_AWAITING_UPDATE;
       }
       else

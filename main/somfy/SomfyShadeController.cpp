@@ -221,23 +221,23 @@ uint8_t SomfyShadeController::getNextShadeId() {
 }
 
 int8_t SomfyShadeController::getMaxShadeOrder() {
-  int8_t order = -1;
+  int16_t order = -1;
   for(uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
     SomfyShade *shade = &this->shades[i];
     if(shade->getShadeId() == 255) continue;
     if(order < shade->sortOrder) order = shade->sortOrder;
   }
-  return order;
+  return static_cast<int8_t>(order);
 }
 
 int8_t SomfyShadeController::getMaxGroupOrder() {
-  int8_t order = -1;
+  int16_t order = -1;
   for(uint8_t i = 0; i < SOMFY_MAX_GROUPS; i++) {
     SomfyGroup *group = &this->groups[i];
     if(group->getGroupId() == 255) continue;
     if(order < group->sortOrder) order = group->sortOrder;
   }
-  return order;
+  return static_cast<int8_t>(order);
 }
 
 uint8_t SomfyShadeController::getNextGroupId() {
@@ -281,13 +281,13 @@ uint8_t SomfyShadeController::getNextRoomId() {
 }
 
 int8_t SomfyShadeController::getMaxRoomOrder() {
-  int8_t order = -1;
+  int16_t order = -1;
   for(uint8_t i = 0; i < SOMFY_MAX_ROOMS; i++) {
     SomfyRoom *room = &this->rooms[i];
     if(room->roomId == 0) continue;
     if(order < room->sortOrder) order = room->sortOrder;
   }
-  return order;
+  return static_cast<int8_t>(order);
 }
 
 uint8_t SomfyShadeController::repeaterCount() {

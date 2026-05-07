@@ -7,7 +7,7 @@ class SomfyRoom {
   public:
     uint8_t roomId = 0;
     char name[21] = "";
-    int8_t sortOrder = 0;
+    uint8_t sortOrder = 0;
     void clear();
     bool save();
     bool fromJSON(JsonObject &obj);

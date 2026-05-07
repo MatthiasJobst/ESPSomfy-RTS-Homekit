@@ -96,7 +96,7 @@ void ELECHOUSE_CC1101::SpiStart(void)
   // On ESP32-S3 with arduino-esp32 v3.x, passing a non-negative SS hands it to
   // hardware CS, which breaks the manual digitalWrite(SS_PIN) calls in Reset().
   #ifdef ESP32
-  SPI.begin(SCK_PIN, MISO_PIN, MOSI_PIN, -1);
+  SPI.begin(static_cast<int8_t>(SCK_PIN), static_cast<int8_t>(MISO_PIN), static_cast<int8_t>(MOSI_PIN), -1);
   SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE0));
   #else
   SPI.begin();
@@ -148,9 +148,11 @@ void ELECHOUSE_CC1101::Reset (void)
 	digitalWrite(SS_PIN, HIGH);
 	delay(1);
 	digitalWrite(SS_PIN, LOW);
-	while(digitalRead(MISO_PIN));
+	while(digitalRead(MISO_PIN))
+  ;
   SPI.transfer(CC1101_SRES);
-  while(digitalRead(MISO_PIN));
+  while(digitalRead(MISO_PIN))
+  ;
 	digitalWrite(SS_PIN, HIGH);
 }
 /****************************************************************
@@ -450,7 +452,9 @@ setPA(pa);
 ****************************************************************/
 void ELECHOUSE_CC1101::setPA(int p)
 {
-int a;
+// Initialise to 0 so PA_TABLE[0]/[1] aren't programmed with stack garbage when
+// MHz is outside the supported bands (300-348, 378-464, 779-899.99, 900-928).
+int a = 0;
 pa = p;
 
 if (MHz >= 300 && MHz <= 348){

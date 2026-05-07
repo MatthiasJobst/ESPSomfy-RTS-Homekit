@@ -74,9 +74,12 @@ void Web::handleDeserializationError(WebServer &server, DeserializationError &er
 }
 bool Web::isAuthenticated(WebServer &server, bool cfg) {
   ESP_LOGI(TAG, "Checking authentication");
-  if(settings.Security.type == security_types::None) return true;
-  else if(!cfg && (settings.Security.permissions & static_cast<uint8_t>(security_permissions::ConfigOnly)) == 0x01) return true;
-  else if(server.hasHeader("apikey")) {
+  const bool authNotRequired =
+      settings.Security.type == security_types::None ||
+      (!cfg && (settings.Security.permissions &
+                static_cast<uint8_t>(security_permissions::ConfigOnly)));
+  if(authNotRequired) return true;
+  if(server.hasHeader("apikey")) {
     // Api key was supplied.
     ESP_LOGI(TAG, "Checking API Key...");
     char token[65];
@@ -113,7 +116,7 @@ bool Web::createAPIToken(const char *payload, char *token) {
     for(int i = 0; i < sizeof(hmacResult); i++){
         char str[3];
         sprintf(str, "%02x", (int)hmacResult[i]);
-        strcat(token, str);
+        strlcat(token, str, sizeof(token));
     }
     ESP_LOGI(TAG, "Token: %s", token);
     return true;
@@ -300,13 +303,13 @@ void Web::handleRepeatCommand(WebServer& server) {
   uint8_t shadeId = 255;
   uint8_t groupId = 255;
   uint8_t stepSize = 0;
-  int8_t repeat = -1;
+  int16_t repeat = -1;
   somfy_commands command = somfy_commands::My;
   if (method == HTTP_GET || method == HTTP_PUT || method == HTTP_POST) {
     if(server.hasArg("shadeId")) shadeId = atoi(server.arg("shadeId").c_str());
     else if(server.hasArg("groupId")) groupId = atoi(server.arg("groupId").c_str());
     if(server.hasArg("command")) command = translateSomfyCommand(server.arg("command"));
-    if(server.hasArg("repeat")) repeat = static_cast<int8_t>(atoi(server.arg("repeat").c_str()));
+    if(server.hasArg("repeat")) repeat = static_cast<uint8_t>(atoi(server.arg("repeat").c_str()));
     if(server.hasArg("stepSize")) stepSize = static_cast<uint8_t>(atoi(server.arg("stepSize").c_str()));
     if(shadeId == 255 && groupId == 255 && server.hasArg("plain")) {
       JsonDocument doc; JsonObject obj;
@@ -374,7 +377,7 @@ void Web::handleRepeatCommand(WebServer& server) {
 void Web::handleGroupCommand(WebServer &server) {
   HTTPMethod method = server.method();
   uint8_t groupId = 255;
-  int8_t repeat = -1;
+  int16_t repeat = -1;
   somfy_commands command = somfy_commands::My;
   if (method == HTTP_GET || method == HTTP_PUT || method == HTTP_POST) {
     if (server.hasArg("groupId")) {
@@ -466,7 +469,7 @@ void Web::handleBackup(WebServer &server, bool attach) {
     Timestamp ts;
     char * iso = ts.getISOTime();
     // Replace the invalid characters as quickly as we can.
-    for(uint8_t i = 0; i < strlen(iso); i++) {
+    for(size_t i = 0; i < strlen(iso); i++) {
       switch(iso[i]) {
         case '.':
           // Just trim off the ms.
@@ -500,7 +503,7 @@ void Web::handleSetSensor(WebServer &server) {
   uint8_t groupId = (server.hasArg("groupId")) ? static_cast<uint8_t>(atoi(server.arg("groupId").c_str())) : 255;
   int8_t sunny = static_cast<int8_t>((server.hasArg("sunny")) ? toBoolean(server.arg("sunny").c_str(), false) ? 1 : 0 : -1);
   int8_t windy = (server.hasArg("windy")) ? static_cast<int8_t>(atoi(server.arg("windy").c_str())) : int8_t{-1};
-  int8_t repeat = (server.hasArg("repeat")) ? static_cast<int8_t>(atoi(server.arg("repeat").c_str())) : int8_t{-1};
+  int16_t repeat = (server.hasArg("repeat")) ? static_cast<int16_t>(atoi(server.arg("repeat").c_str())) : int16_t{-1};
   if(server.hasArg("plain")) {
     JsonDocument doc; JsonObject obj;
     if (!parseBody(server, doc, obj)) return;

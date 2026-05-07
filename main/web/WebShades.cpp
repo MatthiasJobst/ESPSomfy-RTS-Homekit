@@ -74,7 +74,7 @@ void Web::handleShadeCommand(WebServer& server) {
   uint8_t shadeId = 255;
   uint8_t target = 255;
   uint8_t stepSize = 0;
-  int8_t repeat = -1;
+  int16_t repeat = -1;
   somfy_commands command = somfy_commands::My;
   if (method == HTTP_GET || method == HTTP_PUT || method == HTTP_POST) {
     if (server.hasArg("shadeId")) {

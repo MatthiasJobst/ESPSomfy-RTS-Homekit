@@ -8,7 +8,7 @@ class SomfyGroup : public SomfyRemote {
     uint8_t groupId = 255;
   public:
     uint8_t roomId = 0;
-    int8_t sortOrder = 0;
+    uint8_t sortOrder = 0;
     group_types groupType = group_types::channel;
     int8_t direction = 0; // 0 = stopped, 1=down, -1=up.
     char name[21] = "";
