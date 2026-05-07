@@ -224,6 +224,7 @@ void GitRepo::toJSON(JsonResponse &json) {
   json.beginObject("fwVersion");
   settings.fwVersion.toJSON(json);
   json.endObject();
+  json.addElem("buildVersion", getBuildVersion());
   json.beginObject("appVersion");
   settings.appVersion.toJSON(json);
   json.endObject();
@@ -329,6 +330,7 @@ void GitUpdater::toJSON(JsonResponse &json) {
   json.beginObject("fwVersion");
   settings.fwVersion.toJSON(json);
   json.endObject();
+  json.addElem("buildVersion", getBuildVersion());
   json.beginObject("appVersion");
   settings.appVersion.toJSON(json);
   json.endObject();
@@ -348,6 +350,7 @@ void GitUpdater::emitUpdateCheck(uint8_t num) {
   json->beginObject("fwVersion");
   settings.fwVersion.toJSON(json);
   json->endObject();
+  json->addElem("buildVersion", getBuildVersion());
   json->beginObject("appVersion");
   settings.appVersion.toJSON(json);
   json->endObject();

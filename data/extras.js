@@ -170,9 +170,15 @@ class Firmware {
     procFwStatus(rel) {
         console.log(rel);
         let div = document.getElementById('divFirmwareUpdate');
+        // When buildVersion differs from the canonical fwVersion.name, this is
+        // a locally-flashed dev build (git describe added -N-gHASH and/or -dirty).
+        // Show the build string instead of the clean release tag.
+        const installedName = (rel.buildVersion && rel.buildVersion !== rel.fwVersion.name)
+            ? rel.buildVersion
+            : rel.fwVersion.name;
         if (rel.available && rel.status === 0 && rel.checkForUpdate !== false) {
             div.style.color = 'black';
-            div.innerHTML = `<span>Firmware ${rel.fwVersion.name} Installed<span><span style="color:red"> ${rel.latest.name} Available</span>`;
+            div.innerHTML = `<span>Firmware ${installedName} Installed<span><span style="color:red"> ${rel.latest.name} Available</span>`;
         }
         else {
             switch (rel.status) {
@@ -210,7 +216,7 @@ class Firmware {
 
                 default:
                     div.style.color = 'black';
-                    div.innerHTML = `Firmware ${rel.fwVersion.name} Installed`;
+                    div.innerHTML = `Firmware ${installedName} Installed`;
                     break;
             }
         }

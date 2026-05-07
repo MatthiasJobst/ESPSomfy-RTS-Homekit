@@ -6,6 +6,13 @@
 #include <time.h>
 
 [[maybe_unused]] static void SETCHARPROP(char *prop, const char *value, size_t size) {strncpy(prop, value, size); prop[size - 1] = '\0';}
+
+// Version string ESP-IDF embedded into the running app image at build time
+// (`git describe --tags --dirty`). For a clean release tag this is e.g.
+// "v0.4.0"; for a dev-flashed build with local changes "v0.4.0-7-gf71347f-dirty".
+// Identifies what the device is *actually running*, distinct from the
+// macro-defined FW_VERSION which is the canonical release name.
+const char *getBuildVersion();
 /*
 namespace util { 
   // Createa a custom to_string function.  C++ can be annoying

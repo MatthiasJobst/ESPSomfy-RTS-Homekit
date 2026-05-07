@@ -261,6 +261,7 @@ void Web::handleModuleSettings(WebServer &server) {
   resp.beginResponse(&server, g_content, sizeof(g_content));
   resp.beginObject();
   resp.addElem("fwVersion", settings.fwVersion.name);
+  resp.addElem("buildVersion", getBuildVersion());
   settings.toJSON(resp);
   settings.NTP.toJSON(resp);
   resp.endObject();
@@ -272,6 +273,7 @@ void Web::handleNetworkSettings(WebServer &server) {
   resp.beginObject();
   settings.toJSON(resp);
   resp.addElem("fwVersion", settings.fwVersion.name);
+  resp.addElem("buildVersion", getBuildVersion());
   resp.beginObject("ethernet");
   settings.Ethernet.toJSON(resp);
   resp.endObject();

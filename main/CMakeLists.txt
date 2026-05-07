@@ -49,6 +49,7 @@ idf_component_register(
         CC1101
         joltwallet__littlefs
         nvs_flash
+        esp_app_format
         esp_hap_core
         esp_hap_apple_profiles
 )

@@ -3,8 +3,14 @@
 #include <math.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <esp_app_desc.h>
 #include "compat/timing.h"
 #include "Utils.h"
+
+const char *getBuildVersion() {
+  const esp_app_desc_t *desc = esp_app_get_description();
+  return desc ? desc->version : "";
+}
 
 
 /*********************************************************************
