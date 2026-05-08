@@ -262,6 +262,7 @@ void Web::handleModuleSettings(WebServer &server) {
   resp.beginObject();
   resp.addElem("fwVersion", settings.fwVersion.name);
   resp.addElem("buildVersion", getBuildVersion());
+  resp.addElem("gitRepo", GIT_REPO);
   settings.toJSON(resp);
   settings.NTP.toJSON(resp);
   resp.endObject();

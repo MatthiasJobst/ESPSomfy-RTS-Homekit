@@ -250,6 +250,7 @@ class General {
             else {
                 console.log(settings);
                 document.getElementById('spanFwVersion').innerText = settings.fwVersion;
+                if (settings.gitRepo) firmware.gitRepo = settings.gitRepo;
                 document.getElementById('spanHwVersion').innerText = settings.chipModel.length > 0 ? '-' + settings.chipModel : '';
                 document.getElementById('divContainer').setAttribute('data-chipmodel', settings.chipModel);
                 somfy.initPins();

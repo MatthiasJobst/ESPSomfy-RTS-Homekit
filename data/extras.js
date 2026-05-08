@@ -50,6 +50,9 @@ class MQTT {
 var mqtt = new MQTT();
 class Firmware {
     initialized = false;
+    // Set from /modulesettings.gitRepo on first load (see settings.js); fallback
+    // is the current repo string in case the modulesettings call hasn't returned yet.
+    gitRepo = 'MatthiasJobst/ESPSomfy-RTS-Homekit';
     init() { this.initialized = true; }
     isMobile() {
         let agt = navigator.userAgent.toLowerCase();
@@ -307,7 +310,7 @@ class Firmware {
                 html += `<select id="selVersion" data-bind="version" style="width:70%;font-size:2em;color:white;text-align-last:center;" onchange="firmware.gitReleaseSelected(document.getElementById('divGitInstall'));">`
                 for (let i = 0; i < rel.releases.length; i++) {
                     if (rel.releases[i].hwVersions.length === 0 || rel.releases[i].hwVersions.indexOf(chip) >= 0)
-                        html += `<option style="text-align:left;font-size:.5em;color:black;" data-prerelease="${rel.releases[i].preRelease}" value="${rel.releases[i].version.name}">${rel.releases[i].name}${rel.releases[i].preRelease ? ' - Pre' : ''}</option>`
+                        html += `<option style="text-align:left;font-size:.5em;color:black;" data-prerelease="${rel.releases[i].preRelease}" value="${rel.releases[i].version.name}">${rel.releases[i].version.name} — ${rel.releases[i].name}${rel.releases[i].preRelease ? ' (Pre)' : ''}</option>`
                 }
                 html += `</select><label for="selVersion">Select a version</label></div>`;
                 html += `<div class="button-container" id="divReleaseNotes" style="text-align:center;margin-top:-20px;display:none;"><button type="button" onclick="firmware.showReleaseNotes(document.getElementById('selVersion').value);" style="display:inline-block;width:auto;padding-left:20px;padding-right:20px;">Release Notes</button></div>`;
@@ -355,7 +358,7 @@ class Firmware {
         let overlay = ui.waitMessage(document.getElementById('divContainer'));
         try {
             let ret = {};
-            ret.resp = await fetch(`https://api.github.com/repos/rstrouse/espsomfy-rts/releases/tags/${tag}`);
+            ret.resp = await fetch(`https://api.github.com/repos/${this.gitRepo}/releases/tags/${tag}`);
             if (ret.resp.ok)
                 ret.info = await ret.resp.json();
             return ret;

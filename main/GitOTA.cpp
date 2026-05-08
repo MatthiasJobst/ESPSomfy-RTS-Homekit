@@ -23,7 +23,7 @@ extern rebootDelay_t rebootDelay;
 extern Web webServer;
 extern ControllerNetwork net;
 
-#define GIT_REPO "MatthiasJobst/ESPSomfy-RTS"
+// GIT_REPO now lives in GitOTA.h so it can be reused by the web layer.
 #define MAX_BUFF_SIZE 4096
 static const char *TAG = "GitOTA";
 
@@ -101,6 +101,11 @@ int16_t GitRepo::getReleases(uint8_t num) {
   HTTPClient https;
   https.setReuse(false);
   if(https.begin(sclient, url)) {
+    // Follow 301/302 transparently. github.com/repos/<owner>/<repo>/releases
+    // 301-redirects to the stable /repositories/<id>/... URL after the repo
+    // is renamed; without this we'd parse the redirect body (no releases)
+    // and silently fall back to just the synthetic "Main" entry.
+    https.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
     int httpCode = https.GET();
     ESP_LOGI(TAG, "[HTTPS] GET... code: %d", httpCode);
     if(httpCode > 0) {

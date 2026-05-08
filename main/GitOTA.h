@@ -6,6 +6,12 @@
 #include "ConfigSettings.h"
 #include "WResp.h"
 
+// Single source of truth for the GitHub repository this firmware updates
+// against. Used to build api.github.com release-list URLs (C++) and the
+// release-notes fetch on the client side (JS reads it from /modulesettings,
+// see WebSettings::handleModuleSettings).
+#define GIT_REPO "MatthiasJobst/ESPSomfy-RTS-Homekit"
+
 #define GIT_MAX_RELEASES 5
 #define GIT_STATUS_READY 0
 #define GIT_STATUS_CHECK 1
