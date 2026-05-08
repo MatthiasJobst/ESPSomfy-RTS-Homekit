@@ -310,7 +310,7 @@ class Firmware {
                 html += `<select id="selVersion" data-bind="version" style="width:70%;font-size:2em;color:white;text-align-last:center;" onchange="firmware.gitReleaseSelected(document.getElementById('divGitInstall'));">`
                 for (let i = 0; i < rel.releases.length; i++) {
                     if (rel.releases[i].hwVersions.length === 0 || rel.releases[i].hwVersions.indexOf(chip) >= 0)
-                        html += `<option style="text-align:left;font-size:.5em;color:black;" data-prerelease="${rel.releases[i].preRelease}" value="${rel.releases[i].version.name}">${rel.releases[i].version.name} — ${rel.releases[i].name}${rel.releases[i].preRelease ? ' (Pre)' : ''}</option>`
+                        html += `<option style="text-align:left;font-size:.5em;color:black;" data-prerelease="${rel.releases[i].preRelease}" value="${rel.releases[i].version.name}">${rel.releases[i].version.name}${rel.releases[i].preRelease ? ' (Pre)' : ''}</option>`
                 }
                 html += `</select><label for="selVersion">Select a version</label></div>`;
                 html += `<div class="button-container" id="divReleaseNotes" style="text-align:center;margin-top:-20px;display:none;"><button type="button" onclick="firmware.showReleaseNotes(document.getElementById('selVersion').value);" style="display:inline-block;width:auto;padding-left:20px;padding-right:20px;">Release Notes</button></div>`;
@@ -374,63 +374,50 @@ class Firmware {
         console.log(r);
         let fnToItem = (txt, tag) => {  }
         if (r.resp.ok) {
-            // Convert this to html.
-            let lines = r.info.body.split('\r\n');
-            let ctx = { html: '', llvl: 0, lines: r.info.body.split('\r\n'), ndx: 0 };
+            // Convert this to html. Accept either CRLF or LF line endings —
+            // GitHub usually returns CRLF but the API has been observed to
+            // emit LF for some bodies depending on how they were authored.
+            // Lead with the release title (GitHub release `name` field); the
+            // tag is already visible in the dropdown the user clicked.
+            const titleHtml = r.info.name ? `<h3>${r.info.name}</h3>` : '';
+            let ctx = { html: titleHtml, llvl: 0, lines: r.info.body.split(/\r?\n/), ndx: 0 };
             ctx.toHead = function (txt) {
                 let num = txt.indexOf(' ');
                 return `<h${num}>${txt.substring(num).trim()}</h${num}>`;
             };
+            // Dispatch by line *prefix* (after leading whitespace) rather than
+            // first non-space char. This is what distinguishes a bullet (`* `
+            // or `- ` followed by a space) from emphasis at line start (`**`).
+            ctx.bulletRe = /^[*-]\s+/;
+            ctx.stripBullet = (line) => line.trimStart().replace(/^[*-]\s+/, '');
             ctx.toUL = function () {
-                let txt = this.lines[this.ndx++];
-                let tok = this.token(txt);
-                this.html += `<ul>${this.toLI(tok.txt)}`;
+                this.html += '<ul>';
                 while (this.ndx < this.lines.length) {
-                    txt = this.lines[this.ndx];
-                    let t = this.token(txt);
-                    if (t.ch === '*') {
-                        if (t.indent !== tok.indent) this.toUL();
-                        else {
-                            this.html += this.toLI(t.txt);
-                            this.ndx++;
-                        }
-                    }
-                    else break;
+                    const trimmed = this.lines[this.ndx].trimStart();
+                    if (this.bulletRe.test(trimmed)) {
+                        this.html += `<li>${this.stripBullet(this.lines[this.ndx])}</li>`;
+                        this.ndx++;
+                    } else break;
                 }
                 this.html += '</ul>';
             };
-            ctx.toLI = function (txt) { return `<li>${txt.trim()}</li>`; }
-            ctx.token = function (txt) {
-                let tok = { ch: '', indent: 0, txt:'' }
-                for (let i = 0; i < txt.length; i++) {
-                    if (txt[i] === ' ') tok.indent++;
-                    else {
-                        tok.ch = txt[i];
-                        let tmp = txt.substring(tok.indent);
-                        tok.txt = tmp.substring(tmp.indexOf(' '));
-                        break;
-                    }
-                }
-                return tok;
-            };
             ctx.next = function () {
                 if (this.ndx >= this.lines.length) return false;
-                let tok = this.token(this.lines[this.ndx]);
-                switch (tok.ch) {
-                    case '#':
-                        this.html += this.toHead(this.lines[this.ndx]);
-                        this.ndx++;
-                        break;
-                    case '*':
-                        this.toUL();
-                        break;
-                    case '':
-                        this.ndx++;
-                        this.html += `<br/><div>${tok.txt}</div>`;
-                        break;
-                    default:
-                        this.ndx++;
-                        break;
+                const line = this.lines[this.ndx];
+                const trimmed = line.trimStart();
+                if (trimmed.length === 0) {
+                    this.html += '<br/>';
+                    this.ndx++;
+                } else if (trimmed.startsWith('#')) {
+                    this.html += this.toHead(line);
+                    this.ndx++;
+                } else if (this.bulletRe.test(trimmed)) {
+                    this.toUL();
+                } else {
+                    // Plain paragraph — preserved verbatim, including markdown
+                    // emphasis like **Full Changelog** (rendered as text, not styled).
+                    this.html += `<div>${line}</div>`;
+                    this.ndx++;
                 }
                 return true;
             };
