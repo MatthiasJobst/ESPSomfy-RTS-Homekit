@@ -30,7 +30,7 @@ jobs:
         with:
           esp_idf_version: ${{ env.IDF_VERSION }}
           target: esp32s3
-          command: idf.py build
+          command: idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.release" build
 
       - name: Copy firmware binary
         run: cp build/SomfyController.bin SomfyController.esp32s3.bin

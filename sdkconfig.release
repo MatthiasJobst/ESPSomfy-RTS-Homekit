@@ -1,0 +1,10 @@
+# sdkconfig.release — overlaid on sdkconfig.defaults for CI release builds.
+# Applied via: idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.release" build
+# Not used for local dev builds (which stay at CONFIG_COMPILER_OPTIMIZATION_DEBUG=y).
+
+# Optimize for size (-Os).  Reduces flash and IRAM usage; RF timing is
+# hardware-driven (RMT), so execution speed of the main loop is not critical.
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y
+
+# Disable assertion overhead in release binaries.
+CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_DISABLE=y
