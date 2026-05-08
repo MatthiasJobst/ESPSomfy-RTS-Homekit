@@ -30,6 +30,10 @@ SUFFIX="${CURRENT_SUFFIX}"
 FULL_VERSION="${VERSION}${SUFFIX}"
 FULL_TAG="v${FULL_VERSION}"
 
+echo "Current version : v${CURRENT}"
+echo "New version     : ${FULL_TAG}"
+echo ""
+
 # Pre-bump reminder: unit tests and clang-tidy are not gated by CI for the
 # firmware sources, so a version bump is a good moment to run them locally.
 echo ""
