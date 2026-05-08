@@ -8,3 +8,10 @@ CONFIG_COMPILER_OPTIMIZATION_SIZE=y
 
 # Disable assertion overhead in release binaries.
 CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_DISABLE=y
+
+# Strip all INFO/DEBUG/VERBOSE log strings at compile time.
+# ESP_LOGI() etc. are compiled out entirely — saves flash and removes
+# string evaluation overhead.  Errors and warnings are still emitted.
+CONFIG_LOG_DEFAULT_LEVEL_WARN=y
+CONFIG_LOG_MAXIMUM_LEVEL_WARN=y
+CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y
