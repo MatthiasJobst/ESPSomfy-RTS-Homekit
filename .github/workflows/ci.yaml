@@ -1,6 +1,10 @@
 name: ESPSomfy-RTS
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
 
 env:
   IDF_VERSION: "v5.5.3"
