@@ -425,7 +425,7 @@ void GitUpdater::setFirmwareFile() {
 
 bool GitUpdater::beginUpdate(const char *version) {
   ESP_LOGI(TAG, "Begin update called...");
-  if(strcmp(version, "Main") == 0) strlcpy(this->baseUrl, "https://github.com/" GIT_REPO "/releases/latest/download/", sizeof(this->baseUrl));
+  if(strcmp(version, "main") == 0) strlcpy(this->baseUrl, "https://github.com/" GIT_REPO "/releases/latest/download/", sizeof(this->baseUrl));
   else snprintf(this->baseUrl, sizeof(this->baseUrl), "https://github.com/" GIT_REPO "/releases/download/%s/", version);
   
   strlcpy(this->targetRelease, version, sizeof(this->targetRelease));

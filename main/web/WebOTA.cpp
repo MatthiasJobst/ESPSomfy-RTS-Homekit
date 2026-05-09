@@ -49,7 +49,7 @@ void Web::handleDownloadFirmware(WebServer &server) {
       else {
         for(uint8_t i = 0; i < GIT_MAX_RELEASES; i++) {
           if(repo.releases[i].id == 0) continue;
-          if(strcmp(repo.releases[i].name, server.arg("ver").c_str()) == 0) {
+          if(strcmp(repo.releases[i].version.name, server.arg("ver").c_str()) == 0) {
             rel = &repo.releases[i];  
           }
         }
@@ -61,7 +61,7 @@ void Web::handleDownloadFirmware(WebServer &server) {
         rel->toJSON(resp);
         resp.endObject();
         resp.endResponse();
-        strlcpy(git.targetRelease, rel->name, sizeof(git.targetRelease));
+        strlcpy(git.targetRelease, rel->version.name, sizeof(git.targetRelease));
         git.status = GIT_AWAITING_UPDATE;
       }
       else
