@@ -36,43 +36,22 @@ extern const char g_encoding_json[];
 static const char *TAG = "WebOTA";
 
 void Web::handleDownloadFirmware(WebServer &server) {
-  GitRepo repo;
-  GitRelease *rel = nullptr;
-  int8_t err = static_cast<int8_t>(repo.getReleases());
   ESP_LOGI(TAG, "downloadFirmware called...");
-  if(err == 0) {
-    if(server.hasArg("ver")) {
-      if(strcmp(server.arg("ver").c_str(), "latest") == 0) rel = &repo.releases[0];
-      else if(strcmp(server.arg("ver").c_str(), "main") == 0) {
-        rel = &repo.releases[GIT_MAX_RELEASES];
-      }
-      else {
-        for(uint8_t i = 0; i < GIT_MAX_RELEASES; i++) {
-          if(repo.releases[i].id == 0) continue;
-          if(strcmp(repo.releases[i].version.name, server.arg("ver").c_str()) == 0) {
-            rel = &repo.releases[i];  
-          }
-        }
-      }
-      if(rel) {
-        JsonResponse resp;
-        resp.beginResponse(&server, g_content, sizeof(g_content));
-        resp.beginObject();
-        rel->toJSON(resp);
-        resp.endObject();
-        resp.endResponse();
-        strlcpy(git.targetRelease, rel->version.name, sizeof(git.targetRelease));
-        git.status = GIT_AWAITING_UPDATE;
-      }
-      else
-        server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Release not found in repo.\"}"));
-    }
-    else
-      server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Release version not supplied.\"}"));
+  if(!server.hasArg("ver")) {
+    server.send(400, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Release version not supplied.\"}"));
+    return;
   }
-  else {
-      server.send(err, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Error communicating with Github.\"}"));
-  }
+  String ver = server.arg("ver");
+  // The ver value comes from the dropdown which was populated by getReleases(),
+  // so it is already a valid tag name (e.g. "v0.4.2") or "main".
+  JsonResponse resp;
+  resp.beginResponse(&server, g_content, sizeof(g_content));
+  resp.beginObject();
+  resp.addElem("name", ver.c_str());
+  resp.endObject();
+  resp.endResponse();
+  strlcpy(git.targetRelease, ver.c_str(), sizeof(git.targetRelease));
+  git.status = GIT_AWAITING_UPDATE;
 }
 
 void Web::handleRestore(WebServer &server) {
