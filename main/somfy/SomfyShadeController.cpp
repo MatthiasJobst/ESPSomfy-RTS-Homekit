@@ -227,6 +227,7 @@ int8_t SomfyShadeController::getMaxShadeOrder() {
     if(shade->getShadeId() == 255) continue;
     if(order < shade->sortOrder) order = shade->sortOrder;
   }
+  assert(order <= 127);
   return static_cast<int8_t>(order);
 }
 
@@ -237,6 +238,7 @@ int8_t SomfyShadeController::getMaxGroupOrder() {
     if(group->getGroupId() == 255) continue;
     if(order < group->sortOrder) order = group->sortOrder;
   }
+  assert(order <= 127);
   return static_cast<int8_t>(order);
 }
 
@@ -287,6 +289,7 @@ int8_t SomfyShadeController::getMaxRoomOrder() {
     if(room->roomId == 0) continue;
     if(order < room->sortOrder) order = room->sortOrder;
   }
+  assert(order <= 127);
   return static_cast<int8_t>(order);
 }
 
