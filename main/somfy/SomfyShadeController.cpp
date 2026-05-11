@@ -1,20 +1,21 @@
 // SomfyShadeController.cpp — SomfyShadeController implementation: startup/shutdown, NVS
 // persistence (load/save/backup/legacy migration), frame processing, group-flag
 // aggregation, repeater management, loop tick (movement check, auto-commit).
-#include "compat/preferences.h"
-#include <WebServer.h>
+#include <cassert>
 #include <esp_chip_info.h>
-#include "esp_log.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "Utils.h"
-#include "ConfigSettings.h"
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <WebServer.h>
 #include "SomfyShadeController.h"
-#include "Sockets.h"
-#include "MQTT.h"
-#include "HomeKit.h"
-#include "ShadeConfigFile.h"
+#include "ConfigSettings.h"
 #include "GitOTA.h"
+#include "HomeKit.h"
+#include "MQTT.h"
+#include "ShadeConfigFile.h"
+#include "Sockets.h"
+#include "Utils.h"
+#include "compat/preferences.h"
 
 extern SomfyShadeController somfy;
 extern SocketEmitter sockEmit;

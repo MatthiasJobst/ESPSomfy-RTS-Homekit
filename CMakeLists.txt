@@ -14,14 +14,16 @@ project(SomfyController)
 # need far more than 4096 bytes.
 # idf_build_set_property is the correct IDF API to propagate a compile
 # definition into managed components (add_compile_definitions does not work).
-idf_build_set_property(COMPILE_DEFINITIONS "ARDUINO_NETWORK_EVENT_TASK_STACK_SIZE=16384" APPEND)
+idf_build_set_property(COMPILE_DEFINITIONS
+    "ARDUINO_NETWORK_EVENT_TASK_STACK_SIZE=16384" APPEND)
 
 #── Unit Tests (host-based, separate from firmware build) ──────────────────
 set(test_source_dir "${CMAKE_CURRENT_SOURCE_DIR}/test/unit")
 set(test_build_dir "${test_source_dir}/build")
 
 add_custom_target(build_unit_tests
-    COMMAND cmake -S ${test_source_dir} -B ${test_build_dir} -DCMAKE_BUILD_TYPE=Debug
+    COMMAND cmake -S ${test_source_dir} -B ${test_build_dir}
+                  -DCMAKE_BUILD_TYPE=Debug
     COMMAND cmake --build ${test_build_dir} --parallel
     COMMENT "Building unit tests"
 )

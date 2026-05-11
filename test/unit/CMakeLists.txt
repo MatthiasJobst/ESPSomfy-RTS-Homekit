@@ -5,21 +5,21 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ── GoogleTest ──────────────────────────────────────────────────────────────
 include(FetchContent)
-FetchContent_Declare(googletest
+fetchcontent_declare(googletest
     GIT_REPOSITORY https://github.com/google/googletest.git
     GIT_TAG        v1.14.0
 )
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
+fetchcontent_makeavailable(googletest)
 
 enable_testing()
 
 # ── ArduinoJson (header-only, compiles fine on Linux) ──────────────────────
-FetchContent_Declare(arduinojson
+fetchcontent_declare(arduinojson
     GIT_REPOSITORY https://github.com/bblanchon/ArduinoJson.git
     GIT_TAG        v7.2.0
 )
-FetchContent_MakeAvailable(arduinojson)
+fetchcontent_makeavailable(arduinojson)
 
 # ── Source files under test ─────────────────────────────────────────────────
 # We compile only the Somfy protocol/shade files; everything else is stubbed.
@@ -61,7 +61,7 @@ add_executable(shade_tests
 # ── Include path order is critical ─────────────────────────────────────────
 # 1. stubs/        — intercepts Arduino/ESP-IDF/heavy project headers
 # 2. main/         — real project headers not in main/somfy/
-# 3. main/somfy/   — core Somfy headers (SomfyShadeController.h, SomfyRemote.h etc.)
+# 3. main/somfy/   — core Somfy headers (SomfyShadeController.h etc.)
 # 4. main/somfy/shade/ — shade-specific headers (SomfyShade.h etc.)
 # 5. ArduinoJson   — real library (header-only, works on Linux)
 target_include_directories(shade_tests PRIVATE

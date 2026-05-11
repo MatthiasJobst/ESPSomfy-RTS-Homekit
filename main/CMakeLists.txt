@@ -1,5 +1,5 @@
 # CMakeLists.txt — ESP-IDF component registration for the main Somfy firmware.
-# Lists every source file in main/ and declares dependencies on the arduino-esp32,
+# Lists every source file in main/ and declares dependencies on arduino-esp32,
 # CC1101 driver, and esp-homekit-sdk components.
 idf_component_register(
     SRCS
@@ -58,7 +58,8 @@ idf_component_register(
 # alongside the firmware image when running `idf.py flash`.
 littlefs_create_partition_image(spiffs ../data FLASH_IN_PROJECT)
 
-# Enable NVS-backed persistence for shade state (position, my-position, rolling codes).
+# Enable NVS-backed persistence for shade state
+# (position, my-position, rolling codes).
 target_compile_definitions(${COMPONENT_LIB} PRIVATE USE_NVS)
 
 # Suppress deprecation warnings for ArduinoJson v6→v7 API changes.

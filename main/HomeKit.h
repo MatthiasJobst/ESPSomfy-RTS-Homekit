@@ -7,37 +7,78 @@ class JsonResponse;
 
 class HomeKitClass {
 public:
-    // Call once from setup(), after net.setup() and somfy.begin().
-    // Initialises the HAP stack, creates the bridge and all shade accessories,
-    // sets the pairing code and starts hap_start().
+    /**
+     * @brief Initialise the HAP stack, create the bridge and all shade accessories,
+     *        set the pairing code, and call hap_start().
+     *
+     * @note Must be called after net.setup() and somfy.begin(). Safe to call
+     *       repeatedly — returns immediately if already started.
+     */
     void begin();
 
-    // Push current position/target/direction for one shade to Apple Home.
-    // Called from SomfyShade::publishState().
+    /**
+     * @brief Push current position, target, and direction for one shade to Apple Home.
+     *
+     * @param shade Shade whose state has changed. Must not be NULL.
+     */
     void notifyShadeState(SomfyShade *shade);
 
-    // Add / remove a shade from the HAP bridge at runtime (called when a shade
-    // is added or deleted via the web UI).
+    /**
+     * @brief Add a shade to the HAP bridge at runtime.
+     *
+     * Called when a new shade is added via the web UI.
+     *
+     * @param shade Shade to add. Ignored if NULL, unnamed, or id == 255.
+     */
     void addShade(SomfyShade *shade);
+
+    /**
+     * @brief Remove a shade from the HAP bridge at runtime.
+     *
+     * Called when a shade is deleted via the web UI.
+     *
+     * @param shade Shade to remove. Ignored if NULL.
+     */
     void removeShade(SomfyShade *shade);
 
-    // Reset all pairings (removes all paired controllers).
+    /**
+     * @brief Remove all paired HomeKit controllers.
+     */
     void resetPairings();
 
-    // Serialize HomeKit status to JSON for the /homekit API endpoint.
+    /**
+     * @brief Serialize HomeKit status to JSON for the /homekit API endpoint.
+     *
+     * @param resp JSON response object to write into.
+     */
     void toJSON(JsonResponse &resp);
 
+    /**
+     * @brief Return whether the HAP stack has been started.
+     *
+     * @return true after begin() has completed successfully, false otherwise.
+     */
     bool isStarted() const { return _started; }
 
-    // Generate a setup code from the chip MAC, store it internally, and return it.
+    /**
+     * @brief Derive a setup code from the chip MAC address, store it internally,
+     *        and return a pointer to it.
+     *
+     * @return Pointer to the null-terminated setup code string (e.g. "123-45-678").
+     */
     const char *prefab();
-    // Use a code that was already read from NVS.
+
+    /**
+     * @brief Store a setup code that was previously read from NVS.
+     *
+     * @param code Null-terminated setup code string. Copied internally.
+     */
     void setCode(const char *code);
 
 private:
     bool _started = false;
-    char _setupCode[12] = "459-23-871";  // overridden by prefab() / setCode() before begin()
-    char _qrPayload[64] = {};
+    char _setupCode[12] = "459-23-871";  /**< Active pairing code; overridden by prefab() or setCode() before begin(). */
+    char _qrPayload[64] = {};            /**< QR-code payload string returned by esp_hap_get_setup_payload(). */
 };
 
 extern HomeKitClass homekit;
