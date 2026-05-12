@@ -8,22 +8,21 @@
 #define CFG_TOK_NONE 0x00
 #define CFG_TOK_QUOTE '"'
 
-
 struct config_header_t {
-  uint8_t version = 1;
-  uint8_t repeaterRecords = 0;
-  uint8_t repeaterRecordSize = 0;
-  uint8_t roomRecords = 0;
-  uint16_t roomRecordSize = 0;
-  uint16_t shadeRecordSize = 0;
-  uint8_t shadeRecords = 0;
-  uint16_t groupRecordSize = 0;
-  uint8_t groupRecords = 0;
-  uint16_t settingsRecordSize = 0;
-  uint16_t netRecordSize = 0;
-  uint16_t transRecordSize = 0;
-  char serverId[10] = ""; // This must match the server id size in the ConfigSettings.
-  int8_t length = 0;
+    uint8_t version = 1;
+    uint8_t repeaterRecords = 0;
+    uint8_t repeaterRecordSize = 0;
+    uint8_t roomRecords = 0;
+    uint16_t roomRecordSize = 0;
+    uint16_t shadeRecordSize = 0;
+    uint8_t shadeRecords = 0;
+    uint16_t groupRecordSize = 0;
+    uint8_t groupRecords = 0;
+    uint16_t settingsRecordSize = 0;
+    uint16_t netRecordSize = 0;
+    uint16_t transRecordSize = 0;
+    char serverId[10] = ""; // This must match the server id size in the ConfigSettings.
+    int8_t length = 0;
 };
 class ConfigFile {
   protected:
@@ -32,6 +31,7 @@ class ConfigFile {
     bool begin(const char *filename, bool readOnly = false);
     uint32_t startRecPos = 0;
     bool _opened = false;
+
   public:
     config_header_t header;
     void end();

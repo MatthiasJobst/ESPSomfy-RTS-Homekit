@@ -30,7 +30,7 @@ class GitRelease {
     bool hasFS = false;
     char hwVersions[128] = "";
     time_t releaseDate;
-    char name[32] = "";   
+    char name[32] = "";
     appver_t version;
     void setReleaseProperty(const char *key, const char *val);
     void setAssetProperty(const char *key, const char *val);
@@ -59,7 +59,7 @@ class GitUpdater {
     int partition = 0;
     void checkForUpdate();
     bool beginUpdate(const char *release);
-    volatile bool pendingEmit = false;  // Set by background check task; main loop calls emitUpdateCheck().
+    volatile bool pendingEmit = false; // Set by background check task; main loop calls emitUpdateCheck().
     bool endUpdate();
     int8_t downloadFile();
     void setFirmwareFile();
@@ -68,8 +68,8 @@ class GitUpdater {
     void toJSON(JsonResponse &json);
     bool recoverFilesystem();
     int checkInternet();
-    void emitUpdateCheck(uint8_t num=255);
+    void emitUpdateCheck(uint8_t num = 255);
     void emitDownloadProgress(size_t total, size_t loaded, const char *evt = "updateProgress");
-    void emitDownloadProgress(uint8_t num, size_t total, size_t loaded, const char *evt = "updateProgress");    
+    void emitDownloadProgress(uint8_t num, size_t total, size_t loaded, const char *evt = "updateProgress");
 };
 #endif

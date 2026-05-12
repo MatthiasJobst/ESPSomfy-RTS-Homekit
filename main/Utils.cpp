@@ -7,136 +7,163 @@
 #include "compat/timing.h"
 #include "Utils.h"
 
-const char *getBuildVersion() {
-  const esp_app_desc_t *desc = esp_app_get_description();
-  return desc ? desc->version : "";
+const char *getBuildVersion()
+{
+    const esp_app_desc_t *desc = esp_app_get_description();
+    return desc ? desc->version : "";
 }
-
 
 /*********************************************************************
  * Timestamp class members
  ********************************************************************/
-unsigned long Timestamp::epoch() {
-  time_t now;
-  time(&now);
-  if(now < 1483228800) return 0;  // invalid if before 2017 (NTP not synced)
-  return now;
+unsigned long Timestamp::epoch()
+{
+    time_t now;
+    time(&now);
+    if (now < 1483228800) return 0; // invalid if before 2017 (NTP not synced)
+    return now;
 }
-time_t Timestamp::now() {
-  struct tm tmNow;
-  time_t t;
-  time(&t);
-  localtime_r(&t, &tmNow);
-  return mktime(&tmNow);
+time_t Timestamp::now()
+{
+    struct tm tmNow;
+    time_t t;
+    time(&t);
+    localtime_r(&t, &tmNow);
+    return mktime(&tmNow);
 }
-time_t Timestamp::getUTC() { 
-  time_t t;
-  time(&t);
-  return t; 
+time_t Timestamp::getUTC()
+{
+    time_t t;
+    time(&t);
+    return t;
 }
-time_t Timestamp::mkUTCTime(struct tm *dt) {
-  time_t tsBadLocal = mktime(dt);
+time_t Timestamp::mkUTCTime(struct tm *dt)
+{
+    time_t tsBadLocal = mktime(dt);
 
-  struct tm tmUTC;
-  struct tm tmLocal;
-  gmtime_r(&tsBadLocal, &tmUTC);
-  localtime_r(&tsBadLocal, &tmLocal);
-  time_t tsBadUTC = mktime(&tmUTC);
-  time_t tsLocal = mktime(&tmLocal);
-  time_t tsLocalOffset = tsLocal - tsBadUTC;
-  return tsBadLocal + tsLocalOffset;
+    struct tm tmUTC;
+    struct tm tmLocal;
+    gmtime_r(&tsBadLocal, &tmUTC);
+    localtime_r(&tsBadLocal, &tmLocal);
+    time_t tsBadUTC = mktime(&tmUTC);
+    time_t tsLocal = mktime(&tmLocal);
+    time_t tsLocalOffset = tsLocal - tsBadUTC;
+    return tsBadLocal + tsLocalOffset;
 }
-time_t Timestamp::parseUTCTime(const char *buff) {
-  struct tm dt;
-  dt.tm_hour = 0;
-  dt.tm_mday = 0;
-  dt.tm_mon = 0;
-  dt.tm_year = 0;
-  dt.tm_wday = 0;
-  dt.tm_yday = 0;
-  dt.tm_isdst = false;
-  char num[5];
-  uint8_t i = 0;
-  memset(num, 0x00, sizeof(num));
-  for(uint8_t j = 0; j < 5 && i < strlen(buff);) {
-    char ch = buff[i++];
-    if(ch == '-') break;
-    if(!isdigit(ch)) continue;
-    else num[j++] = ch;
-  }
-  dt.tm_year = atoi(num)-1900;
-  memset(num, 0x00, sizeof(num));
-  for(uint8_t j = 0; j < 5 && i < strlen(buff);) {
-    char ch = buff[i++];
-    if(ch == '-') break;
-    if(!isdigit(ch)) continue;
-    else num[j++] = ch;
-  }
-  dt.tm_mon = atoi(num)-1;  
-  memset(num, 0x00, sizeof(num));
-  for(uint8_t j = 0; j < 5 && i < strlen(buff);) {
-    char ch = buff[i++];
-    if(ch == '-' || ch == 'T' || ch == 't') break;
-    if(!isdigit(ch)) continue;
-    else num[j++] = ch;
-  }
-  dt.tm_mday = atoi(num);
-  memset(num, 0x00, sizeof(num));
-  for(uint8_t j = 0; j < 5 && i < strlen(buff);) {
-    char ch = buff[i++];
-    if(ch == '-' || ch == ':') break;
-    if(!isdigit(ch)) continue;
-    else num[j++] = ch;
-  }
-  dt.tm_hour = atoi(num);
-  memset(num, 0x00, sizeof(num));
-  for(uint8_t j = 0; j < 5 && i < strlen(buff);) {
-    char ch = buff[i++];
-    if(ch == '-' || ch == ':') break;
-    if(!isdigit(ch)) continue;
-    else num[j++] = ch;
-  }
-  dt.tm_min = atoi(num);
-  for(uint8_t j = 0; j < 5 && i < strlen(buff);) {
-    char ch = buff[i++];
-    if(ch == '-' || ch == ':' || ch == 'Z') break;
-    if(!isdigit(ch)) continue;
-    else num[j++] = ch;
-  }
-  dt.tm_sec = atoi(num);
-  return Timestamp::mkUTCTime(&dt);
+time_t Timestamp::parseUTCTime(const char *buff)
+{
+    struct tm dt;
+    dt.tm_hour = 0;
+    dt.tm_mday = 0;
+    dt.tm_mon = 0;
+    dt.tm_year = 0;
+    dt.tm_wday = 0;
+    dt.tm_yday = 0;
+    dt.tm_isdst = false;
+    char num[5];
+    uint8_t i = 0;
+    memset(num, 0x00, sizeof(num));
+    for (uint8_t j = 0; j < 5 && i < strlen(buff);) {
+        char ch = buff[i++];
+        if (ch == '-') break;
+        if (!isdigit(ch))
+            continue;
+        else
+            num[j++] = ch;
+    }
+    dt.tm_year = atoi(num) - 1900;
+    memset(num, 0x00, sizeof(num));
+    for (uint8_t j = 0; j < 5 && i < strlen(buff);) {
+        char ch = buff[i++];
+        if (ch == '-') break;
+        if (!isdigit(ch))
+            continue;
+        else
+            num[j++] = ch;
+    }
+    dt.tm_mon = atoi(num) - 1;
+    memset(num, 0x00, sizeof(num));
+    for (uint8_t j = 0; j < 5 && i < strlen(buff);) {
+        char ch = buff[i++];
+        if (ch == '-' || ch == 'T' || ch == 't') break;
+        if (!isdigit(ch))
+            continue;
+        else
+            num[j++] = ch;
+    }
+    dt.tm_mday = atoi(num);
+    memset(num, 0x00, sizeof(num));
+    for (uint8_t j = 0; j < 5 && i < strlen(buff);) {
+        char ch = buff[i++];
+        if (ch == '-' || ch == ':') break;
+        if (!isdigit(ch))
+            continue;
+        else
+            num[j++] = ch;
+    }
+    dt.tm_hour = atoi(num);
+    memset(num, 0x00, sizeof(num));
+    for (uint8_t j = 0; j < 5 && i < strlen(buff);) {
+        char ch = buff[i++];
+        if (ch == '-' || ch == ':') break;
+        if (!isdigit(ch))
+            continue;
+        else
+            num[j++] = ch;
+    }
+    dt.tm_min = atoi(num);
+    for (uint8_t j = 0; j < 5 && i < strlen(buff);) {
+        char ch = buff[i++];
+        if (ch == '-' || ch == ':' || ch == 'Z') break;
+        if (!isdigit(ch))
+            continue;
+        else
+            num[j++] = ch;
+    }
+    dt.tm_sec = atoi(num);
+    return Timestamp::mkUTCTime(&dt);
 }
-time_t Timestamp::getUTC(time_t t) {
-  tm tmUTC;
-  gmtime_r(&t, &tmUTC);
-  return mktime(&tmUTC);
+time_t Timestamp::getUTC(time_t t)
+{
+    tm tmUTC;
+    gmtime_r(&t, &tmUTC);
+    return mktime(&tmUTC);
 }
-char * Timestamp::getISOTime() { return this->getISOTime(this->getUTC()); }
-char * Timestamp::getISOTime(time_t epoch) {
-  struct tm *dt = localtime(&epoch);
-  return this->formatISO(dt, this->tzOffset());
+char *Timestamp::getISOTime()
+{
+    return this->getISOTime(this->getUTC());
 }
-char * Timestamp::formatISO(struct tm *dt, int tz) {
-  int tzHrs = tz / 100;  // tz is int — integer division already truncates; floor() was a no-op
-  int tzMin = tz - (tzHrs * 100);
-  int ms = static_cast<int>(millis() % 1000);
-  snprintf(this->_timeBuffer, sizeof(this->_timeBuffer), "%04d-%02d-%02dT%02d:%02d:%02d.%03d%s%02d%02d", 
-    dt->tm_year + 1900, dt->tm_mon + 1, dt->tm_mday, dt->tm_hour, dt->tm_min, dt->tm_sec, ms, tzHrs < 0 ? "-" : "+", abs(tzHrs), abs(tzMin));
-  return this->_timeBuffer;
+char *Timestamp::getISOTime(time_t epoch)
+{
+    struct tm *dt = localtime(&epoch);
+    return this->formatISO(dt, this->tzOffset());
 }
-int Timestamp::calcTZOffset(time_t *dt) {
-  tm tmLocal, tmUTC;
-  gmtime_r(dt, &tmUTC);
-  localtime_r(dt, &tmLocal);
-  // UTC offsets fit comfortably in long (max ±14h = ±50400s); explicit cast silences the time_t→long narrowing warning.
-  long diff = static_cast<long>(mktime(&tmLocal) - mktime(&tmUTC));
-  if(tmLocal.tm_isdst) diff += 3600;
-  int hrs = (int)((diff/3600) * 100);
-  int mins = diff - (hrs * 36);
-  return hrs + mins;
+char *Timestamp::formatISO(struct tm *dt, int tz)
+{
+    int tzHrs = tz / 100; // tz is int — integer division already truncates; floor() was a no-op
+    int tzMin = tz - (tzHrs * 100);
+    int ms = static_cast<int>(millis() % 1000);
+    snprintf(this->_timeBuffer, sizeof(this->_timeBuffer), "%04d-%02d-%02dT%02d:%02d:%02d.%03d%s%02d%02d",
+             dt->tm_year + 1900, dt->tm_mon + 1, dt->tm_mday, dt->tm_hour, dt->tm_min, dt->tm_sec, ms,
+             tzHrs < 0 ? "-" : "+", abs(tzHrs), abs(tzMin));
+    return this->_timeBuffer;
 }
-int Timestamp::tzOffset() {
-  time_t now;
-  time(&now);
-  return Timestamp::calcTZOffset(&now);
+int Timestamp::calcTZOffset(time_t *dt)
+{
+    tm tmLocal, tmUTC;
+    gmtime_r(dt, &tmUTC);
+    localtime_r(dt, &tmLocal);
+    // UTC offsets fit comfortably in long (max ±14h = ±50400s); explicit cast silences the time_t→long narrowing
+    // warning.
+    long diff = static_cast<long>(mktime(&tmLocal) - mktime(&tmUTC));
+    if (tmLocal.tm_isdst) diff += 3600;
+    int hrs = (int)((diff / 3600) * 100);
+    int mins = diff - (hrs * 36);
+    return hrs + mins;
+}
+int Timestamp::tzOffset()
+{
+    time_t now;
+    time(&now);
+    return Timestamp::calcTZOffset(&now);
 }

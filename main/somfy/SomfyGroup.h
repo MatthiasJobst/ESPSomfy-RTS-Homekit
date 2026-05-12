@@ -6,6 +6,7 @@
 class SomfyGroup : public SomfyRemote {
   protected:
     uint8_t groupId = 255;
+
   public:
     uint8_t roomId = 0;
     uint8_t sortOrder = 0;

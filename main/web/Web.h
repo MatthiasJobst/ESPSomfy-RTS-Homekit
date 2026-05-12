@@ -5,7 +5,7 @@
 class Web {
   public:
     bool uploadSuccess = false;
-    void sendCacheHeaders(uint32_t seconds=604800);
+    void sendCacheHeaders(uint32_t seconds = 604800);
     void startup();
     void handleLogin(WebServer &server);
     void handleLogout(WebServer &server);
@@ -97,15 +97,15 @@ class Web {
     void loop();
     void end();
     // Web Handlers
-    bool createAPIToken(const IPAddress& ipAddress, char *token);
+    bool createAPIToken(const IPAddress &ipAddress, char *token);
     bool createAPIToken(const char *payload, char *token);
-    bool createAPIPinToken(const IPAddress& ipAddress, const char *pin, char *token);
-    bool createAPIPasswordToken(const IPAddress& ipAddress, const char *username, const char *password, char *token);
+    bool createAPIPinToken(const IPAddress &ipAddress, const char *pin, char *token);
+    bool createAPIPasswordToken(const IPAddress &ipAddress, const char *username, const char *password, char *token);
     bool isAuthenticated(WebServer &server, bool cfg = false);
 
-    //void chunkRoomsResponse(WebServer &server, const char *elem = nullptr);
-    //void chunkShadesResponse(WebServer &server, const char *elem = nullptr);
-    //void chunkGroupsResponse(WebServer &server, const char *elem = nullptr);
-    //void chunkGroupResponse(WebServer &server, SomfyGroup *, const char *prefix = nullptr);
+    // void chunkRoomsResponse(WebServer &server, const char *elem = nullptr);
+    // void chunkShadesResponse(WebServer &server, const char *elem = nullptr);
+    // void chunkGroupsResponse(WebServer &server, const char *elem = nullptr);
+    // void chunkGroupResponse(WebServer &server, SomfyGroup *, const char *prefix = nullptr);
 };
 #endif

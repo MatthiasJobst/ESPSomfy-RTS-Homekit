@@ -8,7 +8,7 @@
 class SomfyShade; // forward declaration
 
 class SomfyCommandTransmitter {
-public:
+  public:
     SomfyShade *shade = nullptr; // set by SomfyShade() constructor
     SomfyLinkedRemote linkedRemotes[SOMFY_MAX_LINKED_REMOTES];
 

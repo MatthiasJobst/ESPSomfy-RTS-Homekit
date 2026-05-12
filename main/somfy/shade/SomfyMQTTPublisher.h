@@ -8,18 +8,18 @@
 class SomfyShade; // forward declaration — full definition in SomfyMQTTPublisher.cpp
 
 class SomfyMQTTPublisher {
-public:
+  public:
     SomfyShade *shade = nullptr; // set by SomfyShade() constructor
     // Position display inversion (owned here; exposed via SomfyShade getters/setters)
     bool flipPosition = false;
 
     // ── Low-level topic builders ───────────────────────────────────────────────
-    bool publish(const char *topic, const char *val,  bool retain = false);
-    bool publish(const char *topic, int8_t val,       bool retain = false);
-    bool publish(const char *topic, uint8_t val,      bool retain = false);
-    bool publish(const char *topic, uint16_t val,     bool retain = false);
-    bool publish(const char *topic, uint32_t val,     bool retain = false);
-    bool publish(const char *topic, bool val,         bool retain = false);
+    bool publish(const char *topic, const char *val, bool retain = false);
+    bool publish(const char *topic, int8_t val, bool retain = false);
+    bool publish(const char *topic, uint8_t val, bool retain = false);
+    bool publish(const char *topic, uint16_t val, bool retain = false);
+    bool publish(const char *topic, uint32_t val, bool retain = false);
+    bool publish(const char *topic, bool val, bool retain = false);
 
     // ── Full publish / unpublish ───────────────────────────────────────────────
     void publish();
@@ -34,6 +34,5 @@ public:
 
     // ── Socket + MQTT event emitters ─────────────────────────────────────────
     void emitState(uint8_t num, const char *evt);
-    void emitCommand(uint8_t num, somfy_commands cmd, const char *source,
-                     uint32_t sourceAddress, const char *evt);
+    void emitCommand(uint8_t num, somfy_commands cmd, const char *source, uint32_t sourceAddress, const char *evt);
 };

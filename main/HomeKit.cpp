@@ -13,15 +13,15 @@
 
 static const char *s_TAG = "HomeKit";
 
-#define HAP_SETUP_ID  "SMFY"
+#define HAP_SETUP_ID "SMFY"
 
 extern ConfigSettings settings;
 extern SomfyShadeController somfy;
 
 // HAP position state values (HAP spec §9.87)
-#define HAP_POS_STATE_DECREASING  0
-#define HAP_POS_STATE_INCREASING  1
-#define HAP_POS_STATE_STOPPED     2
+#define HAP_POS_STATE_DECREASING 0
+#define HAP_POS_STATE_INCREASING 1
+#define HAP_POS_STATE_STOPPED 2
 
 /**
  * @brief Convert a shade movement direction to a HAP position state value.
@@ -85,14 +85,14 @@ static int __attribute__((used)) shade_identify(hap_acc_t *ha)
  * @param write_priv Write private data (unused).
  * @return HAP_SUCCESS on success, HAP_FAIL if @p serv_priv is NULL.
  */
-static int shade_write(hap_write_data_t write_data[], int count,
-                       void *serv_priv, void *write_priv)
+static int shade_write(hap_write_data_t write_data[], int count, void *serv_priv, void *write_priv)
 {
     SomfyShade *shade = (SomfyShade *)serv_priv;
 
     if (!shade) {
         ESP_LOGW(s_TAG, "Write with null shade pointer");
-        for (int i = 0; i < count; i++) *(write_data[i].status) = HAP_STATUS_RES_ABSENT;
+        for (int i = 0; i < count; i++)
+            *(write_data[i].status) = HAP_STATUS_RES_ABSENT;
         return HAP_FAIL;
     }
     uint8_t shadeId = shade->getShadeId();
@@ -110,8 +110,8 @@ static int shade_write(hap_write_data_t write_data[], int count,
                 target = 100.0f - (float)w->val.u;
             else
                 target = (float)w->val.u;
-            ESP_LOGI(s_TAG, "TargetPosition write: hap=%u -> somfy=%.0f (currentPos=%.0f flip=%d)",
-                     w->val.u, target, shade->currentPos, shade->getFlipPosition());
+            ESP_LOGI(s_TAG, "TargetPosition write: hap=%u -> somfy=%.0f (currentPos=%.0f flip=%d)", w->val.u, target,
+                     shade->currentPos, shade->getFlipPosition());
             somfy.enqueueShadeTargetForced(shadeId, target);
             hap_char_update_val(w->hc, &w->val);
             *(w->status) = HAP_STATUS_SUCCESS;
@@ -153,14 +153,14 @@ static hap_acc_t *createShadeAccessory(SomfyShade *shade)
     snprintf(serial, sizeof(serial), "SMF-%03d", shade->getShadeId());
 
     hap_acc_cfg_t cfg = {
-        .name             = shade->name,
-        .model            = (char *)"SomfyRTS",
-        .manufacturer     = (char *)"ESPSomfy",
-        .serial_num       = serial,
-        .fw_rev           = settings.fwVersion.name,
-        .hw_rev           = NULL,
-        .pv               = (char *)"1.1.0",
-        .cid              = HAP_CID_BRIDGE,
+        .name = shade->name,
+        .model = (char *)"SomfyRTS",
+        .manufacturer = (char *)"ESPSomfy",
+        .serial_num = serial,
+        .fw_rev = settings.fwVersion.name,
+        .hw_rev = NULL,
+        .pv = (char *)"1.1.0",
+        .cid = HAP_CID_BRIDGE,
         .identify_routine = shade_identify,
     };
     hap_acc_t *acc = hap_acc_create(&cfg);
@@ -185,8 +185,8 @@ const char *HomeKitClass::prefab()
     uint8_t mac[6];
     esp_read_mac(mac, ESP_MAC_WIFI_STA);
     uint32_t n = ((uint32_t)mac[3] << 16) | ((uint32_t)mac[4] << 8) | mac[5];
-    snprintf(_setupCode, sizeof(_setupCode), "%03u-%02u-%03u",
-             (unsigned)(n / 100000u), (unsigned)((n / 1000u) % 100u), (unsigned)(n % 1000u));
+    snprintf(_setupCode, sizeof(_setupCode), "%03u-%02u-%03u", (unsigned)(n / 100000u), (unsigned)((n / 1000u) % 100u),
+             (unsigned)(n % 1000u));
     ESP_LOGI(s_TAG, "HomeKit setup code (generated): %s", _setupCode);
     return _setupCode;
 }
@@ -205,14 +205,14 @@ void HomeKitClass::begin()
     hap_init(HAP_TRANSPORT_WIFI);
 
     hap_acc_cfg_t bridge_cfg = {
-        .name             = settings.hostname[0] ? settings.hostname : (char *)"ESPSomfyRTS",
-        .model            = (char *)"SomfyRTS-Bridge",
-        .manufacturer     = (char *)"ESPSomfy",
-        .serial_num       = (char *)settings.serverId,
-        .fw_rev           = settings.fwVersion.name,
-        .hw_rev           = NULL,
-        .pv               = (char *)"1.1.0",
-        .cid              = HAP_CID_BRIDGE,
+        .name = settings.hostname[0] ? settings.hostname : (char *)"ESPSomfyRTS",
+        .model = (char *)"SomfyRTS-Bridge",
+        .manufacturer = (char *)"ESPSomfy",
+        .serial_num = (char *)settings.serverId,
+        .fw_rev = settings.fwVersion.name,
+        .hw_rev = NULL,
+        .pv = (char *)"1.1.0",
+        .cid = HAP_CID_BRIDGE,
         .identify_routine = bridge_identify,
     };
     hap_acc_t *bridge = hap_acc_create(&bridge_cfg);
@@ -232,8 +232,7 @@ void HomeKitClass::begin()
     hap_set_setup_code(_setupCode);
     hap_set_setup_id(HAP_SETUP_ID);
 
-    char *payload = esp_hap_get_setup_payload(
-        _setupCode, (char *)HAP_SETUP_ID, false, HAP_CID_BRIDGE);
+    char *payload = esp_hap_get_setup_payload(_setupCode, (char *)HAP_SETUP_ID, false, HAP_CID_BRIDGE);
     if (payload) {
         ESP_LOGI(s_TAG, "Pair with HomeKit using setup code: %s", _setupCode);
         ESP_LOGI(s_TAG, "Or scan QR payload: %s", payload);
@@ -281,21 +280,18 @@ void HomeKitClass::notifyShadeState(SomfyShade *shade)
             if (hap_serv_get_priv(svc) == shade) {
                 int8_t pos = shade->transformPosition(shade->currentPos);
                 int8_t tgt = shade->transformPosition(shade->target);
-                uint8_t ps  = directionToPositionState(shade->direction);
+                uint8_t ps = directionToPositionState(shade->direction);
 
                 hap_val_t val;
 
                 val.u = (pos >= 0) ? (uint8_t)pos : 0;
-                hap_char_update_val(
-                    hap_serv_get_char_by_uuid(svc, HAP_CHAR_UUID_CURRENT_POSITION), &val);
+                hap_char_update_val(hap_serv_get_char_by_uuid(svc, HAP_CHAR_UUID_CURRENT_POSITION), &val);
 
                 val.u = (tgt >= 0) ? (uint8_t)tgt : 0;
-                hap_char_update_val(
-                    hap_serv_get_char_by_uuid(svc, HAP_CHAR_UUID_TARGET_POSITION), &val);
+                hap_char_update_val(hap_serv_get_char_by_uuid(svc, HAP_CHAR_UUID_TARGET_POSITION), &val);
 
                 val.u = ps;
-                hap_char_update_val(
-                    hap_serv_get_char_by_uuid(svc, HAP_CHAR_UUID_POSITION_STATE), &val);
+                hap_char_update_val(hap_serv_get_char_by_uuid(svc, HAP_CHAR_UUID_POSITION_STATE), &val);
                 return;
             }
         }

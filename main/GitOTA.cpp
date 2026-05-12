@@ -25,222 +25,219 @@ extern ControllerNetwork net;
 
 // GIT_REPO now lives in GitOTA.h so it can be reused by the web layer.
 #define MAX_BUFF_SIZE 4096
-static const char *TAG = "GitOTA";
+static const char *s_TAG = "GitOTA";
 
-void GitRelease::setReleaseProperty(const char *key, const char *val) {
-  if(strcmp(key, "id") == 0) this->id = atol(val);
-  else if(strcmp(key, "draft") == 0) this->draft = toBoolean(val, false);
-  else if(strcmp(key, "prerelease") == 0) this->preRelease = toBoolean(val, false);
-  else if(strcmp(key, "name") == 0) strlcpy(this->name, val, sizeof(this->name));
-  else if(strcmp(key, "tag_name") == 0) {
-    this->version.parse(val);
-  }
-  else if(strcmp(key, "published_at") == 0) {
-    ESP_LOGI(TAG, "Key:[%s] Value:[%s]", key, val);
-    this->releaseDate = Timestamp::parseUTCTime(val);
-  }
-}
-void GitRelease::setAssetProperty(const char *key, const char *val) {
-  if(strcmp(key, "name") != 0) return;
-  ESP_LOGI(TAG, "Asset Key:[%s] Value:[%s]", key, val);
-  if(strstr(val, "littlefs.bin")) {
-    this->hasFS = true;
-    return;
-  }
-  static const struct { const char *suffix; const char *tag; } chipMap[] = {
-    {"esp32.bin",   "32"},
-    {"esp32s3.bin", "s3"},
-    {"esp32s2.bin", "s2"},
-    {"esp32c3.bin", "c3"},
-    {"esp32c2.bin", "c2"},
-    {"esp32c6.bin", "c6"},
-    {"esp32h2.bin", "h2"},
-  };
-  for(const auto &m : chipMap) {
-    if(strstr(val, m.suffix)) {
-      if(this->hwVersions[0]) strlcat(this->hwVersions, ",", sizeof(this->hwVersions));
-      strlcat(this->hwVersions, m.tag, sizeof(this->hwVersions));
-      return;
+void GitRelease::setReleaseProperty(const char *key, const char *val)
+{
+    if (strcmp(key, "id") == 0)
+        this->id = atol(val);
+    else if (strcmp(key, "draft") == 0)
+        this->draft = toBoolean(val, false);
+    else if (strcmp(key, "prerelease") == 0)
+        this->preRelease = toBoolean(val, false);
+    else if (strcmp(key, "name") == 0)
+        strlcpy(this->name, val, sizeof(this->name));
+    else if (strcmp(key, "tag_name") == 0) {
+        this->version.parse(val);
+    } else if (strcmp(key, "published_at") == 0) {
+        ESP_LOGI(s_TAG, "Key:[%s] Value:[%s]", key, val);
+        this->releaseDate = Timestamp::parseUTCTime(val);
     }
-  }
 }
-void GitRelease::toJSON(JsonResponse &json) {
-  Timestamp ts;
-  char buff[20];
-  snprintf(buff, sizeof(buff), "%" PRIu64, this->id);
-  json.addElem("id", buff);
-  json.addElem("name", this->name);
-  json.addElem("date", ts.getISOTime(this->releaseDate));
-  json.addElem("draft", this->draft);
-  json.addElem("preRelease", this->preRelease);
-  json.addElem("main", this->main);
-  json.addElem("hasFS", this->hasFS);
-  json.addElem("hwVersions", this->hwVersions);
-  json.beginObject("version");
-  this->version.toJSON(json);
-  json.endObject();
+void GitRelease::setAssetProperty(const char *key, const char *val)
+{
+    if (strcmp(key, "name") != 0) return;
+    ESP_LOGI(s_TAG, "Asset Key:[%s] Value:[%s]", key, val);
+    if (strstr(val, "littlefs.bin")) {
+        this->hasFS = true;
+        return;
+    }
+    static const struct {
+        const char *suffix;
+        const char *tag;
+    } chipMap[] = {
+        {"esp32.bin", "32"},   {"esp32s3.bin", "s3"}, {"esp32s2.bin", "s2"}, {"esp32c3.bin", "c3"},
+        {"esp32c2.bin", "c2"}, {"esp32c6.bin", "c6"}, {"esp32h2.bin", "h2"},
+    };
+    for (const auto &m : chipMap) {
+        if (strstr(val, m.suffix)) {
+            if (this->hwVersions[0]) strlcat(this->hwVersions, ",", sizeof(this->hwVersions));
+            strlcat(this->hwVersions, m.tag, sizeof(this->hwVersions));
+            return;
+        }
+    }
+}
+void GitRelease::toJSON(JsonResponse &json)
+{
+    Timestamp ts;
+    char buff[20];
+    snprintf(buff, sizeof(buff), "%" PRIu64, this->id);
+    json.addElem("id", buff);
+    json.addElem("name", this->name);
+    json.addElem("date", ts.getISOTime(this->releaseDate));
+    json.addElem("draft", this->draft);
+    json.addElem("preRelease", this->preRelease);
+    json.addElem("main", this->main);
+    json.addElem("hasFS", this->hasFS);
+    json.addElem("hwVersions", this->hwVersions);
+    json.beginObject("version");
+    this->version.toJSON(json);
+    json.endObject();
 }
 #define ERR_CLIENT_OFFSET -50
 
-int16_t GitRepo::getReleases(uint8_t num) {
-  WiFiClientSecure sclient;
-  sclient.setInsecure();
-  sclient.setHandshakeTimeout(3);
-  uint8_t ndx = 0;
-  uint8_t count = min((uint8_t)GIT_MAX_RELEASES, num);
-  char url[128];
-  memset(this->releases, 0x00, sizeof(GitRelease) * GIT_MAX_RELEASES);
-  snprintf(url, sizeof(url), "https://api.github.com/repos/" GIT_REPO "/releases?per_page=%d&page=1", count);
-  GitRelease *main = &this->releases[GIT_MAX_RELEASES];
-  main->releaseDate = Timestamp::now();
-  main->id = 1;
-  main->main = true;
-  strlcpy(main->version.name, "main", sizeof(main->version.name));
-  strlcpy(main->name, "Main", sizeof(main->name));
-  strlcpy(main->hwVersions, "32,s3", sizeof(main->hwVersions));
-  HTTPClient https;
-  https.setReuse(false);
-  if(https.begin(sclient, url)) {
-    // Follow 301/302 transparently. github.com/repos/<owner>/<repo>/releases
-    // 301-redirects to the stable /repositories/<id>/... URL after the repo
-    // is renamed; without this we'd parse the redirect body (no releases)
-    // and silently fall back to just the synthetic "Main" entry.
-    https.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
-    int httpCode = https.GET();
-    ESP_LOGI(TAG, "[HTTPS] GET... code: %d", httpCode);
-    if(httpCode > 0) {
-      int len = https.getSize();
-      ESP_LOGI(TAG, "[HTTPS] GET... code: %d - %d", httpCode, len);
-      if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-        WiFiClient *stream = https.getStreamPtr();
-        uint8_t buff[128] = {0};
-        char jsonElem[32] = "";
-        char jsonValue[128] = "";
-        int arrTok = 0;
-        int objTok = 0;
-        bool inQuote = false;
-        bool inElem = false;
-        bool inValue = false;
-        bool awaitValue = false;
-        bool inAss = false;
-        while(https.connected() && (len > 0 || len == -1) && ndx < count) {
-          size_t size = stream->available();
-          if(size) {
-            int c = static_cast<int>(stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size)));
-            ESP_LOGD(TAG, "%.*s", c, buff);
-            if(len > 0) len -= c;
-            // Now we should have some data.
-            for(int i = 0; i < c; i++) {
-              // Read the buffer a byte at a time until we have a key value pair.
-              char ch = static_cast<char>(buff[i]);
-              if(ch == '[') {
-                arrTok++;
-                if(arrTok == 2 && strcmp(jsonElem, "assets") == 0) {
-                  inElem = inValue = awaitValue = false;
-                  inAss = true;
-                  ESP_LOGI(TAG, "%s: %d", jsonElem, arrTok);
+int16_t GitRepo::getReleases(uint8_t num)
+{
+    WiFiClientSecure sclient;
+    sclient.setInsecure();
+    sclient.setHandshakeTimeout(3);
+    uint8_t ndx = 0;
+    uint8_t count = min((uint8_t)GIT_MAX_RELEASES, num);
+    char url[128];
+    memset(this->releases, 0x00, sizeof(GitRelease) * GIT_MAX_RELEASES);
+    snprintf(url, sizeof(url), "https://api.github.com/repos/" GIT_REPO "/releases?per_page=%d&page=1", count);
+    GitRelease *main = &this->releases[GIT_MAX_RELEASES];
+    main->releaseDate = Timestamp::now();
+    main->id = 1;
+    main->main = true;
+    strlcpy(main->version.name, "main", sizeof(main->version.name));
+    strlcpy(main->name, "Main", sizeof(main->name));
+    strlcpy(main->hwVersions, "32,s3", sizeof(main->hwVersions));
+    HTTPClient https;
+    https.setReuse(false);
+    if (https.begin(sclient, url)) {
+        // Follow 301/302 transparently. github.com/repos/<owner>/<repo>/releases
+        // 301-redirects to the stable /repositories/<id>/... URL after the repo
+        // is renamed; without this we'd parse the redirect body (no releases)
+        // and silently fall back to just the synthetic "Main" entry.
+        https.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
+        int httpCode = https.GET();
+        ESP_LOGI(s_TAG, "[HTTPS] GET... code: %d", httpCode);
+        if (httpCode > 0) {
+            int len = https.getSize();
+            ESP_LOGI(s_TAG, "[HTTPS] GET... code: %d - %d", httpCode, len);
+            if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+                WiFiClient *stream = https.getStreamPtr();
+                uint8_t buff[128] = {0};
+                char jsonElem[32] = "";
+                char jsonValue[128] = "";
+                int arrTok = 0;
+                int objTok = 0;
+                bool inQuote = false;
+                bool inElem = false;
+                bool inValue = false;
+                bool awaitValue = false;
+                bool inAss = false;
+                while (https.connected() && (len > 0 || len == -1) && ndx < count) {
+                    size_t size = stream->available();
+                    if (size) {
+                        int c =
+                            static_cast<int>(stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size)));
+                        ESP_LOGD(s_TAG, "%.*s", c, buff);
+                        if (len > 0) len -= c;
+                        // Now we should have some data.
+                        for (int i = 0; i < c; i++) {
+                            // Read the buffer a byte at a time until we have a key value pair.
+                            char ch = static_cast<char>(buff[i]);
+                            if (ch == '[') {
+                                arrTok++;
+                                if (arrTok == 2 && strcmp(jsonElem, "assets") == 0) {
+                                    inElem = inValue = awaitValue = false;
+                                    inAss = true;
+                                    ESP_LOGI(s_TAG, "%s: %d", jsonElem, arrTok);
+                                } else if (arrTok < 2)
+                                    inAss = false;
+                            } else if (ch == ']') {
+                                arrTok--;
+                                if (arrTok < 2) inAss = false;
+                            } else if (ch == '{') {
+                                objTok++;
+                                if (objTok != 1 && !inAss) inElem = inValue = awaitValue = false;
+                            } else if (ch == '}') {
+                                objTok--;
+                                if (objTok == 0) ndx++;
+                            } else if (objTok == 1 || inAss) {
+                                // We only want data from the root object.
+                                // if(inAss) ESP_LOGI(s_TAG, "%c", ch);
+                                if (ch == '\"') {
+                                    inQuote = !inQuote;
+                                    if (inElem) {
+                                        inElem = false;
+                                        awaitValue = true;
+                                    } else if (inValue) {
+                                        inValue = false;
+                                        inElem = false;
+                                        awaitValue = false;
+                                        if (inAss)
+                                            this->releases[ndx].setAssetProperty(jsonElem, jsonValue);
+                                        else
+                                            this->releases[ndx].setReleaseProperty(jsonElem, jsonValue);
+                                        memset(jsonElem, 0x00, sizeof(jsonElem));
+                                        memset(jsonValue, 0x00, sizeof(jsonValue));
+                                    } else if (awaitValue)
+                                        inValue = true;
+                                    else {
+                                        inElem = true;
+                                        awaitValue = false;
+                                    }
+                                } else if (awaitValue) {
+                                    if (ch != ' ' && ch != ':') {
+                                        strncat(jsonValue, &ch, 1);
+                                        awaitValue = false;
+                                        inValue = true;
+                                    }
+                                } else if ((!inQuote && ch == ',') || ch == '\r' || ch == '\n') {
+                                    inElem = inValue = awaitValue = false;
+                                    if (strlen(jsonElem) > 0) {
+                                        if (inAss)
+                                            this->releases[ndx].setAssetProperty(jsonElem, jsonValue);
+                                        else
+                                            this->releases[ndx].setReleaseProperty(jsonElem, jsonValue);
+                                    }
+                                    memset(jsonElem, 0x00, sizeof(jsonElem));
+                                    memset(jsonValue, 0x00, sizeof(jsonValue));
+                                } else {
+                                    if (inElem) {
+                                        if (strlen(jsonElem) < sizeof(jsonElem) - 1) strncat(jsonElem, &ch, 1);
+                                    } else if (inValue) {
+                                        if (strlen(jsonValue) < sizeof(jsonValue) - 1) strncat(jsonValue, &ch, 1);
+                                    }
+                                }
+                            }
+                        }
+                        delay(1);
+                    }
+                    // else break;
                 }
-                else if(arrTok < 2) inAss = false;
-              }
-              else if(ch == ']') {
-                arrTok--;
-                if(arrTok < 2) inAss = false;
-              }
-              else if(ch == '{') {
-                objTok++;
-                if(objTok != 1 && !inAss) inElem = inValue = awaitValue = false;
-              }
-              else if(ch == '}') {
-                objTok--;
-                if(objTok == 0) ndx++;
-              }
-              else if(objTok == 1 || inAss) {
-                // We only want data from the root object.
-                //if(inAss) ESP_LOGI(TAG, "%c", ch);
-                if(ch == '\"') {
-                  inQuote = !inQuote;
-                  if(inElem) {
-                    inElem = false;
-                    awaitValue = true;
-                  }
-                  else if(inValue) {
-                    inValue = false;
-                    inElem = false;
-                    awaitValue = false;
-                    if(inAss)
-                      this->releases[ndx].setAssetProperty(jsonElem, jsonValue);
-                    else
-                      this->releases[ndx].setReleaseProperty(jsonElem, jsonValue);
-                    memset(jsonElem, 0x00, sizeof(jsonElem));
-                    memset(jsonValue, 0x00, sizeof(jsonValue));
-                  }
-                  else if(awaitValue) inValue = true;
-                  else {
-                    inElem = true;
-                    awaitValue = false;
-                  }
-                }
-                else if(awaitValue) {
-                  if(ch != ' ' && ch != ':') {
-                    strncat(jsonValue, &ch, 1);
-                    awaitValue = false;
-                    inValue = true;
-                  }
-                }
-                else if((!inQuote && ch == ',') || ch == '\r' || ch == '\n') {
-                  inElem = inValue = awaitValue = false;
-                  if(strlen(jsonElem) > 0) {
-                    if(inAss)
-                      this->releases[ndx].setAssetProperty(jsonElem, jsonValue);
-                    else
-                      this->releases[ndx].setReleaseProperty(jsonElem, jsonValue);
-                  }
-                  memset(jsonElem, 0x00, sizeof(jsonElem));
-                  memset(jsonValue, 0x00, sizeof(jsonValue));
-                }
-                else {
-                  if(inElem) {
-                    if(strlen(jsonElem) < sizeof(jsonElem) - 1) strncat(jsonElem, &ch, 1);
-                  }
-                  else if(inValue) {
-                    if(strlen(jsonValue) < sizeof(jsonValue) - 1) strncat(jsonValue, &ch, 1);
-                  }
-                }
-              }
+            } else {
+                https.end();
+                sclient.stop();
+                return static_cast<int16_t>(httpCode);
             }
-            delay(1);
-          }
-          //else break;
         }
-      }
-      else {
         https.end();
         sclient.stop();
-        return static_cast<int16_t>(httpCode);
-      }
     }
-    https.end();
-    sclient.stop();
-  }
-  settings.printAvailHeap();
-  return 0;
+    settings.printAvailHeap();
+    return 0;
 }
-void GitRepo::toJSON(JsonResponse &json) {
-  json.beginObject("fwVersion");
-  settings.fwVersion.toJSON(json);
-  json.endObject();
-  json.addElem("buildVersion", getBuildVersion());
-  json.beginObject("appVersion");
-  settings.appVersion.toJSON(json);
-  json.endObject();
-  json.beginArray("releases");
-  for(uint8_t i = 0; i < GIT_MAX_RELEASES + 1; i++) {
-    if(this->releases[i].id == 0) continue;
-    json.beginObject();
-    this->releases[i].toJSON(json);
+void GitRepo::toJSON(JsonResponse &json)
+{
+    json.beginObject("fwVersion");
+    settings.fwVersion.toJSON(json);
     json.endObject();
-  }
-  json.endArray();
+    json.addElem("buildVersion", getBuildVersion());
+    json.beginObject("appVersion");
+    settings.appVersion.toJSON(json);
+    json.endObject();
+    json.beginArray("releases");
+    for (uint8_t i = 0; i < GIT_MAX_RELEASES + 1; i++) {
+        if (this->releases[i].id == 0) continue;
+        json.beginObject();
+        this->releases[i].toJSON(json);
+        json.endObject();
+    }
+    json.endArray();
 }
 #define UPDATE_ERR_OFFSET 20
 #define ERR_DOWNLOAD_HTTP -40
@@ -250,339 +247,365 @@ void GitRepo::toJSON(JsonResponse &json) {
 // Background task: runs the blocking HTTPS fetch so the main loop (WebSocket,
 // HTTP server) is never stalled. Only network/field updates run here; the
 // WebSocket emit is deferred back to the main loop via pendingEmit.
-static void checkForUpdateTask(void *arg) {
-  esp_task_wdt_add(NULL);          // register this task so wdt_reset() calls succeed
-  GitUpdater *g = static_cast<GitUpdater *>(arg);
-  g->checkForUpdate();   // sets status, updateAvailable, latest, etc.
-  g->pendingEmit = true; // signal main loop to call emitUpdateCheck()
-  esp_task_wdt_delete(NULL);       // unregister before the task self-deletes
-  vTaskDelete(NULL);
+static void checkForUpdateTask(void *arg)
+{
+    esp_task_wdt_add(NULL); // register this task so wdt_reset() calls succeed
+    GitUpdater *g = static_cast<GitUpdater *>(arg);
+    g->checkForUpdate();       // sets status, updateAvailable, latest, etc.
+    g->pendingEmit = true;     // signal main loop to call emitUpdateCheck()
+    esp_task_wdt_delete(NULL); // unregister before the task self-deletes
+    vTaskDelete(NULL);
 }
 
-void GitUpdater::loop() {
-  if(!net.connected()) return;
-  // Emit the update-check result on the main loop thread (WebSocket is not
-  // thread-safe; the background task only sets the flag).
-  if(this->pendingEmit && this->status == GIT_STATUS_READY) {
-    this->pendingEmit = false;
-    this->emitUpdateCheck();
-  }
-  if(this->status == GIT_STATUS_READY) {
-    if(settings.checkForUpdate && 
-      (millis() > net.connectTime + 60000) && // Wait a minute before checking after connection.
-      (this->lastCheck + 86400000 < millis() || this->lastCheck == 0) && !rebootDelay.reboot) { // 1 day
-      this->lastCheck = millis(); // Prevent loop() from re-scheduling before the task starts.
-      xTaskCreate(checkForUpdateTask, "gitCheck", 16384, this, 1, NULL);
+void GitUpdater::loop()
+{
+    if (!net.connected()) return;
+    // Emit the update-check result on the main loop thread (WebSocket is not
+    // thread-safe; the background task only sets the flag).
+    if (this->pendingEmit && this->status == GIT_STATUS_READY) {
+        this->pendingEmit = false;
+        this->emitUpdateCheck();
     }
-  }
-  else if(this->status == GIT_AWAITING_UPDATE) {
-    ESP_LOGI(TAG, "Starting update process.........");
-    this->status = GIT_UPDATING;
-    this->beginUpdate(this->targetRelease);
+    if (this->status == GIT_STATUS_READY) {
+        if (settings.checkForUpdate &&
+            (millis() > net.connectTime + 60000) && // Wait a minute before checking after connection.
+            (this->lastCheck + 86400000 < millis() || this->lastCheck == 0) && !rebootDelay.reboot) { // 1 day
+            this->lastCheck = millis(); // Prevent loop() from re-scheduling before the task starts.
+            xTaskCreate(checkForUpdateTask, "gitCheck", 16384, this, 1, NULL);
+        }
+    } else if (this->status == GIT_AWAITING_UPDATE) {
+        ESP_LOGI(s_TAG, "Starting update process.........");
+        this->status = GIT_UPDATING;
+        this->beginUpdate(this->targetRelease);
+        this->status = GIT_STATUS_READY;
+        this->emitUpdateCheck();
+    } else if (this->status == GIT_UPDATE_CANCELLING) {
+        ESP_LOGI(s_TAG, "Cancelling update process..........");
+        if (!this->lockFS) {
+            this->status = GIT_UPDATE_CANCELLED;
+            this->cancelled = true;
+            this->emitUpdateCheck();
+        }
+    }
+}
+void GitUpdater::checkForUpdate()
+{
+    if (this->status != 0) return; // If we are already checking.
+    ESP_LOGI(s_TAG, "Check github for updates...");
+
+    this->status = GIT_STATUS_CHECK;
+    settings.printAvailHeap();
+    this->lastCheck = millis();
+    if (this->checkInternet() == 0) {
+        GitRepo repo;
+        this->updateAvailable = false;
+        this->error = repo.getReleases(2);
+        if (this->error == 0) { // Get 2 releases so we can filter our pre-releases
+            this->setCurrentRelease(repo);
+        } else {
+            this->emitUpdateCheck();
+        }
+    }
     this->status = GIT_STATUS_READY;
-    this->emitUpdateCheck();
-  }
-  else if(this->status == GIT_UPDATE_CANCELLING) {
-    ESP_LOGI(TAG, "Cancelling update process..........");
-    if(!this->lockFS) {
-      this->status = GIT_UPDATE_CANCELLED;
-      this->cancelled = true;
-      this->emitUpdateCheck();
-    }
-  }
 }
-void GitUpdater::checkForUpdate() {
-  if(this->status != 0) return; // If we are already checking.
-  ESP_LOGI(TAG, "Check github for updates...");
-  
-  this->status = GIT_STATUS_CHECK;
-  settings.printAvailHeap();  
-  this->lastCheck = millis();
-  if(this->checkInternet() == 0) {
-    GitRepo repo;
+void GitUpdater::setCurrentRelease(GitRepo &repo)
+{
     this->updateAvailable = false;
-    this->error = repo.getReleases(2);
-    if(this->error == 0) { // Get 2 releases so we can filter our pre-releases
-      this->setCurrentRelease(repo);
+    for (uint8_t i = 0; i < 2; i++) {
+        if (repo.releases[i].draft || repo.releases[i].preRelease || repo.releases[i].id == 0) continue;
+        // Compare the versions.
+        this->latest.copy(repo.releases[i].version);
+        if (repo.releases[i].version.compare(settings.fwVersion) > 0) {
+            // We have a new release.
+            this->updateAvailable = true;
+        }
+        break;
     }
-    else {
-      this->emitUpdateCheck();
+    this->emitUpdateCheck();
+}
+void GitUpdater::toJSON(JsonResponse &json)
+{
+    json.addElem("available", this->updateAvailable);
+    json.addElem("status", this->status);
+    json.addElem("error", (int32_t)this->error);
+    json.addElem("cancelled", this->cancelled);
+    json.addElem("checkForUpdate", settings.checkForUpdate);
+    json.addElem("inetAvailable", this->inetAvailable);
+    json.beginObject("fwVersion");
+    settings.fwVersion.toJSON(json);
+    json.endObject();
+    json.addElem("buildVersion", getBuildVersion());
+    json.beginObject("appVersion");
+    settings.appVersion.toJSON(json);
+    json.endObject();
+    json.beginObject("latest");
+    this->latest.toJSON(json);
+    json.endObject();
+}
+void GitUpdater::emitUpdateCheck(uint8_t num)
+{
+    JsonSockEvent *json = sockEmit.beginEmit("fwStatus");
+    json->beginObject();
+    json->addElem("available", this->updateAvailable);
+    json->addElem("status", this->status);
+    json->addElem("error", (int32_t)this->error);
+    json->addElem("cancelled", this->cancelled);
+    json->addElem("checkForUpdate", settings.checkForUpdate);
+    json->addElem("inetAvailable", this->inetAvailable);
+    json->beginObject("fwVersion");
+    settings.fwVersion.toJSON(json);
+    json->endObject();
+    json->addElem("buildVersion", getBuildVersion());
+    json->beginObject("appVersion");
+    settings.appVersion.toJSON(json);
+    json->endObject();
+    json->beginObject("latest");
+    this->latest.toJSON(json);
+    json->endObject();
+    json->endObject();
+    sockEmit.endEmit(num);
+}
+int GitUpdater::checkInternet()
+{
+    int err = 500;
+    uint32_t t = millis();
+    WiFiClientSecure sclient;
+    sclient.setInsecure();
+    sclient.setHandshakeTimeout(3);
+    HTTPClient https;
+    https.setReuse(false);
+    if (https.begin(sclient, "https://github.com/" GIT_REPO)) {
+        https.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
+        https.setTimeout(3000);
+        int httpCode = https.sendRequest("HEAD");
+        if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY || httpCode == HTTP_CODE_FOUND) {
+            err = 0;
+            ESP_LOGI(s_TAG, "Internet is Available: %ldms", millis() - t);
+            this->inetAvailable = true;
+        } else {
+            err = httpCode;
+            ESP_LOGI(s_TAG, "Internet is Unavailable: %d: %ldms", err, millis() - t);
+            this->inetAvailable = false;
+        }
+        https.end();
+        sclient.stop();
     }
-  }
-  this->status = GIT_STATUS_READY;
+    return err;
 }
-void GitUpdater::setCurrentRelease(GitRepo &repo) {
-  this->updateAvailable = false;
-  for(uint8_t i = 0; i < 2; i++) {
-    if(repo.releases[i].draft || repo.releases[i].preRelease || repo.releases[i].id == 0) continue;
-    // Compare the versions.  
-    this->latest.copy(repo.releases[i].version);
-    if(repo.releases[i].version.compare(settings.fwVersion) > 0) {
-      // We have a new release.
-      this->updateAvailable = true;
-    }
-    break;
-  }
-  this->emitUpdateCheck();
+void GitUpdater::emitDownloadProgress(size_t total, size_t loaded, const char *evt)
+{
+    this->emitDownloadProgress(255, total, loaded, evt);
 }
-void GitUpdater::toJSON(JsonResponse &json) {
-  json.addElem("available", this->updateAvailable);
-  json.addElem("status", this->status);
-  json.addElem("error", (int32_t)this->error);
-  json.addElem("cancelled", this->cancelled);
-  json.addElem("checkForUpdate", settings.checkForUpdate);
-  json.addElem("inetAvailable", this->inetAvailable);
-  json.beginObject("fwVersion");
-  settings.fwVersion.toJSON(json);
-  json.endObject();
-  json.addElem("buildVersion", getBuildVersion());
-  json.beginObject("appVersion");
-  settings.appVersion.toJSON(json);
-  json.endObject();
-  json.beginObject("latest");
-  this->latest.toJSON(json);
-  json.endObject();
+void GitUpdater::emitDownloadProgress(uint8_t num, size_t total, size_t loaded, const char *evt)
+{
+    JsonSockEvent *json = sockEmit.beginEmit(evt);
+    json->beginObject();
+    json->addElem("ver", this->targetRelease);
+    json->addElem("part", (int32_t)this->partition);
+    json->addElem("file", this->currentFile);
+    json->addElem("total", (uint32_t)total);
+    json->addElem("loaded", (uint32_t)loaded);
+    json->addElem("error", (uint32_t)this->error);
+    json->endObject();
+    sockEmit.endEmit(num);
+    sockEmit.loop();
+    webServer.loop();
 }
-void GitUpdater::emitUpdateCheck(uint8_t num) {
-  JsonSockEvent *json = sockEmit.beginEmit("fwStatus");
-  json->beginObject();
-  json->addElem("available", this->updateAvailable);
-  json->addElem("status", this->status);
-  json->addElem("error", (int32_t)this->error);
-  json->addElem("cancelled", this->cancelled);
-  json->addElem("checkForUpdate", settings.checkForUpdate);
-  json->addElem("inetAvailable", this->inetAvailable);
-  json->beginObject("fwVersion");
-  settings.fwVersion.toJSON(json);
-  json->endObject();
-  json->addElem("buildVersion", getBuildVersion());
-  json->beginObject("appVersion");
-  settings.appVersion.toJSON(json);
-  json->endObject();
-  json->beginObject("latest");
-  this->latest.toJSON(json);
-  json->endObject();
-  json->endObject();
-  sockEmit.endEmit(num);
-}
-int GitUpdater::checkInternet() {
-  int err = 500;
-  uint32_t t = millis();
-  WiFiClientSecure sclient;
-  sclient.setInsecure();
-  sclient.setHandshakeTimeout(3);
-  HTTPClient https;
-  https.setReuse(false);
-  if(https.begin(sclient, "https://github.com/" GIT_REPO)) {
-    https.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
-    https.setTimeout(3000);
-    int httpCode = https.sendRequest("HEAD");
-    if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY || httpCode == HTTP_CODE_FOUND) {
-      err = 0;
-      ESP_LOGI(TAG, "Internet is Available: %ldms", millis() - t);
-      this->inetAvailable = true;
-    }
-    else {
-      err = httpCode;
-      ESP_LOGI(TAG, "Internet is Unavailable: %d: %ldms", err, millis() - t);
-      this->inetAvailable = false;
-    }
-    https.end();
-    sclient.stop();
-  }
-  return err;
-}
-void GitUpdater::emitDownloadProgress(size_t total, size_t loaded, const char *evt) { this->emitDownloadProgress(255, total, loaded, evt); }
-void GitUpdater::emitDownloadProgress(uint8_t num, size_t total, size_t loaded, const char *evt) {
-  JsonSockEvent *json = sockEmit.beginEmit(evt);
-  json->beginObject();
-  json->addElem("ver", this->targetRelease);
-  json->addElem("part", (int32_t)this->partition);
-  json->addElem("file", this->currentFile);
-  json->addElem("total", (uint32_t)total);
-  json->addElem("loaded", (uint32_t)loaded);
-  json->addElem("error", (uint32_t)this->error);
-  json->endObject();
-  sockEmit.endEmit(num);
-  sockEmit.loop();
-  webServer.loop();
-}
-void GitUpdater::setFirmwareFile() {
+void GitUpdater::setFirmwareFile()
+{
     esp_chip_info_t ci;
     esp_chip_info(&ci);
-    const char *bin = "SomfyController.esp32.bin";  // safe default for unknown / future chips
-    switch(ci.model) {
-      case esp_chip_model_t::CHIP_ESP32S3: bin = "SomfyController.esp32s3.bin"; break;
-      case esp_chip_model_t::CHIP_ESP32S2: bin = "SomfyController.esp32s2.bin"; break;
-      case esp_chip_model_t::CHIP_ESP32C3: bin = "SomfyController.esp32c3.bin"; break;
-      case esp_chip_model_t::CHIP_ESP32C2: bin = "SomfyController.esp32c2.bin"; break;
-      case esp_chip_model_t::CHIP_ESP32C6: bin = "SomfyController.esp32c6.bin"; break;
-      case esp_chip_model_t::CHIP_ESP32H2: bin = "SomfyController.esp32h2.bin"; break;
-      default: break;
+    const char *bin = "SomfyController.esp32.bin"; // safe default for unknown / future chips
+    switch (ci.model) {
+    case esp_chip_model_t::CHIP_ESP32S3:
+        bin = "SomfyController.esp32s3.bin";
+        break;
+    case esp_chip_model_t::CHIP_ESP32S2:
+        bin = "SomfyController.esp32s2.bin";
+        break;
+    case esp_chip_model_t::CHIP_ESP32C3:
+        bin = "SomfyController.esp32c3.bin";
+        break;
+    case esp_chip_model_t::CHIP_ESP32C2:
+        bin = "SomfyController.esp32c2.bin";
+        break;
+    case esp_chip_model_t::CHIP_ESP32C6:
+        bin = "SomfyController.esp32c6.bin";
+        break;
+    case esp_chip_model_t::CHIP_ESP32H2:
+        bin = "SomfyController.esp32h2.bin";
+        break;
+    default:
+        break;
     }
     strlcpy(this->currentFile, bin, sizeof(this->currentFile));
 }
 
-bool GitUpdater::beginUpdate(const char *version) {
-  ESP_LOGI(TAG, "Begin update called...");
-  if(strcmp(version, "main") == 0) strlcpy(this->baseUrl, "https://github.com/" GIT_REPO "/releases/latest/download/", sizeof(this->baseUrl));
-  else snprintf(this->baseUrl, sizeof(this->baseUrl), "https://github.com/" GIT_REPO "/releases/download/%s/", version);
-  
-  strlcpy(this->targetRelease, version, sizeof(this->targetRelease));
-  this->emitUpdateCheck();
-  this->setFirmwareFile();
-  this->partition = U_FLASH;
-  this->lockFS = this->cancelled = false;
-  this->error = 0;
-  this->error = static_cast<int16_t>(this->downloadFile());
-  if(this->error == 0 && !this->cancelled) {
-    somfy.commit();
+bool GitUpdater::beginUpdate(const char *version)
+{
+    ESP_LOGI(s_TAG, "Begin update called...");
+    if (strcmp(version, "main") == 0)
+        strlcpy(this->baseUrl, "https://github.com/" GIT_REPO "/releases/latest/download/", sizeof(this->baseUrl));
+    else
+        snprintf(this->baseUrl, sizeof(this->baseUrl), "https://github.com/" GIT_REPO "/releases/download/%s/",
+                 version);
+
+    strlcpy(this->targetRelease, version, sizeof(this->targetRelease));
+    this->emitUpdateCheck();
+    this->setFirmwareFile();
+    this->partition = U_FLASH;
+    this->lockFS = this->cancelled = false;
+    this->error = 0;
+    this->error = static_cast<int16_t>(this->downloadFile());
+    if (this->error == 0 && !this->cancelled) {
+        somfy.commit();
+        strlcpy(this->currentFile, "SomfyController.littlefs.bin", sizeof(this->currentFile));
+        this->partition = U_SPIFFS;
+        this->lockFS = true;
+        this->error = static_cast<int16_t>(this->downloadFile());
+        this->lockFS = false;
+        if (this->error == 0) {
+            settings.fwVersion.parse(version);
+            delay(100);
+            ESP_LOGI(s_TAG, "Committing Configuration...");
+            somfy.commit();
+        }
+        rebootDelay.reboot = true;
+        rebootDelay.rebootTime = millis() + 500;
+    }
+    this->status = GIT_UPDATE_COMPLETE;
+    this->emitUpdateCheck();
+    return true;
+}
+bool GitUpdater::recoverFilesystem()
+{
+    snprintf(this->baseUrl, sizeof(this->baseUrl), "https://github.com/" GIT_REPO "/releases/download/%s/",
+             settings.fwVersion.name);
     strlcpy(this->currentFile, "SomfyController.littlefs.bin", sizeof(this->currentFile));
+    this->status = GIT_UPDATING;
     this->partition = U_SPIFFS;
     this->lockFS = true;
     this->error = static_cast<int16_t>(this->downloadFile());
     this->lockFS = false;
-    if(this->error == 0) {
-      settings.fwVersion.parse(version);
-      delay(100);
-      ESP_LOGI(TAG, "Committing Configuration...");
-      somfy.commit();
+    if (this->error == 0) {
+        delay(100);
+        ESP_LOGI(s_TAG, "Committing Configuration...");
+        somfy.commit();
     }
+    this->status = GIT_UPDATE_COMPLETE;
     rebootDelay.reboot = true;
     rebootDelay.rebootTime = millis() + 500;
-  }
-  this->status = GIT_UPDATE_COMPLETE;
-  this->emitUpdateCheck();
-  return true;
+    return true;
 }
-bool GitUpdater::recoverFilesystem() {
-  snprintf(this->baseUrl, sizeof(this->baseUrl), "https://github.com/" GIT_REPO "/releases/download/%s/", settings.fwVersion.name);
-  strlcpy(this->currentFile, "SomfyController.littlefs.bin", sizeof(this->currentFile));
-  this->status = GIT_UPDATING;
-  this->partition = U_SPIFFS;
-  this->lockFS = true;
-  this->error = static_cast<int16_t>(this->downloadFile());
-  this->lockFS = false;
-  if(this->error == 0) {
-    delay(100);
-    ESP_LOGI(TAG, "Committing Configuration...");
-    somfy.commit();
-  }
-  this->status = GIT_UPDATE_COMPLETE;
-  rebootDelay.reboot = true;
-  rebootDelay.rebootTime = millis() + 500;
-  return true;
+bool GitUpdater::endUpdate()
+{
+    return true;
 }
-bool GitUpdater::endUpdate() { return true; }
-int8_t GitUpdater::downloadFile() {
-  ESP_LOGI(TAG, "Begin update %s", this->currentFile);
-  WiFiClientSecure sclient;
-  sclient.setInsecure();
-  HTTPClient https;
-  char url[196];
-  snprintf(url, sizeof(url), "%s%s", this->baseUrl, this->currentFile);
-  ESP_LOGI(TAG, "%s", url);
-  if(https.begin(sclient, url)) {
-    https.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
-    ESP_LOGI(TAG, "[HTTPS] GET...");
-    int httpCode = https.GET();
-    if(httpCode > 0) {
-      size_t len = https.getSize();
-      size_t total = 0;
-      uint8_t pct = 0;
-      ESP_LOGI(TAG, "[HTTPS] GET... code: %d - %d", httpCode, len);
-      if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY || httpCode == HTTP_CODE_FOUND) {
-        WiFiClient *stream = https.getStreamPtr();
-        if(!Update.begin(len, this->partition)) {
-          ESP_LOGI(TAG, "Update Error detected!!!!!");
-          Update.printError(Serial);
-          https.end();
-          return static_cast<int8_t>(-(Update.getError() + UPDATE_ERR_OFFSET));
-        }
-        uint8_t *buff = (uint8_t *)malloc(MAX_BUFF_SIZE);
-        if(buff) {
-          this->emitDownloadProgress(len, total);
-          int timeouts = 0;
-          while(https.connected() && (len > 0 || len == -1) && total < len) {
-            size_t size = stream->available();
-            esp_task_wdt_reset();
-            if(size) {
-              timeouts = 0;
-              if(this->cancelled && !this->lockFS) {
-                Update.abort();
-                free(buff);
-                https.end();
-                return static_cast<int8_t>(-(Update.getError() + UPDATE_ERR_OFFSET));
-              }
-              int c = static_cast<int>(stream->readBytes(buff, ((size > MAX_BUFF_SIZE) ? MAX_BUFF_SIZE : size)));
-              total += c;
-              if (Update.write(buff, c) != c) {
-                ESP_LOGE(TAG, "Upload of %s aborted invalid size %d", url, c);
-                free(buff);
-                https.end();
-                sclient.stop();
-                return static_cast<int8_t>(-(Update.getError() + UPDATE_ERR_OFFSET));
-              }
-              // Calculate the percentage.
-              uint8_t p = (uint8_t)floorf(((float)total / (float)len) * 100.0f);
-              if(p != pct) {
-                pct = p;
-                ESP_LOGI(TAG, "LEN:%d TOTAL:%d %d%%", len, total, pct);
-                this->emitDownloadProgress(len, total);
-              }
-              delay(1);
-              if(total >= len) {
-                if(!Update.end(true)) {
-                  ESP_LOGE(TAG, "Error downloading update...");
-                  Update.printError(Serial);
+int8_t GitUpdater::downloadFile()
+{
+    ESP_LOGI(s_TAG, "Begin update %s", this->currentFile);
+    WiFiClientSecure sclient;
+    sclient.setInsecure();
+    HTTPClient https;
+    char url[196];
+    snprintf(url, sizeof(url), "%s%s", this->baseUrl, this->currentFile);
+    ESP_LOGI(s_TAG, "%s", url);
+    if (https.begin(sclient, url)) {
+        https.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
+        ESP_LOGI(s_TAG, "[HTTPS] GET...");
+        int httpCode = https.GET();
+        if (httpCode > 0) {
+            size_t len = https.getSize();
+            size_t total = 0;
+            uint8_t pct = 0;
+            ESP_LOGI(s_TAG, "[HTTPS] GET... code: %d - %d", httpCode, len);
+            if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY || httpCode == HTTP_CODE_FOUND) {
+                WiFiClient *stream = https.getStreamPtr();
+                if (!Update.begin(len, this->partition)) {
+                    ESP_LOGI(s_TAG, "Update Error detected!!!!!");
+                    Update.printError(Serial);
+                    https.end();
+                    return static_cast<int8_t>(-(Update.getError() + UPDATE_ERR_OFFSET));
                 }
-                else {
-                  ESP_LOGI(TAG, "Update.end Called...");
+                uint8_t *buff = (uint8_t *)malloc(MAX_BUFF_SIZE);
+                if (buff) {
+                    this->emitDownloadProgress(len, total);
+                    int timeouts = 0;
+                    while (https.connected() && (len > 0 || len == -1) && total < len) {
+                        size_t size = stream->available();
+                        esp_task_wdt_reset();
+                        if (size) {
+                            timeouts = 0;
+                            if (this->cancelled && !this->lockFS) {
+                                Update.abort();
+                                free(buff);
+                                https.end();
+                                return static_cast<int8_t>(-(Update.getError() + UPDATE_ERR_OFFSET));
+                            }
+                            int c = static_cast<int>(
+                                stream->readBytes(buff, ((size > MAX_BUFF_SIZE) ? MAX_BUFF_SIZE : size)));
+                            total += c;
+                            if (Update.write(buff, c) != c) {
+                                ESP_LOGE(s_TAG, "Upload of %s aborted invalid size %d", url, c);
+                                free(buff);
+                                https.end();
+                                sclient.stop();
+                                return static_cast<int8_t>(-(Update.getError() + UPDATE_ERR_OFFSET));
+                            }
+                            // Calculate the percentage.
+                            uint8_t p = (uint8_t)floorf(((float)total / (float)len) * 100.0f);
+                            if (p != pct) {
+                                pct = p;
+                                ESP_LOGI(s_TAG, "LEN:%d TOTAL:%d %d%%", len, total, pct);
+                                this->emitDownloadProgress(len, total);
+                            }
+                            delay(1);
+                            if (total >= len) {
+                                if (!Update.end(true)) {
+                                    ESP_LOGE(s_TAG, "Error downloading update...");
+                                    Update.printError(Serial);
+                                } else {
+                                    ESP_LOGI(s_TAG, "Update.end Called...");
+                                }
+                                https.end();
+                                sclient.stop();
+                            }
+                        } else {
+                            timeouts++;
+                            if (timeouts >= 500) {
+                                Update.abort();
+                                https.end();
+                                free(buff);
+                                ESP_LOGE(s_TAG, "Stream timeout!!!");
+                                return -43;
+                            }
+                            sockEmit.loop();
+                            webServer.loop();
+                            delay(100);
+                        }
+                    }
+                    free(buff);
+                    if (len > total) {
+                        Update.abort();
+                        somfy.commit();
+                        ESP_LOGE(s_TAG, "Error downloading file!!!");
+                        return -42;
+                    } else
+                        ESP_LOGI(s_TAG, "Update %s complete", this->currentFile);
+                } else {
+                    // TODO: memory allocation error.
+                    ESP_LOGE(s_TAG, "Unable to allocate memory for update!!!");
                 }
-                https.end();
-                sclient.stop();
-              }
+            } else {
+                ESP_LOGE(s_TAG, "Invalid HTTP Code... %d", httpCode);
+                return static_cast<int8_t>(httpCode);
             }
-            else {
-              timeouts++;
-              if(timeouts >= 500) {
-                Update.abort();
-                https.end();
-                free(buff);
-                ESP_LOGE(TAG, "Stream timeout!!!");
-                return -43;
-              }
-              sockEmit.loop();
-              webServer.loop();
-              delay(100);
-            }
-          }
-          free(buff);
-          if(len > total) {
-            Update.abort();
-            somfy.commit();
-            ESP_LOGE(TAG, "Error downloading file!!!");
-            return -42;
-          }
-          else
-            ESP_LOGI(TAG, "Update %s complete", this->currentFile);
+        } else {
+            ESP_LOGE(s_TAG, "Invalid HTTP Code: %d", httpCode);
         }
-        else {
-          // TODO: memory allocation error.
-          ESP_LOGE(TAG, "Unable to allocate memory for update!!!");
-        }
-      }
-      else {
-        ESP_LOGE(TAG, "Invalid HTTP Code... %d", httpCode);
-        return static_cast<int8_t>(httpCode);
-      }
-    }        
-    else {
-      ESP_LOGE(TAG, "Invalid HTTP Code: %d", httpCode);
+        https.end();
+        sclient.stop();
+        ESP_LOGI(s_TAG, "End update %s", this->currentFile);
     }
-    https.end();
-    sclient.stop();
-    ESP_LOGI(TAG, "End update %s", this->currentFile);
-  }
-  return 0;
+    return 0;
 }

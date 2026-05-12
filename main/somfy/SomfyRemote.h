@@ -6,12 +6,13 @@
 #include "SomfyFlag.h"
 
 class SomfyRemote {
-  // These sizes for the data have been
-  // confirmed.  The address is actually 24bits
-  // and the rolling code is 16 bits.
+    // These sizes for the data have been
+    // confirmed.  The address is actually 24bits
+    // and the rolling code is 16 bits.
   protected:
     char m_remotePrefId[11] = "";
     uint32_t m_remoteAddress = 0;
+
   public:
     radio_proto proto = radio_proto::RTS;
     uint8_t gpioFlags = 0;
@@ -27,7 +28,7 @@ class SomfyRemote {
     uint8_t bitLength = 0;
     uint8_t repeats = 1;
     virtual bool isLastCommand(somfy_commands cmd);
-    char *getRemotePrefId() {return m_remotePrefId;}
+    char *getRemotePrefId() { return m_remotePrefId; }
     virtual void toJSON(JsonResponse &json);
     virtual void setRemoteAddress(uint32_t address);
     virtual uint32_t getRemoteAddress();

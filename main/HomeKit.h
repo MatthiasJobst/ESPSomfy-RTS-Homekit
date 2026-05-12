@@ -6,7 +6,7 @@ class SomfyShade;
 class JsonResponse;
 
 class HomeKitClass {
-public:
+  public:
     /**
      * @brief Initialise the HAP stack, create the bridge and all shade accessories,
      *        set the pairing code, and call hap_start().
@@ -75,10 +75,10 @@ public:
      */
     void setCode(const char *code);
 
-private:
+  private:
     bool _started = false;
-    char _setupCode[12] = "459-23-871";  /**< Active pairing code; overridden by prefab() or setCode() before begin(). */
-    char _qrPayload[64] = {};            /**< QR-code payload string returned by esp_hap_get_setup_payload(). */
+    char _setupCode[12] = "459-23-871"; /**< Active pairing code; overridden by prefab() or setCode() before begin(). */
+    char _qrPayload[64] = {};           /**< QR-code payload string returned by esp_hap_get_setup_payload(). */
 };
 
 extern HomeKitClass homekit;

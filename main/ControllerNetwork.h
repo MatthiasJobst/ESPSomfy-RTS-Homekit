@@ -9,8 +9,8 @@
 #define CONTROLLERNETWORK_H
 
 #include <Arduino.h>
-#include <WiFi.h>             // WiFiEvent_t
-#include "ConfigSettings.h"   // conn_types_t
+#include <WiFi.h>           // WiFiEvent_t
+#include "ConfigSettings.h" // conn_types_t
 
 #define CONNECT_TIMEOUT 20000
 #define SSID_SCAN_INTERVAL 60000
@@ -22,6 +22,7 @@ class ControllerNetwork {
     int lastChannel = 0;
     int linkSpeed = 0;
     bool _connecting = false;
+
   public:
     unsigned long lastWifiScan = 0;
     bool ethStarted = false;

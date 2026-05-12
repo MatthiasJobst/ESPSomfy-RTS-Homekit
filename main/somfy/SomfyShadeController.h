@@ -19,6 +19,7 @@
 class SomfyShadeController {
   protected:
     void drainCommandQueue();
+
   public:
     uint32_t lastCommit = 0;
     SomfyCommandQueue cmdQueue;
@@ -61,11 +62,11 @@ class SomfyShadeController {
     uint8_t shadeCount();
     uint8_t groupCount();
     void updateGroupFlags();
-    SomfyShade * getShadeById(uint8_t shadeId);
-    SomfyRoom * getRoomById(uint8_t roomId);
-    SomfyGroup * getGroupById(uint8_t groupId);
-    SomfyShade * findShadeByRemoteAddress(uint32_t address);
-    SomfyGroup * findGroupByRemoteAddress(uint32_t address);
+    SomfyShade *getShadeById(uint8_t shadeId);
+    SomfyRoom *getRoomById(uint8_t roomId);
+    SomfyGroup *getGroupById(uint8_t groupId);
+    SomfyShade *findShadeByRemoteAddress(uint32_t address);
+    SomfyGroup *findGroupByRemoteAddress(uint32_t address);
     bool enqueueShadeCommand(uint8_t shadeId, somfy_commands cmd, uint8_t repeat, uint8_t stepSize = 0);
     bool enqueueShadeTarget(uint8_t shadeId, float target);
     bool enqueueShadeTargetForced(uint8_t shadeId, float target);
@@ -83,4 +84,3 @@ class SomfyShadeController {
     void writeBackup();
     bool loadShadesFile(const char *filename);
 };
-

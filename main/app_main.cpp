@@ -44,7 +44,7 @@ static const char *s_TAG = "Main";
  * @note Registered with the task watchdog (7 s timeout). Any blocking call on
  *       this task that exceeds 7 s will trigger a panic.
  */
-static void mainLoop(void*)
+static void mainLoop(void *)
 {
     initArduino();
     // Changing the log level needs to be here, after initArduino() has set up
@@ -53,8 +53,10 @@ static void mainLoop(void*)
     esp_log_level_set("*", ESP_LOG_INFO);
     ESP_LOGI(s_TAG, "Startup/Boot....");
     ESP_LOGI(s_TAG, "Mounting File System...");
-    if (LittleFS.begin(true)) ESP_LOGI(s_TAG, "File system mounted successfully");
-    else ESP_LOGE(s_TAG, "Error mounting file system");
+    if (LittleFS.begin(true))
+        ESP_LOGI(s_TAG, "File system mounted successfully");
+    else
+        ESP_LOGE(s_TAG, "Error mounting file system");
     settings.begin();
     setCodeForHomeKit();
     if (WiFi.status() == WL_CONNECTED) WiFi.disconnect(true);
@@ -143,8 +145,8 @@ static void setCodeForHomeKit()
         nvs_handle_t h;
         char code[12] = {};
         size_t len = sizeof(code);
-        bool found = nvs_open("homekit", NVS_READONLY, &h) == ESP_OK &&
-                     nvs_get_str(h, "setup_code", code, &len) == ESP_OK;
+        bool found =
+            nvs_open("homekit", NVS_READONLY, &h) == ESP_OK && nvs_get_str(h, "setup_code", code, &len) == ESP_OK;
         if (found) {
             nvs_close(h);
             homekit.setCode(code);

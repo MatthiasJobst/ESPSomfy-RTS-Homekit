@@ -12,7 +12,7 @@
 #include "Sockets.h"
 #include "MQTT.h"
 
-static const char *TAG = "SomfyRemote";
+static const char *s_TAG = "SomfyRemote";
 
 extern SomfyShadeController somfy;
 extern SocketEmitter sockEmit;
@@ -21,163 +21,199 @@ extern MQTTClass mqtt;
 extern Preferences pref;
 extern GitUpdater git;
 
-bool SomfyRemote::simMy() { return this->flags.simMy(); }
-
-void SomfyRemote::setSimMy(bool bSimMy) { this->flags.setSimMy(bSimMy); }
-
-bool SomfyRemote::hasSunSensor() { return this->flags.hasSunSensor(); }
-
-bool SomfyRemote::hasLight() { return this->flags.hasLight(); }
-
-void SomfyRemote::setSunSensor(bool bHasSensor) { this->flags.setSunSensor(bHasSensor); }
-
-void SomfyRemote::setLight(bool bHasLight) { this->flags.setLight(bHasLight); }
-
-void SomfyRemote::triggerGPIOs(somfy_frame_t &frame) { }
-
-void SomfyRemote::toJSON(JsonResponse &json) {
-  json.addElem("remoteAddress", (uint32_t)this->getRemoteAddress());
-  json.addElem("lastRollingCode", (uint32_t)this->lastRollingCode);
+bool SomfyRemote::simMy()
+{
+    return this->flags.simMy();
 }
 
-void SomfyRemote::setRemoteAddress(uint32_t address) { this->m_remoteAddress = address; snprintf(this->m_remotePrefId, sizeof(this->m_remotePrefId), "_%lu", (unsigned long)this->m_remoteAddress); }
+void SomfyRemote::setSimMy(bool bSimMy)
+{
+    this->flags.setSimMy(bSimMy);
+}
 
-uint32_t SomfyRemote::getRemoteAddress() { return this->m_remoteAddress; }
+bool SomfyRemote::hasSunSensor()
+{
+    return this->flags.hasSunSensor();
+}
 
-somfy_commands SomfyRemote::transformCommand(somfy_commands cmd) {
-  if(this->flipCommands) {
-    switch(cmd) {
-      case somfy_commands::Up:
-        return somfy_commands::Down;
-      case somfy_commands::MyUp:
-        return somfy_commands::MyDown;
-      case somfy_commands::Down:
-        return somfy_commands::Up;
-      case somfy_commands::MyDown:
-        return somfy_commands::MyUp;
-      case somfy_commands::StepUp:
-        return somfy_commands::StepDown;
-      case somfy_commands::StepDown:
-        return somfy_commands::StepUp;
-      default:
-        break;
+bool SomfyRemote::hasLight()
+{
+    return this->flags.hasLight();
+}
+
+void SomfyRemote::setSunSensor(bool bHasSensor)
+{
+    this->flags.setSunSensor(bHasSensor);
+}
+
+void SomfyRemote::setLight(bool bHasLight)
+{
+    this->flags.setLight(bHasLight);
+}
+
+void SomfyRemote::triggerGPIOs(somfy_frame_t &frame) {}
+
+void SomfyRemote::toJSON(JsonResponse &json)
+{
+    json.addElem("remoteAddress", (uint32_t)this->getRemoteAddress());
+    json.addElem("lastRollingCode", (uint32_t)this->lastRollingCode);
+}
+
+void SomfyRemote::setRemoteAddress(uint32_t address)
+{
+    this->m_remoteAddress = address;
+    snprintf(this->m_remotePrefId, sizeof(this->m_remotePrefId), "_%lu", (unsigned long)this->m_remoteAddress);
+}
+
+uint32_t SomfyRemote::getRemoteAddress()
+{
+    return this->m_remoteAddress;
+}
+
+somfy_commands SomfyRemote::transformCommand(somfy_commands cmd)
+{
+    if (this->flipCommands) {
+        switch (cmd) {
+        case somfy_commands::Up:
+            return somfy_commands::Down;
+        case somfy_commands::MyUp:
+            return somfy_commands::MyDown;
+        case somfy_commands::Down:
+            return somfy_commands::Up;
+        case somfy_commands::MyDown:
+            return somfy_commands::MyUp;
+        case somfy_commands::StepUp:
+            return somfy_commands::StepDown;
+        case somfy_commands::StepDown:
+            return somfy_commands::StepUp;
+        default:
+            break;
+        }
     }
-  }
-  return cmd;
+    return cmd;
 }
 
-void SomfyRemote::sendSensorCommand(int8_t isWindy, int8_t isSunny, uint8_t repeat) {
-  SomfyFlag frameFlags = this->flags;
-  if(isWindy > 0) frameFlags.setWindy(true);
-  if(isSunny > 0) frameFlags.setSunny(true);
-  if(isWindy == 0) frameFlags.setWindy(false);
-  if(isSunny == 0) frameFlags.setSunny(false);
+void SomfyRemote::sendSensorCommand(int8_t isWindy, int8_t isSunny, uint8_t repeat)
+{
+    SomfyFlag frameFlags = this->flags;
+    if (isWindy > 0) frameFlags.setWindy(true);
+    if (isSunny > 0) frameFlags.setSunny(true);
+    if (isWindy == 0) frameFlags.setWindy(false);
+    if (isSunny == 0) frameFlags.setSunny(false);
 
-  this->lastFrame.remoteAddress = this->getRemoteAddress();
-  this->lastFrame.repeats = repeat;
-  this->lastFrame.bitLength = this->bitLength;
-  this->lastFrame.rollingCode = (uint16_t)frameFlags.getRollingCode();
-  this->lastFrame.encKey = 160; // Sensor commands are always encryption code 160.
-  this->lastFrame.cmd = somfy_commands::Sensor;
-  this->lastFrame.processed = false;
-  ESP_LOGI(TAG, "CMD: %s", translateSomfyCommand(this->lastFrame.cmd).c_str());
-  ESP_LOGI(TAG, "ADDR: %d", this->lastFrame.remoteAddress);
-  ESP_LOGI(TAG, "RCODE: %d", this->lastFrame.rollingCode);
-  ESP_LOGI(TAG, "REPEAT: %d", repeat);
-  somfy.sendFrame(this->lastFrame, repeat);
-  somfy.processFrame(this->lastFrame, true);
-}
-
-void SomfyRemote::sendCommand(somfy_commands cmd) { this->sendCommand(cmd, this->repeats); }
-
-void SomfyRemote::sendCommand(somfy_commands cmd, uint8_t repeat, uint8_t stepSize) {
-  this->lastFrame.rollingCode = this->getNextRollingCode();
-  this->lastFrame.remoteAddress = this->getRemoteAddress();
-  this->lastFrame.cmd = this->transformCommand(cmd);
-  this->lastFrame.repeats = repeat;
-  this->lastFrame.bitLength = this->bitLength;
-  this->lastFrame.stepSize = stepSize;
-  this->lastFrame.valid = true;
-  // Match the encKey to the rolling code.  These keys range from 160 to 175.
-  this->lastFrame.encKey = 0xA0 | static_cast<uint8_t>(this->lastFrame.rollingCode & 0x000F);
-  this->lastFrame.proto = this->proto;
-  if(this->lastFrame.bitLength == 0) this->lastFrame.bitLength = bit_length;
-  if(this->lastFrame.rollingCode == 0) ESP_LOGE(TAG, "ERROR: Setting rcode to 0");
-  this->p_lastRollingCode(this->lastFrame.rollingCode);
-  this->lastFrame.processed = false;
-  if(this->proto == radio_proto::GP_Relay) {
-    ESP_LOGI(TAG, "CMD: %s", translateSomfyCommand(this->lastFrame.cmd).c_str());
-    ESP_LOGI(TAG, "ADDR: %d", this->lastFrame.remoteAddress);
-    ESP_LOGI(TAG, "RCODE: %d", this->lastFrame.rollingCode);
-    ESP_LOGI(TAG, "SETTING GPIO");
-  }
-  else if(this->proto == radio_proto::GP_Remote) {
-    ESP_LOGI(TAG, "CMD: %s", translateSomfyCommand(this->lastFrame.cmd).c_str());
-    ESP_LOGI(TAG, "ADDR: %d", this->lastFrame.remoteAddress);
-    ESP_LOGI(TAG, "RCODE: %d", this->lastFrame.rollingCode);
-    ESP_LOGI(TAG, "TRIGGER GPIO");
-    this->triggerGPIOs(this->lastFrame);
-  }
-  else {
-    ESP_LOGI(TAG, "CMD: %s", translateSomfyCommand(this->lastFrame.cmd).c_str());
-    ESP_LOGI(TAG, "ADDR: %d", this->lastFrame.remoteAddress);
-    ESP_LOGI(TAG, "RCODE: %d", this->lastFrame.rollingCode);
-    ESP_LOGI(TAG, "REPEAT: %d", repeat);
+    this->lastFrame.remoteAddress = this->getRemoteAddress();
+    this->lastFrame.repeats = repeat;
+    this->lastFrame.bitLength = this->bitLength;
+    this->lastFrame.rollingCode = (uint16_t)frameFlags.getRollingCode();
+    this->lastFrame.encKey = 160; // Sensor commands are always encryption code 160.
+    this->lastFrame.cmd = somfy_commands::Sensor;
+    this->lastFrame.processed = false;
+    ESP_LOGI(s_TAG, "CMD: %s", translateSomfyCommand(this->lastFrame.cmd).c_str());
+    ESP_LOGI(s_TAG, "ADDR: %d", this->lastFrame.remoteAddress);
+    ESP_LOGI(s_TAG, "RCODE: %d", this->lastFrame.rollingCode);
+    ESP_LOGI(s_TAG, "REPEAT: %d", repeat);
     somfy.sendFrame(this->lastFrame, repeat);
-  }
-  somfy.processFrame(this->lastFrame, true);
+    somfy.processFrame(this->lastFrame, true);
 }
 
-bool SomfyRemote::isLastCommand(somfy_commands cmd) {
-  if(this->lastFrame.cmd != cmd || this->lastFrame.rollingCode != this->lastRollingCode) {
-    ESP_LOGI(TAG, "Not the last command %d: %d - %d", static_cast<uint8_t>(this->lastFrame.cmd), this->lastFrame.rollingCode, this->lastRollingCode);
-    return false;
-  }
-  return true;
+void SomfyRemote::sendCommand(somfy_commands cmd)
+{
+    this->sendCommand(cmd, this->repeats);
 }
 
-void SomfyRemote::repeatFrame(uint8_t repeat) {
-  if(this->proto == radio_proto::GP_Relay)
-    return;
-  else if(this->proto == radio_proto::GP_Remote) {
-    this->triggerGPIOs(this->lastFrame);
-    return;
-  }
-  if(somfy.transceiver.txBusy()) {
-    ESP_LOGW(TAG, "repeatFrame: TX busy — skipping repeat to avoid blocking app_main");
-    return;
-  }
-  somfy.transceiver.beginTransmit();
-  somfy.transceiver.beginFrameTx(this->lastFrame, repeat);
-  // endTransmit() deferred — Transceiver::loop() handles it when txBusy() clears.
+void SomfyRemote::sendCommand(somfy_commands cmd, uint8_t repeat, uint8_t stepSize)
+{
+    this->lastFrame.rollingCode = this->getNextRollingCode();
+    this->lastFrame.remoteAddress = this->getRemoteAddress();
+    this->lastFrame.cmd = this->transformCommand(cmd);
+    this->lastFrame.repeats = repeat;
+    this->lastFrame.bitLength = this->bitLength;
+    this->lastFrame.stepSize = stepSize;
+    this->lastFrame.valid = true;
+    // Match the encKey to the rolling code.  These keys range from 160 to 175.
+    this->lastFrame.encKey = 0xA0 | static_cast<uint8_t>(this->lastFrame.rollingCode & 0x000F);
+    this->lastFrame.proto = this->proto;
+    if (this->lastFrame.bitLength == 0) this->lastFrame.bitLength = bit_length;
+    if (this->lastFrame.rollingCode == 0) ESP_LOGE(s_TAG, "ERROR: Setting rcode to 0");
+    this->p_lastRollingCode(this->lastFrame.rollingCode);
+    this->lastFrame.processed = false;
+    if (this->proto == radio_proto::GP_Relay) {
+        ESP_LOGI(s_TAG, "CMD: %s", translateSomfyCommand(this->lastFrame.cmd).c_str());
+        ESP_LOGI(s_TAG, "ADDR: %d", this->lastFrame.remoteAddress);
+        ESP_LOGI(s_TAG, "RCODE: %d", this->lastFrame.rollingCode);
+        ESP_LOGI(s_TAG, "SETTING GPIO");
+    } else if (this->proto == radio_proto::GP_Remote) {
+        ESP_LOGI(s_TAG, "CMD: %s", translateSomfyCommand(this->lastFrame.cmd).c_str());
+        ESP_LOGI(s_TAG, "ADDR: %d", this->lastFrame.remoteAddress);
+        ESP_LOGI(s_TAG, "RCODE: %d", this->lastFrame.rollingCode);
+        ESP_LOGI(s_TAG, "TRIGGER GPIO");
+        this->triggerGPIOs(this->lastFrame);
+    } else {
+        ESP_LOGI(s_TAG, "CMD: %s", translateSomfyCommand(this->lastFrame.cmd).c_str());
+        ESP_LOGI(s_TAG, "ADDR: %d", this->lastFrame.remoteAddress);
+        ESP_LOGI(s_TAG, "RCODE: %d", this->lastFrame.rollingCode);
+        ESP_LOGI(s_TAG, "REPEAT: %d", repeat);
+        somfy.sendFrame(this->lastFrame, repeat);
+    }
+    somfy.processFrame(this->lastFrame, true);
 }
 
-uint16_t SomfyRemote::getNextRollingCode() {
-  pref.begin("ShadeCodes");
-  uint16_t code = pref.getUShort(this->m_remotePrefId, 0);
-  code++;
-  pref.putUShort(this->m_remotePrefId, code);
-  pref.end();
-  this->p_lastRollingCode(code);
-  ESP_LOGI(TAG, "Getting Next Rolling code %d", this->lastRollingCode);
-  return code;
+bool SomfyRemote::isLastCommand(somfy_commands cmd)
+{
+    if (this->lastFrame.cmd != cmd || this->lastFrame.rollingCode != this->lastRollingCode) {
+        ESP_LOGI(s_TAG, "Not the last command %d: %d - %d", static_cast<uint8_t>(this->lastFrame.cmd),
+                 this->lastFrame.rollingCode, this->lastRollingCode);
+        return false;
+    }
+    return true;
 }
 
-uint16_t SomfyRemote::p_lastRollingCode(uint16_t code) {
-  uint16_t old = this->lastRollingCode;
-  this->lastRollingCode = code;
-  return old;
+void SomfyRemote::repeatFrame(uint8_t repeat)
+{
+    if (this->proto == radio_proto::GP_Relay)
+        return;
+    else if (this->proto == radio_proto::GP_Remote) {
+        this->triggerGPIOs(this->lastFrame);
+        return;
+    }
+    if (somfy.transceiver.txBusy()) {
+        ESP_LOGW(s_TAG, "repeatFrame: TX busy — skipping repeat to avoid blocking app_main");
+        return;
+    }
+    somfy.transceiver.beginTransmit();
+    somfy.transceiver.beginFrameTx(this->lastFrame, repeat);
+    // endTransmit() deferred — Transceiver::loop() handles it when txBusy() clears.
 }
 
-uint16_t SomfyRemote::setRollingCode(uint16_t code) {
-  if(this->lastRollingCode != code) {
+uint16_t SomfyRemote::getNextRollingCode()
+{
     pref.begin("ShadeCodes");
+    uint16_t code = pref.getUShort(this->m_remotePrefId, 0);
+    code++;
     pref.putUShort(this->m_remotePrefId, code);
     pref.end();
+    this->p_lastRollingCode(code);
+    ESP_LOGI(s_TAG, "Getting Next Rolling code %d", this->lastRollingCode);
+    return code;
+}
+
+uint16_t SomfyRemote::p_lastRollingCode(uint16_t code)
+{
+    uint16_t old = this->lastRollingCode;
     this->lastRollingCode = code;
-    ESP_LOGI(TAG, "Setting Last Rolling code %d", this->lastRollingCode);
-  }
-  return code;
+    return old;
+}
+
+uint16_t SomfyRemote::setRollingCode(uint16_t code)
+{
+    if (this->lastRollingCode != code) {
+        pref.begin("ShadeCodes");
+        pref.putUShort(this->m_remotePrefId, code);
+        pref.end();
+        this->lastRollingCode = code;
+        ESP_LOGI(s_TAG, "Setting Last Rolling code %d", this->lastRollingCode);
+    }
+    return code;
 }
 
 SomfyLinkedRemote::SomfyLinkedRemote() {}

@@ -2,72 +2,70 @@
 // sort_asc comparator, translateSomfyCommand (string ↔ enum), all somfy_frame_t methods
 // (buildFrame, decodeFrame, encrypt, checksum, …), and the RX/TX queue operations.
 #include "SomfyFrame.h"
-#include <ELECHOUSE_CC1101_SRC_DRV.h>  // for ELECHOUSE_cc1101.getRssi() in decodeFrame
+#include <ELECHOUSE_CC1101_SRC_DRV.h> // for ELECHOUSE_cc1101.getRssi() in decodeFrame
 #include <Arduino.h>
 #include "esp_log.h"
 
-static const char *TAG = "SomfyFrame";
+static const char *s_TAG = "SomfyFrame";
 
-int sort_asc(const void *cmp1, const void *cmp2) {
-  int a = *((uint8_t *)cmp1);
-  int b = *((uint8_t *)cmp2);
-  if(a == b) return 0;
-  else if(a < b) return -1;
-  return 1;
+int sort_asc(const void *cmp1, const void *cmp2)
+{
+    int a = *((uint8_t *)cmp1);
+    int b = *((uint8_t *)cmp2);
+    if (a == b)
+        return 0;
+    else if (a < b)
+        return -1;
+    return 1;
 }
 
-
-somfy_commands translateSomfyCommand(const String& string) {
+somfy_commands translateSomfyCommand(const String &string)
+{
     // Full-name exact matches (case-insensitive).
-    static const struct { const char *name; somfy_commands cmd; } exact[] = {
-        {"my",       somfy_commands::My},
-        {"up",       somfy_commands::Up},
-        {"myup",     somfy_commands::MyUp},
-        {"down",     somfy_commands::Down},
-        {"mydown",   somfy_commands::MyDown},
-        {"updown",   somfy_commands::UpDown},
+    static const struct {
+        const char *name;
+        somfy_commands cmd;
+    } exact[] = {
+        {"my", somfy_commands::My},
+        {"up", somfy_commands::Up},
+        {"myup", somfy_commands::MyUp},
+        {"down", somfy_commands::Down},
+        {"mydown", somfy_commands::MyDown},
+        {"updown", somfy_commands::UpDown},
         {"myupdown", somfy_commands::MyUpDown},
-        {"prog",     somfy_commands::Prog},
-        {"sunflag",  somfy_commands::SunFlag},
-        {"stepup",   somfy_commands::StepUp},
+        {"prog", somfy_commands::Prog},
+        {"sunflag", somfy_commands::SunFlag},
+        {"stepup", somfy_commands::StepUp},
         {"stepdown", somfy_commands::StepDown},
-        {"flag",     somfy_commands::Flag},
-        {"sensor",   somfy_commands::Sensor},
-        {"toggle",   somfy_commands::Toggle},
+        {"flag", somfy_commands::Flag},
+        {"sensor", somfy_commands::Sensor},
+        {"toggle", somfy_commands::Toggle},
         {"favorite", somfy_commands::Favorite},
-        {"stop",     somfy_commands::Stop},
+        {"stop", somfy_commands::Stop},
     };
     // Prefix abbreviations — longest first to avoid shadowing.
-    static const struct { const char *prefix; somfy_commands cmd; } abbrevs[] = {
-        {"fav", somfy_commands::Favorite},
-        {"mud", somfy_commands::MyUpDown},
-        {"md",  somfy_commands::MyDown},
-        {"ud",  somfy_commands::UpDown},
-        {"mu",  somfy_commands::MyUp},
-        {"su",  somfy_commands::StepUp},
-        {"sd",  somfy_commands::StepDown},
-        {"sen", somfy_commands::Sensor},
-        {"p",   somfy_commands::Prog},
-        {"u",   somfy_commands::Up},
-        {"d",   somfy_commands::Down},
-        {"m",   somfy_commands::My},
-        {"f",   somfy_commands::Flag},
-        {"s",   somfy_commands::SunFlag},
-        {"t",   somfy_commands::Toggle},
+    static const struct {
+        const char *prefix;
+        somfy_commands cmd;
+    } abbrevs[] = {
+        {"fav", somfy_commands::Favorite}, {"mud", somfy_commands::MyUpDown}, {"md", somfy_commands::MyDown},
+        {"ud", somfy_commands::UpDown},    {"mu", somfy_commands::MyUp},      {"su", somfy_commands::StepUp},
+        {"sd", somfy_commands::StepDown},  {"sen", somfy_commands::Sensor},   {"p", somfy_commands::Prog},
+        {"u", somfy_commands::Up},         {"d", somfy_commands::Down},       {"m", somfy_commands::My},
+        {"f", somfy_commands::Flag},       {"s", somfy_commands::SunFlag},    {"t", somfy_commands::Toggle},
     };
-    for (const auto& e : exact)
+    for (const auto &e : exact)
         if (string.equalsIgnoreCase(e.name)) return e.cmd;
-    for (const auto& e : abbrevs) {
+    for (const auto &e : abbrevs) {
         size_t plen = strlen(e.prefix);
-        if (string.length() >= plen && string.substring(0, plen).equalsIgnoreCase(e.prefix))
-            return e.cmd;
+        if (string.length() >= plen && string.substring(0, plen).equalsIgnoreCase(e.prefix)) return e.cmd;
     }
-    if (string.length() == 1)
-        return static_cast<somfy_commands>(strtol(string.c_str(), nullptr, 16));
+    if (string.length() == 1) return static_cast<somfy_commands>(strtol(string.c_str(), nullptr, 16));
     return somfy_commands::My;
 }
 
-String translateSomfyCommand(const somfy_commands cmd) {
+String translateSomfyCommand(const somfy_commands cmd)
+{
     switch (cmd) {
     case somfy_commands::Up:
         return "Up";
@@ -106,17 +104,18 @@ String translateSomfyCommand(const somfy_commands cmd) {
     }
 }
 
-byte somfy_frame_t::calc80Checksum(byte b0, byte b1, byte b2) {
-  byte cs80 = 0;
-  cs80 = (((b0 & 0xF0) >> 4) ^ ((b1 & 0xF0) >> 4));
-  cs80 ^= ((b2 & 0xF0) >> 4);
-  cs80 ^= (b0 & 0x0F);
-  cs80 ^= (b1 & 0x0F);
-  return cs80;
+byte somfy_frame_t::calc80Checksum(byte b0, byte b1, byte b2)
+{
+    byte cs80 = 0;
+    cs80 = (((b0 & 0xF0) >> 4) ^ ((b1 & 0xF0) >> 4));
+    cs80 ^= ((b2 & 0xF0) >> 4);
+    cs80 ^= (b0 & 0x0F);
+    cs80 ^= (b1 & 0x0F);
+    return cs80;
 }
 
-
-void somfy_frame_t::decodeFrame(byte* frame) {
+void somfy_frame_t::decodeFrame(byte *frame)
+{
     byte decoded[10];
     decoded[0] = frame[0];
     // The last 3 bytes are not encoded even on 80-bits. Go figure.
@@ -129,30 +128,30 @@ void somfy_frame_t::decodeFrame(byte* frame) {
     byte checksum = 0;
     // We only want the upper nibble for the command byte.
     for (byte i = 0; i < 7; i++) {
-        if (i == 1) checksum = checksum ^ (decoded[i] >> 4);
-        else checksum = checksum ^ decoded[i] ^ (decoded[i] >> 4);
+        if (i == 1)
+            checksum = checksum ^ (decoded[i] >> 4);
+        else
+            checksum = checksum ^ decoded[i] ^ (decoded[i] >> 4);
     }
-    checksum &= 0b1111;  // We keep the last 4 bits only
+    checksum &= 0b1111; // We keep the last 4 bits only
 
     this->checksum = decoded[1] & 0b1111;
     this->encKey = decoded[0];
     // Lets first determine the protocol.
     this->cmd = (somfy_commands)((decoded[1] >> 4));
-    if(this->cmd == somfy_commands::RTWProto) {
-      if(this->encKey >= 160) {
+    if (this->cmd == somfy_commands::RTWProto) {
+        if (this->encKey >= 160) {
+            this->proto = radio_proto::RTS;
+            if (this->encKey == 164) this->cmd = somfy_commands::Toggle;
+        } else if (this->encKey > 148) {
+            this->proto = radio_proto::RTV;
+            this->cmd = (somfy_commands)(this->encKey - 148);
+        } else if (this->encKey > 133) {
+            this->proto = radio_proto::RTW;
+            this->cmd = (somfy_commands)(this->encKey - 133);
+        }
+    } else
         this->proto = radio_proto::RTS;
-        if(this->encKey == 164) this->cmd = somfy_commands::Toggle;
-      }
-      else if(this->encKey > 148) {
-        this->proto = radio_proto::RTV;
-        this->cmd = (somfy_commands)(this->encKey - 148);
-      }
-      else if(this->encKey > 133) {
-        this->proto = radio_proto::RTW;
-        this->cmd = (somfy_commands)(this->encKey - 133);
-      }
-    }
-    else this->proto = radio_proto::RTS;
     // We reuse this memory address so we must reset the processed
     // flag.  This will ensure we can see frames on the first beat.
     this->processed = false;
@@ -161,21 +160,23 @@ void somfy_frame_t::decodeFrame(byte* frame) {
     this->valid = this->checksum == checksum && this->remoteAddress > 0 && this->remoteAddress < 16777215;
     if (this->cmd != somfy_commands::Sensor && this->valid) this->valid = (this->rollingCode > 0);
     // Next lets process some of the RTS extensions for 80-bit frames
-    if(this->valid && this->proto == radio_proto::RTS && this->bitLength == 80) {
-      // Do a parity checksum on the 80 bit data.
-      if((decoded[9] & 0x0F) != this->calc80Checksum(decoded[7], decoded[8], decoded[9])) this->valid = false;
-      if(this->valid) {
-        // Translate extensions for stop and favorite.
-        if(this->cmd == somfy_commands::My) this->cmd = (somfy_commands)((decoded[1] >> 4) | ((decoded[8] & 0x0F) << 4));
-        // Bit packing to get the step size prohibits translation on the byte.
-        else if(this->cmd == somfy_commands::StepDown) this->cmd = (somfy_commands)((decoded[1] >> 4) | ((decoded[8] & 0x08) << 4));
-      }
+    if (this->valid && this->proto == radio_proto::RTS && this->bitLength == 80) {
+        // Do a parity checksum on the 80 bit data.
+        if ((decoded[9] & 0x0F) != this->calc80Checksum(decoded[7], decoded[8], decoded[9])) this->valid = false;
+        if (this->valid) {
+            // Translate extensions for stop and favorite.
+            if (this->cmd == somfy_commands::My)
+                this->cmd = (somfy_commands)((decoded[1] >> 4) | ((decoded[8] & 0x0F) << 4));
+            // Bit packing to get the step size prohibits translation on the byte.
+            else if (this->cmd == somfy_commands::StepDown)
+                this->cmd = (somfy_commands)((decoded[1] >> 4) | ((decoded[8] & 0x08) << 4));
+        }
     }
     if (this->valid) {
 
         // Check for valid command.
         switch (this->cmd) {
-        //case somfy_commands::Unknown0:
+        // case somfy_commands::Unknown0:
         case somfy_commands::My:
         case somfy_commands::Up:
         case somfy_commands::MyUp:
@@ -206,331 +207,350 @@ void somfy_frame_t::decodeFrame(byte* frame) {
             break;
         }
     }
-    if(this->valid && this->encKey == 0) this->valid = false; 
+    if (this->valid && this->encKey == 0) this->valid = false;
     if (!this->valid) {
-        ESP_LOGE(TAG, "INVALID FRAME ");
-        ESP_LOGE(TAG, "KEY: %d", this->encKey);
-        ESP_LOGE(TAG, "ADDR: %d", this->remoteAddress);
-        ESP_LOGE(TAG, "CMD: %s", translateSomfyCommand(this->cmd).c_str());
-        ESP_LOGE(TAG, "RCODE: %d", this->rollingCode);
-        ESP_LOGE(TAG, "    KEY  1   2   3   4   5   6  ");
-        ESP_LOGE(TAG, "--------------------------------");
-        ESP_LOGE(TAG, "ENC ");
+        ESP_LOGE(s_TAG, "INVALID FRAME ");
+        ESP_LOGE(s_TAG, "KEY: %d", this->encKey);
+        ESP_LOGE(s_TAG, "ADDR: %d", this->remoteAddress);
+        ESP_LOGE(s_TAG, "CMD: %s", translateSomfyCommand(this->cmd).c_str());
+        ESP_LOGE(s_TAG, "RCODE: %d", this->rollingCode);
+        ESP_LOGE(s_TAG, "    KEY  1   2   3   4   5   6  ");
+        ESP_LOGE(s_TAG, "--------------------------------");
+        ESP_LOGE(s_TAG, "ENC ");
         for (byte i = 0; i < 10; i++) {
             if (frame[i] < 10)
-                ESP_LOGE(TAG, "  ");
+                ESP_LOGE(s_TAG, "  ");
             else if (frame[i] < 100)
-                ESP_LOGE(TAG, " ");
-            ESP_LOGE(TAG, "%d ", frame[i]);
+                ESP_LOGE(s_TAG, " ");
+            ESP_LOGE(s_TAG, "%d ", frame[i]);
         }
-        ESP_LOGE(TAG, "\nDEC ");
+        ESP_LOGE(s_TAG, "\nDEC ");
         for (byte i = 0; i < 10; i++) {
             if (decoded[i] < 10)
-                ESP_LOGE(TAG, "  ");
+                ESP_LOGE(s_TAG, "  ");
             else if (decoded[i] < 100)
-                ESP_LOGE(TAG, " ");
-            ESP_LOGE(TAG, "%d ", decoded[i]);
+                ESP_LOGE(s_TAG, " ");
+            ESP_LOGE(s_TAG, "%d ", decoded[i]);
         }
-        ESP_LOGE(TAG, "\n");
+        ESP_LOGE(s_TAG, "\n");
     }
 }
 
-void somfy_frame_t::decodeFrame(somfy_rx_t *rx) {
-  this->hwsync = rx->cpt_synchro_hw;
-  this->pulseCount = rx->pulseCount;
-  this->bitLength = rx->bit_length;
-  this->rssi = ELECHOUSE_cc1101.getRssi();
-  this->decodeFrame(rx->payload);
+void somfy_frame_t::decodeFrame(somfy_rx_t *rx)
+{
+    this->hwsync = rx->cpt_synchro_hw;
+    this->pulseCount = rx->pulseCount;
+    this->bitLength = rx->bit_length;
+    this->rssi = ELECHOUSE_cc1101.getRssi();
+    this->decodeFrame(rx->payload);
 }
 
-byte somfy_frame_t::encode80Byte7(byte start, uint8_t repeat) {
-  while((repeat * 4) + start > 255) repeat -= 15;
-  return start + (repeat * 4);
+byte somfy_frame_t::encode80Byte7(byte start, uint8_t repeat)
+{
+    while ((repeat * 4) + start > 255)
+        repeat -= 15;
+    return start + (repeat * 4);
 }
 
-void somfy_frame_t::encode80BitFrame(byte *frame, uint8_t repeat) {
-  switch(this->cmd) {
+void somfy_frame_t::encode80BitFrame(byte *frame, uint8_t repeat)
+{
+    switch (this->cmd) {
     // Step up and down commands encode the step size into the last 3 bytes.
     case somfy_commands::StepUp:
-      if(repeat == 0) frame[1] = (static_cast<byte>(somfy_commands::StepDown) << 4) | (frame[1] & 0x0F);
-      if(this->stepSize == 0) this->stepSize = 1;
-      frame[7] = 132; // For simplicity this appears to be constant.
-      frame[8] = ((this->stepSize & 0x70) >> 4) | 0x38;
-      frame[9] = ((this->stepSize & 0x0F) << 4);
-      frame[9] |= this->calc80Checksum(frame[7], frame[8], frame[9]);
-      break;
+        if (repeat == 0) frame[1] = (static_cast<byte>(somfy_commands::StepDown) << 4) | (frame[1] & 0x0F);
+        if (this->stepSize == 0) this->stepSize = 1;
+        frame[7] = 132; // For simplicity this appears to be constant.
+        frame[8] = ((this->stepSize & 0x70) >> 4) | 0x38;
+        frame[9] = ((this->stepSize & 0x0F) << 4);
+        frame[9] |= this->calc80Checksum(frame[7], frame[8], frame[9]);
+        break;
     case somfy_commands::StepDown:
-      if(repeat == 0) frame[1] = (static_cast<byte>(somfy_commands::StepDown) << 4) | (frame[1] & 0x0F);
-      if(this->stepSize == 0) this->stepSize = 1;
-      frame[7] = 132; // For simplicity this appears to be constant.
-      frame[8] = ((this->stepSize & 0x70) >> 4) | 0x30;
-      frame[9] = ((this->stepSize & 0x0F) << 4);
-      frame[9] |= this->calc80Checksum(frame[7], frame[8], frame[9]);
-      break;
+        if (repeat == 0) frame[1] = (static_cast<byte>(somfy_commands::StepDown) << 4) | (frame[1] & 0x0F);
+        if (this->stepSize == 0) this->stepSize = 1;
+        frame[7] = 132; // For simplicity this appears to be constant.
+        frame[8] = ((this->stepSize & 0x70) >> 4) | 0x30;
+        frame[9] = ((this->stepSize & 0x0F) << 4);
+        frame[9] |= this->calc80Checksum(frame[7], frame[8], frame[9]);
+        break;
     case somfy_commands::Favorite:
-      if(repeat == 0) frame[1] = (static_cast<byte>(somfy_commands::My) << 4) | (frame[1] & 0x0F);
-      frame[7] = repeat > 0 ? 132 : 196;
-      frame[8] = 44;
-      frame[9] = 0x90;
-      frame[9] |= this->calc80Checksum(frame[7], frame[8], frame[9]);
-      break;
+        if (repeat == 0) frame[1] = (static_cast<byte>(somfy_commands::My) << 4) | (frame[1] & 0x0F);
+        frame[7] = repeat > 0 ? 132 : 196;
+        frame[8] = 44;
+        frame[9] = 0x90;
+        frame[9] |= this->calc80Checksum(frame[7], frame[8], frame[9]);
+        break;
     case somfy_commands::Stop:
-      if(repeat == 0) frame[1] = (static_cast<byte>(somfy_commands::My) << 4) | (frame[1] & 0x0F);
-      frame[7] = repeat > 0 ? 132 : 196;
-      frame[8] = 47;
-      frame[9] = 0xF0;
-      frame[9] |= this->calc80Checksum(frame[7], frame[8], frame[9]);
-      break;
+        if (repeat == 0) frame[1] = (static_cast<byte>(somfy_commands::My) << 4) | (frame[1] & 0x0F);
+        frame[7] = repeat > 0 ? 132 : 196;
+        frame[8] = 47;
+        frame[9] = 0xF0;
+        frame[9] |= this->calc80Checksum(frame[7], frame[8], frame[9]);
+        break;
     case somfy_commands::Toggle:
-      frame[0] = 164;
-      frame[1] |= 0xF0;
-      frame[7] = this->encode80Byte7(196, repeat);
-      frame[8] = 0;
-      frame[9] = 0x10;
-      frame[9] |= this->calc80Checksum(frame[7], frame[8], frame[9]);
-      break;
+        frame[0] = 164;
+        frame[1] |= 0xF0;
+        frame[7] = this->encode80Byte7(196, repeat);
+        frame[8] = 0;
+        frame[9] = 0x10;
+        frame[9] |= this->calc80Checksum(frame[7], frame[8], frame[9]);
+        break;
     case somfy_commands::Up:
-      frame[7] = this->encode80Byte7(196, repeat);
-      frame[8] = 32;
-      frame[9] = 0x00;
-      frame[9] |= this->calc80Checksum(frame[7], frame[8], frame[9]);
-      break;
+        frame[7] = this->encode80Byte7(196, repeat);
+        frame[8] = 32;
+        frame[9] = 0x00;
+        frame[9] |= this->calc80Checksum(frame[7], frame[8], frame[9]);
+        break;
     case somfy_commands::Down:
-      frame[7] = this->encode80Byte7(196, repeat);
-      frame[8] = 44;
-      frame[9] = 0x80;
-      frame[9] |= this->calc80Checksum(frame[7], frame[8], frame[9]);
-      break;
+        frame[7] = this->encode80Byte7(196, repeat);
+        frame[8] = 44;
+        frame[9] = 0x80;
+        frame[9] |= this->calc80Checksum(frame[7], frame[8], frame[9]);
+        break;
     case somfy_commands::Prog:
     case somfy_commands::UpDown:
     case somfy_commands::MyDown:
     case somfy_commands::MyUp:
     case somfy_commands::MyUpDown:
     case somfy_commands::My:
-      frame[7] = this->encode80Byte7(196, repeat);
-      frame[8] = 0x00;
-      frame[9] = 0x10;
-      frame[9] |= this->calc80Checksum(frame[7], frame[8], frame[9]);
-      break;      
-    
+        frame[7] = this->encode80Byte7(196, repeat);
+        frame[8] = 0x00;
+        frame[9] = 0x10;
+        frame[9] |= this->calc80Checksum(frame[7], frame[8], frame[9]);
+        break;
+
     default:
-      break;
-  }
-}
-
-void somfy_frame_t::encodeFrame(byte *frame) { 
-  const byte btn = static_cast<byte>(cmd);
-  this->valid = true;
-  frame[0] = this->encKey;              // Encryption key. Doesn't matter much
-  frame[1] = (btn & 0x0F) << 4;         // Which button did you press? The 4 LSB will be the checksum
-  frame[2] = this->rollingCode >> 8;    // Rolling code (big endian)
-  frame[3] = this->rollingCode;         // Rolling code
-  frame[4] = this->remoteAddress >> 16; // Remote address
-  frame[5] = this->remoteAddress >> 8;  // Remote address
-  frame[6] = this->remoteAddress;       // Remote address
-  frame[7] = 132;
-  frame[8] = 0;
-  frame[9] = 29;
-  // Ok so if this is an RTW things are a bit different.
-  if(this->proto == radio_proto::RTW) {
-    frame[1] = 0xF0;
-    switch(this->cmd) {
-      case somfy_commands::My:
-        frame[0] = 133;
-        break;
-      case somfy_commands::Up:
-        frame[0] = 134;
-        break;
-      case somfy_commands::MyUp:
-        frame[0] = 135;
-        break;
-      case somfy_commands::Down:
-        frame[0] = 136;
-        break;
-      case somfy_commands::MyDown:
-        frame[0] = 137;
-        break;
-      case somfy_commands::UpDown:
-        frame[0] = 138;
-        break;
-      case somfy_commands::MyUpDown:
-        frame[0] = 139;
-        break;
-      case somfy_commands::Prog:
-        frame[0] = 140;
-        break;
-      case somfy_commands::SunFlag:
-        frame[0] = 141;
-        break;
-      case somfy_commands::Flag:
-        frame[0] = 142;
-        break;
-      default:
         break;
     }
-  }
-  else if(this->proto == radio_proto::RTV) {
-    frame[1] = 0xF0;
-    switch(this->cmd) {
-      case somfy_commands::My:
-        frame[0] = 149;
-        break;
-      case somfy_commands::Up:
-        frame[0] = 150;
-        break;
-      case somfy_commands::MyUp:
-        frame[0] = 151;
-        break;
-      case somfy_commands::Down:
-        frame[0] = 152;
-        break;
-      case somfy_commands::MyDown:
-        frame[0] = 153;
-        break;
-      case somfy_commands::UpDown:
-        frame[0] = 154;
-        break;
-      case somfy_commands::MyUpDown:
-        frame[0] = 155;
-        break;
-      case somfy_commands::Prog:
-        frame[0] = 156;
-        break;
-      case somfy_commands::SunFlag:
-        frame[0] = 157;
-        break;
-      case somfy_commands::Flag:
-        frame[0] = 158;
-        break;
-      default:
-        break;
+}
+
+void somfy_frame_t::encodeFrame(byte *frame)
+{
+    const byte btn = static_cast<byte>(cmd);
+    this->valid = true;
+    frame[0] = this->encKey;              // Encryption key. Doesn't matter much
+    frame[1] = (btn & 0x0F) << 4;         // Which button did you press? The 4 LSB will be the checksum
+    frame[2] = this->rollingCode >> 8;    // Rolling code (big endian)
+    frame[3] = this->rollingCode;         // Rolling code
+    frame[4] = this->remoteAddress >> 16; // Remote address
+    frame[5] = this->remoteAddress >> 8;  // Remote address
+    frame[6] = this->remoteAddress;       // Remote address
+    frame[7] = 132;
+    frame[8] = 0;
+    frame[9] = 29;
+    // Ok so if this is an RTW things are a bit different.
+    if (this->proto == radio_proto::RTW) {
+        frame[1] = 0xF0;
+        switch (this->cmd) {
+        case somfy_commands::My:
+            frame[0] = 133;
+            break;
+        case somfy_commands::Up:
+            frame[0] = 134;
+            break;
+        case somfy_commands::MyUp:
+            frame[0] = 135;
+            break;
+        case somfy_commands::Down:
+            frame[0] = 136;
+            break;
+        case somfy_commands::MyDown:
+            frame[0] = 137;
+            break;
+        case somfy_commands::UpDown:
+            frame[0] = 138;
+            break;
+        case somfy_commands::MyUpDown:
+            frame[0] = 139;
+            break;
+        case somfy_commands::Prog:
+            frame[0] = 140;
+            break;
+        case somfy_commands::SunFlag:
+            frame[0] = 141;
+            break;
+        case somfy_commands::Flag:
+            frame[0] = 142;
+            break;
+        default:
+            break;
+        }
+    } else if (this->proto == radio_proto::RTV) {
+        frame[1] = 0xF0;
+        switch (this->cmd) {
+        case somfy_commands::My:
+            frame[0] = 149;
+            break;
+        case somfy_commands::Up:
+            frame[0] = 150;
+            break;
+        case somfy_commands::MyUp:
+            frame[0] = 151;
+            break;
+        case somfy_commands::Down:
+            frame[0] = 152;
+            break;
+        case somfy_commands::MyDown:
+            frame[0] = 153;
+            break;
+        case somfy_commands::UpDown:
+            frame[0] = 154;
+            break;
+        case somfy_commands::MyUpDown:
+            frame[0] = 155;
+            break;
+        case somfy_commands::Prog:
+            frame[0] = 156;
+            break;
+        case somfy_commands::SunFlag:
+            frame[0] = 157;
+            break;
+        case somfy_commands::Flag:
+            frame[0] = 158;
+            break;
+        default:
+            break;
+        }
+
+    } else {
+        if (this->bitLength == 80) this->encode80BitFrame(&frame[0], this->repeats);
     }
-    
-  }
-  else {
-    if(this->bitLength == 80) this->encode80BitFrame(&frame[0], this->repeats);
-  }
-  byte checksum = 0;
- 
-  for (byte i = 0; i < 7; i++) {
-      checksum = checksum ^ frame[i] ^ (frame[i] >> 4);
-  }
-  checksum &= 0b1111;  // We keep the last 4 bits only
-  // Checksum integration
-  frame[1] |= checksum;
-  // Obfuscation: a XOR of all the bytes
-  for (byte i = 1; i < 7; i++) {
-      frame[i] ^= frame[i - 1];
-  }
-}
+    byte checksum = 0;
 
-void somfy_frame_t::print() {
-    ESP_LOGI(TAG, "----------- Receiving -------------");
-    ESP_LOGI(TAG, "RSSI: %d", this->rssi);
-    ESP_LOGI(TAG, "LQI: %d", this->lqi);
-    ESP_LOGI(TAG, "CMD: %s", translateSomfyCommand(this->cmd).c_str());
-    ESP_LOGI(TAG, "ADDR: %d", this->remoteAddress);
-    ESP_LOGI(TAG, "RCODE: %d", this->rollingCode);
-    ESP_LOGI(TAG, "KEY: %X", this->encKey);
-    ESP_LOGI(TAG, "CS: %d", this->checksum);
-}
-
-bool somfy_frame_t::isSynonym(somfy_frame_t &frame) { return this->remoteAddress == frame.remoteAddress && this->cmd != frame.cmd && this->rollingCode == frame.rollingCode; }
-
-bool somfy_frame_t::isRepeat(somfy_frame_t &frame) { return this->remoteAddress == frame.remoteAddress && this->cmd == frame.cmd && this->rollingCode == frame.rollingCode; }
-
-void somfy_frame_t::copy(somfy_frame_t &frame) {
-  if(this->isRepeat(frame)) {
-    this->repeats++;
-    this->rssi = frame.rssi;
-    this->lqi = frame.lqi;
-  }
-  else {
-    this->synonym = this->isSynonym(frame);
-    this->valid = frame.valid;
-    if(!this->synonym) this->processed = frame.processed;
-    this->rssi = frame.rssi;
-    this->lqi = frame.lqi;
-    this->cmd = frame.cmd;
-    this->remoteAddress = frame.remoteAddress;
-    this->rollingCode = frame.rollingCode;
-    this->encKey = frame.encKey;
-    this->checksum = frame.checksum;
-    this->hwsync = frame.hwsync;
-    this->repeats = frame.repeats;
-  }
-}
-
-bool somfy_tx_queue_t::pop(somfy_tx_t *tx) {
-  // Read the oldest index.
-  for(int8_t i = MAX_TX_BUFFER - 1; i >= 0; i--) {
-    if(this->index[i] < MAX_TX_BUFFER) {
-      uint8_t ndx = this->index[i];
-      memcpy(tx, &this->items[ndx], sizeof(somfy_tx_t));
-      this->items[ndx].clear();
-      if(this->length > 0) this->length--;
-      this->index[i] = 255;
-      return true;
+    for (byte i = 0; i < 7; i++) {
+        checksum = checksum ^ frame[i] ^ (frame[i] >> 4);
     }
-  }
-  return false;
-}
-
-void somfy_tx_queue_t::push(somfy_rx_t *rx) { this->push(rx->cpt_synchro_hw, rx->payload, rx->bit_length); }
-
-void somfy_tx_queue_t::push(uint8_t hwsync, uint8_t *payload, uint8_t bit_length) {
-  if(this->length >= MAX_TX_BUFFER) {
-    // We have overflowed the buffer simply empty the last item
-    // in this instance we will simply throw it away.
-    uint8_t ndx = this->index[MAX_TX_BUFFER - 1];
-    if(ndx < MAX_TX_BUFFER) this->items[ndx].clear();
-    this->index[MAX_TX_BUFFER - 1] = 255;
-    this->length--;
-  }
-  uint8_t first = 0;
-  // Place this record in the first empty slot.  There will
-  // be one since we cleared a space above should there
-  // be an overflow.
-  for(uint8_t i = 0; i < MAX_TX_BUFFER; i++) {
-    if(this->items[i].bit_length == 0) {
-      first = i;
-      this->items[i].bit_length = bit_length;
-      this->items[i].hwsync = hwsync;
-      memcpy(&this->items[i].payload, payload, sizeof(this->items[i].payload));
-      break;
+    checksum &= 0b1111; // We keep the last 4 bits only
+    // Checksum integration
+    frame[1] |= checksum;
+    // Obfuscation: a XOR of all the bytes
+    for (byte i = 1; i < 7; i++) {
+        frame[i] ^= frame[i - 1];
     }
-  }
-  // Move the index so that it is the at position 0.  The oldest item will fall off.
-  for(uint8_t i = MAX_TX_BUFFER - 1; i > 0; i--) {
-    this->index[i] = this->index[i - 1];
-  }
-  this->length++;
-  // When popping from the queue we always pull from the end
-  this->index[0] = first;
-  this->delay_time = millis() + TX_QUEUE_DELAY; // We do not want to process this frame until a full frame beat has passed.
 }
 
-void somfy_rx_queue_t::init() { 
-  ESP_LOGI(TAG, "Initializing RX Queue");
-  for (uint8_t i = 0; i < MAX_RX_BUFFER; i++)
-    this->items[i].clear();
-  memset(&this->index[0], 0xFF, MAX_RX_BUFFER);
-  this->length = 0;
+void somfy_frame_t::print()
+{
+    ESP_LOGI(s_TAG, "----------- Receiving -------------");
+    ESP_LOGI(s_TAG, "RSSI: %d", this->rssi);
+    ESP_LOGI(s_TAG, "LQI: %d", this->lqi);
+    ESP_LOGI(s_TAG, "CMD: %s", translateSomfyCommand(this->cmd).c_str());
+    ESP_LOGI(s_TAG, "ADDR: %d", this->remoteAddress);
+    ESP_LOGI(s_TAG, "RCODE: %d", this->rollingCode);
+    ESP_LOGI(s_TAG, "KEY: %X", this->encKey);
+    ESP_LOGI(s_TAG, "CS: %d", this->checksum);
 }
 
-bool somfy_rx_queue_t::pop(somfy_rx_t *rx) {
-  // Read off the data from the oldest index.
-  ESP_LOGD(TAG, "Popping RX Queue");
-  for(int8_t i = MAX_RX_BUFFER - 1; i >= 0; i--) {
-    if(this->index[i] < MAX_RX_BUFFER) {
-      uint8_t ndx = this->index[i];
-      memcpy(rx, &this->items[this->index[i]], sizeof(somfy_rx_t));
-      this->items[ndx].clear();
-      if(this->length > 0) this->length--;
-      this->index[i] = 255;
-      return true;      
+bool somfy_frame_t::isSynonym(somfy_frame_t &frame)
+{
+    return this->remoteAddress == frame.remoteAddress && this->cmd != frame.cmd &&
+           this->rollingCode == frame.rollingCode;
+}
+
+bool somfy_frame_t::isRepeat(somfy_frame_t &frame)
+{
+    return this->remoteAddress == frame.remoteAddress && this->cmd == frame.cmd &&
+           this->rollingCode == frame.rollingCode;
+}
+
+void somfy_frame_t::copy(somfy_frame_t &frame)
+{
+    if (this->isRepeat(frame)) {
+        this->repeats++;
+        this->rssi = frame.rssi;
+        this->lqi = frame.lqi;
+    } else {
+        this->synonym = this->isSynonym(frame);
+        this->valid = frame.valid;
+        if (!this->synonym) this->processed = frame.processed;
+        this->rssi = frame.rssi;
+        this->lqi = frame.lqi;
+        this->cmd = frame.cmd;
+        this->remoteAddress = frame.remoteAddress;
+        this->rollingCode = frame.rollingCode;
+        this->encKey = frame.encKey;
+        this->checksum = frame.checksum;
+        this->hwsync = frame.hwsync;
+        this->repeats = frame.repeats;
     }
-  }
-  return false;
 }
 
+bool somfy_tx_queue_t::pop(somfy_tx_t *tx)
+{
+    // Read the oldest index.
+    for (int8_t i = MAX_TX_BUFFER - 1; i >= 0; i--) {
+        if (this->index[i] < MAX_TX_BUFFER) {
+            uint8_t ndx = this->index[i];
+            memcpy(tx, &this->items[ndx], sizeof(somfy_tx_t));
+            this->items[ndx].clear();
+            if (this->length > 0) this->length--;
+            this->index[i] = 255;
+            return true;
+        }
+    }
+    return false;
+}
+
+void somfy_tx_queue_t::push(somfy_rx_t *rx)
+{
+    this->push(rx->cpt_synchro_hw, rx->payload, rx->bit_length);
+}
+
+void somfy_tx_queue_t::push(uint8_t hwsync, uint8_t *payload, uint8_t bit_length)
+{
+    if (this->length >= MAX_TX_BUFFER) {
+        // We have overflowed the buffer simply empty the last item
+        // in this instance we will simply throw it away.
+        uint8_t ndx = this->index[MAX_TX_BUFFER - 1];
+        if (ndx < MAX_TX_BUFFER) this->items[ndx].clear();
+        this->index[MAX_TX_BUFFER - 1] = 255;
+        this->length--;
+    }
+    uint8_t first = 0;
+    // Place this record in the first empty slot.  There will
+    // be one since we cleared a space above should there
+    // be an overflow.
+    for (uint8_t i = 0; i < MAX_TX_BUFFER; i++) {
+        if (this->items[i].bit_length == 0) {
+            first = i;
+            this->items[i].bit_length = bit_length;
+            this->items[i].hwsync = hwsync;
+            memcpy(&this->items[i].payload, payload, sizeof(this->items[i].payload));
+            break;
+        }
+    }
+    // Move the index so that it is the at position 0.  The oldest item will fall off.
+    for (uint8_t i = MAX_TX_BUFFER - 1; i > 0; i--) {
+        this->index[i] = this->index[i - 1];
+    }
+    this->length++;
+    // When popping from the queue we always pull from the end
+    this->index[0] = first;
+    this->delay_time =
+        millis() + TX_QUEUE_DELAY; // We do not want to process this frame until a full frame beat has passed.
+}
+
+void somfy_rx_queue_t::init()
+{
+    ESP_LOGI(s_TAG, "Initializing RX Queue");
+    for (uint8_t i = 0; i < MAX_RX_BUFFER; i++)
+        this->items[i].clear();
+    memset(&this->index[0], 0xFF, MAX_RX_BUFFER);
+    this->length = 0;
+}
+
+bool somfy_rx_queue_t::pop(somfy_rx_t *rx)
+{
+    // Read off the data from the oldest index.
+    ESP_LOGD(s_TAG, "Popping RX Queue");
+    for (int8_t i = MAX_RX_BUFFER - 1; i >= 0; i--) {
+        if (this->index[i] < MAX_RX_BUFFER) {
+            uint8_t ndx = this->index[i];
+            memcpy(rx, &this->items[this->index[i]], sizeof(somfy_rx_t));
+            this->items[ndx].clear();
+            if (this->length > 0) this->length--;
+            this->index[i] = 255;
+            return true;
+        }
+    }
+    return false;
+}

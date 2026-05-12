@@ -23,6 +23,7 @@ class ShadeConfigFile : public ConfigFile {
     bool readSettingsRecord();
     bool readNetRecord(restore_options_t &opts);
     bool readTransRecord(transceiver_config_t &cfg);
+
   public:
     static bool exists();
     static bool load(SomfyShadeController *somfy, const char *filename = "/shades.cfg");

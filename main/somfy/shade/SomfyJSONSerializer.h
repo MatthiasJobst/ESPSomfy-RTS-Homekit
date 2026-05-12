@@ -6,7 +6,7 @@
 class SomfyShade;
 
 class SomfyJSONSerializer {
-public:
+  public:
     SomfyShade *shade = nullptr;
     int8_t validateJSON(JsonObject &obj);
     int8_t fromJSON(JsonObject &obj);

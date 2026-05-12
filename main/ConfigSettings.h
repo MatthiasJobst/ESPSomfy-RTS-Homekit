@@ -4,46 +4,35 @@
 #define configsettings_h
 #include "WResp.h"
 #define FW_VERSION "v0.4.4"
-enum class conn_types_t : byte {
-    unset = 0x00,
-    wifi = 0x01,
-    ethernet = 0x02,
-    ethernetpref = 0x03,
-    ap = 0x04
-};
+enum class conn_types_t : byte { unset = 0x00, wifi = 0x01, ethernet = 0x02, ethernetpref = 0x03, ap = 0x04 };
 
-enum DeviceStatus : byte {
-  DS_OK = 0,
-  DS_ERROR = 1,
-  DS_FWUPDATE = 2
-};
+enum DeviceStatus : byte { DS_OK = 0, DS_ERROR = 1, DS_FWUPDATE = 2 };
 struct restore_options_t {
-  bool settings = false;
-  bool shades = false;
-  bool network = false;
-  bool transceiver = false;
-  bool repeaters = false;
-  bool mqtt = false;
-  void fromJSON(JsonObject &obj);
+    bool settings = false;
+    bool shades = false;
+    bool network = false;
+    bool transceiver = false;
+    bool repeaters = false;
+    bool mqtt = false;
+    void fromJSON(JsonObject &obj);
 };
 struct appver_t {
-  char name[15] = "";
-  uint8_t major = 0;
-  uint8_t minor = 0;
-  uint8_t build = 0;
-  char suffix[4] = "";
-  void parse(const char *ver);
-  bool toJSON(JsonObject &obj);
-  void toJSON(JsonResponse &json);
-  void toJSON(JsonSockEvent *json);
-  int8_t compare(appver_t &ver);
-  void copy(appver_t &ver);
+    char name[15] = "";
+    uint8_t major = 0;
+    uint8_t minor = 0;
+    uint8_t build = 0;
+    char suffix[4] = "";
+    void parse(const char *ver);
+    bool toJSON(JsonObject &obj);
+    void toJSON(JsonResponse &json);
+    void toJSON(JsonSockEvent *json);
+    int8_t compare(appver_t &ver);
+    void copy(appver_t &ver);
 };
-
 
 class BaseSettings {
   public:
-    bool loadFile(const char* filename);
+    bool loadFile(const char *filename);
     bool fromJSON(JsonObject &obj);
     bool toJSON(JsonObject &obj);
     void toJSON(JsonResponse &json);
@@ -51,11 +40,11 @@ class BaseSettings {
     bool parseValueString(JsonObject &obj, const char *prop, char *dest, size_t size);
     int parseValueInt(JsonObject &obj, const char *prop, int defVal);
     double parseValueDouble(JsonObject &obj, const char *prop, double defVal);
-    bool saveFile(const char* filename);
+    bool saveFile(const char *filename);
     bool save();
     bool load();
 };
-class NTPSettings: BaseSettings {
+class NTPSettings : BaseSettings {
   public:
     char ntpServer[65] = "pool.ntp.org";
     char posixZone[64] = "";
@@ -68,7 +57,7 @@ class NTPSettings: BaseSettings {
     bool load();
     void print();
 };
-class WifiSettings: BaseSettings {
+class WifiSettings : BaseSettings {
   public:
     WifiSettings();
     bool roaming = true;
@@ -85,9 +74,8 @@ class WifiSettings: BaseSettings {
     bool save();
     bool load();
     void print();
-    
 };
-class EthernetSettings: BaseSettings {
+class EthernetSettings : BaseSettings {
   public:
     EthernetSettings();
     uint8_t boardType = 0; // These board types are enumerated in the ui and used to set the chip settings.
@@ -95,14 +83,14 @@ class EthernetSettings: BaseSettings {
     eth_phy_type_t phyType = ETH_PHY_LAN8720;
     eth_clock_mode_t CLKMode = ETH_CLOCK_GPIO0_IN;
 #else
-    uint8_t phyType = 0;  // ETH_PHY_LAN8720; no EMAC on this SoC
-    uint8_t CLKMode = 0;  // ETH_CLOCK_GPIO0_IN; no EMAC on this SoC
+    uint8_t phyType = 0; // ETH_PHY_LAN8720; no EMAC on this SoC
+    uint8_t CLKMode = 0; // ETH_CLOCK_GPIO0_IN; no EMAC on this SoC
 #endif
-    int8_t phyAddress = -1;      // ETH_PHY_ADDR removed in arduino-esp32 v3
-    int8_t PWRPin = -1;          // ETH_PHY_POWER removed in arduino-esp32 v3
-    int8_t MDCPin = 23;          // ETH_PHY_MDC removed in arduino-esp32 v3
-    int8_t MDIOPin = 18;         // ETH_PHY_MDIO removed in arduino-esp32 v3
-    
+    int8_t phyAddress = -1; // ETH_PHY_ADDR removed in arduino-esp32 v3
+    int8_t PWRPin = -1;     // ETH_PHY_POWER removed in arduino-esp32 v3
+    int8_t MDCPin = 23;     // ETH_PHY_MDC removed in arduino-esp32 v3
+    int8_t MDIOPin = 18;    // ETH_PHY_MDIO removed in arduino-esp32 v3
+
     bool begin();
     bool fromJSON(JsonObject &obj);
     bool toJSON(JsonObject &obj);
@@ -112,15 +100,15 @@ class EthernetSettings: BaseSettings {
     void print();
     bool usesPin(uint8_t pin);
 };
-class IPSettings: BaseSettings {
+class IPSettings : BaseSettings {
   public:
     IPSettings();
     bool dhcp = true;
     IPAddress ip;
-    IPAddress subnet = IPAddress(255,255,255,0);
-    IPAddress gateway = IPAddress(0,0,0,0);
-    IPAddress dns1 = IPAddress(0,0,0,0);
-    IPAddress dns2 = IPAddress(0,0,0,0);
+    IPAddress subnet = IPAddress(255, 255, 255, 0);
+    IPAddress gateway = IPAddress(0, 0, 0, 0);
+    IPAddress dns1 = IPAddress(0, 0, 0, 0);
+    IPAddress dns2 = IPAddress(0, 0, 0, 0);
     bool begin();
     bool fromJSON(JsonObject &obj);
     bool toJSON(JsonObject &obj);
@@ -129,15 +117,9 @@ class IPSettings: BaseSettings {
     bool save();
     void print();
 };
-enum class security_types : byte {
-  None = 0x00,
-  PinEntry = 0x01,
-  Password = 0x02
-};
-enum class security_permissions : byte {
-  ConfigOnly = 0x01
-};
-class SecuritySettings: BaseSettings {
+enum class security_types : byte { None = 0x00, PinEntry = 0x01, Password = 0x02 };
+enum class security_permissions : byte { ConfigOnly = 0x01 };
+class SecuritySettings : BaseSettings {
   public:
     security_types type = security_types::None;
     char username[33] = "";
@@ -152,7 +134,7 @@ class SecuritySettings: BaseSettings {
     void toJSON(JsonResponse &json);
     bool fromJSON(JsonObject &obj);
 };
-class MQTTSettings: BaseSettings {
+class MQTTSettings : BaseSettings {
   public:
     bool enabled = false;
     bool pubDisco = false;
@@ -170,7 +152,7 @@ class MQTTSettings: BaseSettings {
     void toJSON(JsonResponse &json);
     bool fromJSON(JsonObject &obj);
 };
-class ConfigSettings: BaseSettings {
+class ConfigSettings : BaseSettings {
   public:
     static void printAvailHeap();
     char serverId[10] = "";
