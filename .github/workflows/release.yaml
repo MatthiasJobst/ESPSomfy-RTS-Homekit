@@ -9,6 +9,7 @@ env:
   LITTLEFS_VERSION: "v2.5.1"
   MKLITTLEFS_VERSION: "3.1.0"
   SPIFFS_SIZE: "1990656"
+  SPIFFS_SIZE_ESP32: "942080"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -83,8 +84,38 @@ jobs:
           name: coverage-report
           path: test/unit/build/coverage/
 
+  build-esp32:
+    name: Build ESP32 (ESP-IDF)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Initialize submodules
+        run: git submodule update --init --recursive
+
+      - name: Build with ESP-IDF
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: ${{ env.IDF_VERSION }}
+          target: esp32
+          command: idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.esp32;sdkconfig.release" build
+
+      - name: Copy firmware binary
+        run: cp build/SomfyController.bin SomfyController.esp32.bin
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-esp32
+          path: SomfyController.esp32.bin
+          retention-days: 5
+
   littlefs:
-    name: Build LittleFS image
+    name: Build LittleFS image (ESP32-S3)
     runs-on: ubuntu-latest
 
     steps:
@@ -119,25 +150,71 @@ jobs:
           path: SomfyController.littlefs.bin
           retention-days: 5
 
+  littlefs-esp32:
+    name: Build LittleFS image (ESP32 4MB)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Checkout mklittlefs
+        uses: actions/checkout@v4
+        with:
+          repository: earlephilhower/mklittlefs
+          path: mklittlefs
+          ref: ${{ env.MKLITTLEFS_VERSION }}
+
+      - name: Checkout LittleFS
+        uses: actions/checkout@v4
+        with:
+          repository: littlefs-project/littlefs
+          path: mklittlefs/littlefs
+          ref: ${{ env.LITTLEFS_VERSION }}
+
+      - name: Build mklittlefs
+        run: make -C mklittlefs
+
+      - name: Create LittleFS image
+        run: |
+          ./mklittlefs/mklittlefs --create data --size ${{ env.SPIFFS_SIZE_ESP32 }} SomfyController.littlefs.esp32.bin
+
+      - name: Upload LittleFS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: littlefs-esp32
+          path: SomfyController.littlefs.esp32.bin
+          retention-days: 5
+
   release:
     name: Upload release assets
-    needs: [build, littlefs, unit-tests]
+    needs: [build, build-esp32, littlefs, littlefs-esp32, unit-tests]
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-      - name: Download firmware
+      - name: Download firmware (ESP32-S3)
         uses: actions/download-artifact@v4
         with:
           name: firmware-esp32s3
 
-      - name: Download LittleFS
+      - name: Download firmware (ESP32)
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware-esp32
+
+      - name: Download LittleFS (ESP32-S3)
         uses: actions/download-artifact@v4
         with:
           name: littlefs
 
-      - name: Upload firmware to release
+      - name: Download LittleFS (ESP32)
+        uses: actions/download-artifact@v4
+        with:
+          name: littlefs-esp32
+
+      - name: Upload ESP32-S3 firmware to release
         uses: shogo82148/actions-upload-release-asset@v1.7.5
         with:
           github_token: ${{ github.token }}
@@ -146,11 +223,29 @@ jobs:
           asset_path: SomfyController.esp32s3.bin
           overwrite: true
 
-      - name: Upload LittleFS to release
+      - name: Upload ESP32-S3 LittleFS to release
         uses: shogo82148/actions-upload-release-asset@v1.7.5
         with:
           github_token: ${{ github.token }}
           upload_url: ${{ github.event.release.upload_url }}
           asset_name: SomfyController.littlefs.bin
           asset_path: SomfyController.littlefs.bin
+          overwrite: true
+
+      - name: Upload ESP32 firmware to release
+        uses: shogo82148/actions-upload-release-asset@v1.7.5
+        with:
+          github_token: ${{ github.token }}
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_name: SomfyController.esp32.bin
+          asset_path: SomfyController.esp32.bin
+          overwrite: true
+
+      - name: Upload ESP32 LittleFS to release
+        uses: shogo82148/actions-upload-release-asset@v1.7.5
+        with:
+          github_token: ${{ github.token }}
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_name: SomfyController.littlefs.esp32.bin
+          asset_path: SomfyController.littlefs.esp32.bin
           overwrite: true
