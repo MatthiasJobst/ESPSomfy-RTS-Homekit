@@ -1,20 +1,21 @@
+#include "GitOTA.h"
 #include <inttypes.h>
+#include <esp_chip_info.h>
+#include <esp_log.h>
+#include <esp_task_wdt.h>
+#include <freertos/task.h>
+#include <HTTPClient.h>
+#include <LittleFS.h>
+#include <Update.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
-#include <Update.h>
-#include <HTTPClient.h>
-#include <esp_task_wdt.h>
-#include <esp_chip_info.h>
-#include <freertos/task.h>
-#include "esp_log.h"
 #include "ConfigSettings.h"
-#include "GitOTA.h"
-#include "Utils.h"
+#include "ControllerNetwork.h"
 #include "Sockets.h"
 #include "SomfyShadeController.h"
+#include "Utils.h"
 #include "Web.h"
 #include "WResp.h"
-#include "ControllerNetwork.h"
 
 extern ConfigSettings settings;
 extern SocketEmitter sockEmit;
@@ -440,6 +441,15 @@ void GitUpdater::setFirmwareFile()
     }
     strlcpy(this->currentFile, bin, sizeof(this->currentFile));
 }
+void GitUpdater::setLittlefsFile()
+{
+    esp_chip_info_t ci;
+    esp_chip_info(&ci);
+    const char *bin = "SomfyController.littlefs.bin";
+    if (ci.model == esp_chip_model_t::CHIP_ESP32)
+        bin = "SomfyController.littlefs.esp32.bin";
+    strlcpy(this->currentFile, bin, sizeof(this->currentFile));
+}
 
 bool GitUpdater::beginUpdate(const char *version)
 {
@@ -459,7 +469,8 @@ bool GitUpdater::beginUpdate(const char *version)
     this->error = static_cast<int16_t>(this->downloadFile());
     if (this->error == 0 && !this->cancelled) {
         somfy.commit();
-        strlcpy(this->currentFile, "SomfyController.littlefs.bin", sizeof(this->currentFile));
+        LittleFS.end();
+        this->setLittlefsFile();
         this->partition = U_SPIFFS;
         this->lockFS = true;
         this->error = static_cast<int16_t>(this->downloadFile());
@@ -481,7 +492,9 @@ bool GitUpdater::recoverFilesystem()
 {
     snprintf(this->baseUrl, sizeof(this->baseUrl), "https://github.com/" GIT_REPO "/releases/download/%s/",
              settings.fwVersion.name);
-    strlcpy(this->currentFile, "SomfyController.littlefs.bin", sizeof(this->currentFile));
+    somfy.commit();
+    LittleFS.end();
+    this->setLittlefsFile();
     this->status = GIT_UPDATING;
     this->partition = U_SPIFFS;
     this->lockFS = true;

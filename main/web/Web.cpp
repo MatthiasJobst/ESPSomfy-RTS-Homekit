@@ -3,6 +3,7 @@
 #include <LittleFS.h>
 #include <Update.h>
 #include "esp_log.h"
+#include <esp_task_wdt.h>
 #include "mbedtls/md.h"
 #include "AppConfig.h"
 #include "ConfigSettings.h"
@@ -230,12 +231,13 @@ void Web::handleStreamFile(WebServer &server, const char *filename, const char *
     server.send(200, encoding, ""); // Send status + headers; body follows via sendContent
     static uint8_t streamBuf[1024];
     uint8_t chunkCount = 0;
-    while (file.available() && server.client().connected()) {
+    while (file.available()) {
         int n = static_cast<int>(file.read(streamBuf, sizeof(streamBuf)));
         if (n > 0) server.sendContent((const char *)streamBuf, n);
         if (++chunkCount == 4) {
             chunkCount = 0;
             sockEmit.loop();
+            esp_task_wdt_reset();
         }
     }
     file.close();

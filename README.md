@@ -1,5 +1,7 @@
 # ESPSomfy-RTS with Homekit
 
+[![ESPSomfy-RTS](https://github.com/MatthiasJobst/ESPSomfy-RTS-Homekit/actions/workflows/ci.yaml/badge.svg)](https://github.com/MatthiasJobst/ESPSomfy-RTS-Homekit/actions/workflows/ci.yaml) [![ESPSomfy-RTS Release](https://github.com/MatthiasJobst/ESPSomfy-RTS-Homekit/actions/workflows/release.yaml/badge.svg)](https://github.com/MatthiasJobst/ESPSomfy-RTS-Homekit/actions/workflows/release.yaml)
+
 Current version: **v0.5.0**
 
 ## Note for this fork

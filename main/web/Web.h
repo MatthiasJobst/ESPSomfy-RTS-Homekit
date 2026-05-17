@@ -1,7 +1,6 @@
+#pragma once
 #include <WebServer.h>
 #include "SomfyShadeController.h"
-#ifndef webserver_h
-#define webserver_h
 class Web {
   public:
     bool uploadSuccess = false;
@@ -103,9 +102,4 @@ class Web {
     bool createAPIPasswordToken(const IPAddress &ipAddress, const char *username, const char *password, char *token);
     bool isAuthenticated(WebServer &server, bool cfg = false);
 
-    // void chunkRoomsResponse(WebServer &server, const char *elem = nullptr);
-    // void chunkShadesResponse(WebServer &server, const char *elem = nullptr);
-    // void chunkGroupsResponse(WebServer &server, const char *elem = nullptr);
-    // void chunkGroupResponse(WebServer &server, SomfyGroup *, const char *prefix = nullptr);
 };
-#endif

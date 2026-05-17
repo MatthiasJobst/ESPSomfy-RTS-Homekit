@@ -1,8 +1,7 @@
-#ifndef GITOTA_H
-#define GITOTA_H
+#pragma once
+#include <time.h>
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <time.h>
 #include "ConfigSettings.h"
 #include "WResp.h"
 
@@ -36,12 +35,14 @@ class GitRelease {
     void setAssetProperty(const char *key, const char *val);
     void toJSON(JsonResponse &json);
 };
+
 class GitRepo {
   public:
     int16_t getReleases(uint8_t num = GIT_MAX_RELEASES);
     GitRelease releases[GIT_MAX_RELEASES + 1];
     void toJSON(JsonResponse &json);
 };
+
 class GitUpdater {
   public:
     bool lockFS = false;
@@ -63,6 +64,7 @@ class GitUpdater {
     bool endUpdate();
     int8_t downloadFile();
     void setFirmwareFile();
+    void setLittlefsFile();
     void setCurrentRelease(GitRepo &repo);
     void loop();
     void toJSON(JsonResponse &json);
@@ -72,4 +74,3 @@ class GitUpdater {
     void emitDownloadProgress(size_t total, size_t loaded, const char *evt = "updateProgress");
     void emitDownloadProgress(uint8_t num, size_t total, size_t loaded, const char *evt = "updateProgress");
 };
-#endif

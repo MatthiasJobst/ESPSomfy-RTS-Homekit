@@ -7,19 +7,20 @@
 //   - Shade config migration (handleUpdateShadeConfig, handleUpdateShadeConfigUpload)
 //   - Application / filesystem update (handleUpdateApplication, handleUpdateApplicationUpload)
 
-#include <WiFi.h>
-#include <WebServer.h>
+#include "Web.h"
+#include <esp_log.h>
+#include <esp_task_wdt.h>
 #include <LittleFS.h>
 #include <Update.h>
-#include <esp_log.h>
+#include <WebServer.h>
+#include <WiFi.h>
 #include "ConfigSettings.h"
-#include "ShadeConfigFile.h"
-#include "Utils.h"
-#include "SomfyShadeController.h"
-#include "WResp.h"
-#include "Web.h"
 #include "GitOTA.h"
 #include "MQTT.h"
+#include "ShadeConfigFile.h"
+#include "SomfyShadeController.h"
+#include "Utils.h"
+#include "WResp.h"
 
 extern ConfigSettings settings;
 extern SomfyShadeController somfy;
@@ -124,6 +125,7 @@ void Web::handleUpdateFirmwareUpload(WebServer &server)
         ESP_LOGE(s_TAG, "Upload of %s aborted", upload.filename.c_str());
         Update.abort();
     } else if (upload.status == UPLOAD_FILE_WRITE) {
+        esp_task_wdt_reset();
         if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
             Update.printError(Serial);
             ESP_LOGE(s_TAG, "Upload of %s aborted invalid size %d", upload.filename.c_str(), upload.currentSize);
@@ -168,12 +170,13 @@ void Web::handleUpdateShadeConfigUpload(WebServer &server)
 void Web::handleUpdateApplication(WebServer &server)
 {
     server.sendHeader("Connection", "close");
-    if (Update.hasError())
-        server.send(500, g_encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Error updating application: \"}");
-    else
+    if (Update.hasError()) {
+        server.send(500, g_encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Error updating application\"}");
+    } else {
         server.send(200, g_encoding_json, "{\"status\":\"SUCCESS\",\"desc\":\"Successfully updated application\"}");
-    rebootDelay.reboot = true;
-    rebootDelay.rebootTime = millis() + 500;
+        rebootDelay.reboot = true;
+        rebootDelay.rebootTime = millis() + 500;
+    }
 }
 void Web::handleUpdateApplicationUpload(WebServer &server)
 {
@@ -181,6 +184,8 @@ void Web::handleUpdateApplicationUpload(WebServer &server)
     if (upload.status == UPLOAD_FILE_START) {
         webServer.uploadSuccess = false;
         ESP_LOGI(s_TAG, "Update: %s %d", upload.filename.c_str(), upload.totalSize);
+        somfy.commit();
+        LittleFS.end();
         if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_SPIFFS)) {
             Update.printError(Serial);
         } else {
@@ -190,8 +195,8 @@ void Web::handleUpdateApplicationUpload(WebServer &server)
     } else if (upload.status == UPLOAD_FILE_ABORTED) {
         ESP_LOGE(s_TAG, "Upload of %s aborted", upload.filename.c_str());
         Update.abort();
-        somfy.commit();
     } else if (upload.status == UPLOAD_FILE_WRITE) {
+        esp_task_wdt_reset();
         if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
             Update.printError(Serial);
             ESP_LOGE(s_TAG, "Upload of %s aborted invalid size %d", upload.filename.c_str(), upload.currentSize);
@@ -201,9 +206,7 @@ void Web::handleUpdateApplicationUpload(WebServer &server)
         if (Update.end(true)) {
             webServer.uploadSuccess = true;
             ESP_LOGI(s_TAG, "Update Success: %u\nRebooting...\n", upload.totalSize);
-            somfy.commit();
         } else {
-            somfy.commit();
             Update.printError(Serial);
         }
     }
