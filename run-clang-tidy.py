@@ -224,6 +224,10 @@ def main() -> None:
     # they auto-disable color. Force it on when *our* stdout is a terminal.
     if sys.stdout.isatty():
         cmd.append("-use-color")
+    # Without --header-filter, clang-tidy suppresses all diagnostics from headers.
+    # Default to project headers so .h files in main/ are covered.
+    if not any(a.startswith("-header-filter") for a in extra_args):
+        cmd.append(f"-header-filter={PROJECT_ROOT}/main/.*")
     cmd += extra_args + file_regex
     print("Running:", " ".join(cmd[:5]),
           f"[{len(file_regex) or len(filtered)} file(s)]")

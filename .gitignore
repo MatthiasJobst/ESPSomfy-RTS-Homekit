@@ -8,6 +8,7 @@ debug.cfg
 .claude/
 
 docs/
+wiki/
 warnings.txt
 
 # ESP-IDF build artifacts
