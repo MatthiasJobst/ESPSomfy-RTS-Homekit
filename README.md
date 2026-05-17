@@ -1,6 +1,6 @@
 # ESPSomfy-RTS with Homekit
 
-Current version: **v0.4.4**
+Current version: **v0.5.0**
 
 ## Note for this fork
 This code has been created to merge the [ESPSomfy-RTS](https://github.com/rstrouse/ESPSomfy-RTS) controller with Homekit. This should allow the device to connect directly with homekit and expose shades there.

@@ -60,13 +60,17 @@ sed -i '' "s|appVersion = 'v[^']*'|appVersion = '${FULL_TAG}'|" data/settings.js
 # 3. data/appversion
 echo "${FULL_TAG}" > data/appversion
 
+# 4. README.md
+sed -i '' "s|Current version: \*\*v[^*]*\*\*|Current version: **${FULL_TAG}**|" README.md
+
 echo "Updated files:"
 grep "FW_VERSION" main/ConfigSettings.h
 grep "appVersion = " data/settings.js | head -1
 echo "data/appversion:  $(cat data/appversion)"
+grep "Current version" README.md
 
 # Commit and tag
-git add main/ConfigSettings.h data/settings.js data/appversion
+git add main/ConfigSettings.h data/settings.js data/appversion README.md
 git commit -m "Bump version to ${FULL_TAG}"
 git tag "${FULL_TAG}"
 
