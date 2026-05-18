@@ -171,7 +171,8 @@ void Web::handleUpdateApplication(WebServer &server)
 {
     server.sendHeader("Connection", "close");
     if (Update.hasError()) {
-        server.send(500, g_encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Error updating application\"}");
+        snprintf(g_content, sizeof(g_content), "{\"status\":\"ERROR\",\"desc\":\"%s\"}", Update.errorString());
+        server.send(500, g_encoding_json, g_content);
     } else {
         server.send(200, g_encoding_json, "{\"status\":\"SUCCESS\",\"desc\":\"Successfully updated application\"}");
         rebootDelay.reboot = true;
@@ -186,7 +187,7 @@ void Web::handleUpdateApplicationUpload(WebServer &server)
         ESP_LOGI(s_TAG, "Update: %s %d", upload.filename.c_str(), upload.totalSize);
         somfy.commit();
         LittleFS.end();
-        if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_SPIFFS)) {
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASHFS)) {
             Update.printError(Serial);
         } else {
             somfy.transceiver.end();

@@ -9,3 +9,6 @@ CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
 # Partition table for 4 MB flash:
 #   two 1.5 MB OTA slots, 921 KB spiffs, HAP partitions pinned at top of flash.
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_4mb.csv"
+
+# Boya flash chip support — suppresses "using generic driver" warning on BY25Q32 etc.
+CONFIG_SPI_FLASH_SUPPORT_BOYA_CHIP=y

@@ -1,6 +1,6 @@
 # ESPSomfy-RTS with Homekit
 
-[![ESPSomfy-RTS](https://github.com/MatthiasJobst/ESPSomfy-RTS-Homekit/actions/workflows/ci.yaml/badge.svg)](https://github.com/MatthiasJobst/ESPSomfy-RTS-Homekit/actions/workflows/ci.yaml) [![ESPSomfy-RTS Release](https://github.com/MatthiasJobst/ESPSomfy-RTS-Homekit/actions/workflows/release.yaml/badge.svg)](https://github.com/MatthiasJobst/ESPSomfy-RTS-Homekit/actions/workflows/release.yaml)
+[![CI](https://github.com/MatthiasJobst/ESPSomfy-RTS-Homekit/actions/workflows/ci.yaml/badge.svg)](https://github.com/MatthiasJobst/ESPSomfy-RTS-Homekit/actions/workflows/ci.yaml) [![Release](https://github.com/MatthiasJobst/ESPSomfy-RTS-Homekit/actions/workflows/release.yaml/badge.svg)](https://github.com/MatthiasJobst/ESPSomfy-RTS-Homekit/actions/workflows/release.yaml)
 
 Current version: **v0.6.0**
 
@@ -135,4 +135,6 @@ Transmission testing was straightforward as the shades moved or not.
 The original firmware targeted a Home Assistant environment and included SSDP for device discovery. That serves no purpose in a HomeKit context where mDNS handles discovery, so SSDP was removed.
 
 MQTT was tempting to remove as well since I don't use it, but it is genuinely useful for others and removing it would be a breaking change for anyone who has it configured. So it remains.
+
+### Improving the transmission
 

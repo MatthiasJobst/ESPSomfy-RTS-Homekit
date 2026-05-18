@@ -22,7 +22,8 @@ var errors = [
     { code: -40, desc: "Git Download: Http Error." },
     { code: -41, desc: "Git Download: Buffer Allocation Error." },
     { code: -42, desc: "Git Download: Download Connection Error." },
-    { code: -43, desc: 'Git Download: Timeout Error.' }
+    { code: -43, desc: 'Git Download: Timeout Error.' },
+    { code: -44, desc: 'Git Download: Finalization Error.' }
 ]
 document.oncontextmenu = (event) => {
     if (event.target && event.target.tagName.toLowerCase() === 'input' && (event.target.type.toLowerCase() === 'text' || event.target.type.toLowerCase() === 'password'))

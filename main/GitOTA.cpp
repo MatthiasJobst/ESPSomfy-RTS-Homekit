@@ -471,7 +471,7 @@ bool GitUpdater::beginUpdate(const char *version)
         somfy.commit();
         LittleFS.end();
         this->setLittlefsFile();
-        this->partition = U_SPIFFS;
+        this->partition = U_FLASHFS;
         this->lockFS = true;
         this->error = static_cast<int16_t>(this->downloadFile());
         this->lockFS = false;
@@ -496,7 +496,7 @@ bool GitUpdater::recoverFilesystem()
     LittleFS.end();
     this->setLittlefsFile();
     this->status = GIT_UPDATING;
-    this->partition = U_SPIFFS;
+    this->partition = U_FLASHFS;
     this->lockFS = true;
     this->error = static_cast<int16_t>(this->downloadFile());
     this->lockFS = false;
@@ -575,11 +575,15 @@ int8_t GitUpdater::downloadFile()
                             delay(1);
                             if (total >= len) {
                                 if (!Update.end(true)) {
-                                    ESP_LOGE(s_TAG, "Error downloading update...");
+                                    ESP_LOGE(s_TAG, "Update.end failed for %s", this->currentFile);
                                     Update.printError(Serial);
-                                } else {
-                                    ESP_LOGI(s_TAG, "Update.end Called...");
+                                    free(buff);
+                                    https.end();
+                                    sclient.stop();
+                                    int8_t ec = Update.getError() ? static_cast<int8_t>(-(Update.getError() + UPDATE_ERR_OFFSET)) : -44;
+                                    return ec;
                                 }
+                                ESP_LOGI(s_TAG, "Update.end called for %s", this->currentFile);
                                 https.end();
                                 sclient.stop();
                             }
@@ -600,7 +604,6 @@ int8_t GitUpdater::downloadFile()
                     free(buff);
                     if (len > total) {
                         Update.abort();
-                        somfy.commit();
                         ESP_LOGE(s_TAG, "Error downloading file!!!");
                         return -42;
                     } else
