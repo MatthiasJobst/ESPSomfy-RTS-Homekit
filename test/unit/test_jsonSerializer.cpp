@@ -65,9 +65,9 @@ protected:
         for (uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
             somfy.shades[i].setShadeId(255);
             somfy.shades[i].proto = radio_proto::RTS;
-            somfy.shades[i].gpioControl.gpioUp   = 0;
-            somfy.shades[i].gpioControl.gpioDown = 0;
-            somfy.shades[i].gpioControl.gpioMy   = 0;
+            somfy.shades[i].getGpioControl().gpioUp   = 0;
+            somfy.shades[i].getGpioControl().gpioDown = 0;
+            somfy.shades[i].getGpioControl().gpioMy   = 0;
         }
     }
 
@@ -155,7 +155,7 @@ TEST_F(JsonSerializerTest, Validate_OtherShadeConflict_ReturnsMinus12) {
     // Put a different shade in slot 0 with gpioDown=10 and GP_Relay proto
     somfy.shades[0].setShadeId(2);  // non-255 → active
     somfy.shades[0].proto = radio_proto::GP_Relay;
-    somfy.shades[0].gpioControl.gpioDown = 10;
+    somfy.shades[0].getGpioControl().gpioDown = 10;
     JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
     obj["proto"] = static_cast<uint8_t>(radio_proto::GP_Relay);
     EXPECT_EQ(shade.validateJSON(obj), -12);
@@ -221,7 +221,7 @@ TEST_F(JsonSerializerTest, FromJSON_ValidationError_EarlyReturn) {
     shade.setGpioDown(10);
     somfy.shades[0].setShadeId(2);
     somfy.shades[0].proto = radio_proto::GP_Relay;
-    somfy.shades[0].gpioControl.gpioDown = 10;
+    somfy.shades[0].getGpioControl().gpioDown = 10;
 
     JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
     obj["proto"] = static_cast<uint8_t>(radio_proto::GP_Relay);
@@ -293,7 +293,7 @@ TEST_F(JsonSerializerTest, FromJSON_GpioFlags_Applied) {
     JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
     obj["gpioFlags"] = (uint8_t)0x03;
     EXPECT_EQ(shade.fromJSON(obj), 0);
-    EXPECT_EQ(shade.gpioControl.gpioFlags, 0x03);
+    EXPECT_EQ(shade.getGpioControl().gpioFlags, 0x03);
 }
 
 // gpioLLTrigger=true sets the LowLevelTrigger bit.
@@ -302,7 +302,7 @@ TEST_F(JsonSerializerTest, FromJSON_GpioLLTrigger_True_SetsBit) {
     JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
     obj["gpioLLTrigger"] = true;
     EXPECT_EQ(shade.fromJSON(obj), 0);
-    EXPECT_NE(shade.gpioControl.gpioFlags & (uint8_t)gpio_flags_t::LowLevelTrigger, 0);
+    EXPECT_NE(shade.getGpioControl().gpioFlags & (uint8_t)gpio_flags_t::LowLevelTrigger, 0);
 }
 
 // gpioLLTrigger=false clears the LowLevelTrigger bit.
@@ -311,7 +311,7 @@ TEST_F(JsonSerializerTest, FromJSON_GpioLLTrigger_False_ClearsBit) {
     JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
     obj["gpioLLTrigger"] = false;
     EXPECT_EQ(shade.fromJSON(obj), 0);
-    EXPECT_EQ(shade.gpioControl.gpioFlags & (uint8_t)gpio_flags_t::LowLevelTrigger, 0);
+    EXPECT_EQ(shade.getGpioControl().gpioFlags & (uint8_t)gpio_flags_t::LowLevelTrigger, 0);
 }
 
 // shadeType as string — all 11 values applied to this->shadeType.
@@ -406,8 +406,8 @@ TEST_F(JsonSerializerTest, FromJSON_GPRelay_GpioUpDown_Applied) {
     obj["gpioUp"]   = (uint8_t)15;
     obj["gpioDown"] = (uint8_t)16;
     EXPECT_EQ(shade.fromJSON(obj), 0);
-    EXPECT_EQ(shade.gpioControl.gpioUp,   15);
-    EXPECT_EQ(shade.gpioControl.gpioDown, 16);
+    EXPECT_EQ(shade.getGpioControl().gpioUp,   15);
+    EXPECT_EQ(shade.getGpioControl().gpioDown, 16);
 }
 
 // GP_Remote: gpioUp, gpioDown, and gpioMy all updated; gpio_set_direction called.
@@ -418,9 +418,9 @@ TEST_F(JsonSerializerTest, FromJSON_GPRemote_GpioUpDownMy_Applied) {
     obj["gpioDown"] = (uint8_t)21;
     obj["gpioMy"]   = (uint8_t)22;
     EXPECT_EQ(shade.fromJSON(obj), 0);
-    EXPECT_EQ(shade.gpioControl.gpioUp,   20);
-    EXPECT_EQ(shade.gpioControl.gpioDown, 21);
-    EXPECT_EQ(shade.gpioControl.gpioMy,   22);
+    EXPECT_EQ(shade.getGpioControl().gpioUp,   20);
+    EXPECT_EQ(shade.getGpioControl().gpioDown, 21);
+    EXPECT_EQ(shade.getGpioControl().gpioMy,   22);
 }
 
 // GP_Remote with proto already set on the shade (not via JSON key):
@@ -434,7 +434,7 @@ TEST_F(JsonSerializerTest, FromJSON_GPRemote_AlreadySet_GpioDirectionCalled) {
     // Include proto key so the proto block is entered (but proto is already GP_Remote)
     obj["proto"] = static_cast<uint8_t>(radio_proto::GP_Remote);
     EXPECT_EQ(shade.fromJSON(obj), 0);
-    EXPECT_EQ(shade.gpioControl.gpioMy, 27);  // unchanged, direction was set
+    EXPECT_EQ(shade.getGpioControl().gpioMy, 27);  // unchanged, direction was set
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -513,7 +513,7 @@ TEST_F(JsonSerializerTest, Validate_OtherShade_NoConflict_LoopContinues) {
     // Slot 0: different shade, RTS proto (usesPin always false)
     somfy.shades[0].setShadeId(2);
     somfy.shades[0].proto = radio_proto::RTS;
-    somfy.shades[0].gpioControl.gpioDown = 10;  // same pin but RTS → usesPin returns false
+    somfy.shades[0].getGpioControl().gpioDown = 10;  // same pin but RTS → usesPin returns false
     JsonDocument doc; JsonObject obj = doc.to<JsonObject>();
     obj["proto"] = static_cast<uint8_t>(radio_proto::GP_Relay);
     EXPECT_EQ(shade.validateJSON(obj), 0);

@@ -13,7 +13,7 @@ extern SomfyShadeController somfy;
 
 void SomfyCommandProcessor::processWaitingFrame()
 {
-    if (shade->shadeId == 255) {
+    if (shade->getShadeId() == 255) {
         shade->lastFrame.await = 0;
         return;
     }
@@ -135,7 +135,7 @@ void SomfyCommandProcessor::processSensorCommand(somfy_frame_t &frame, uint64_t 
     shade->p_windy(SomfyFlag::isWindy(status));
     shade->p_demoMode(SomfyFlag::isDemoMode(frame.rollingCode));
     shade->flagManager.updateTimers(wasSunny, wasWindy, shade->flags.isSunny(), shade->flags.isWindy(), curTime,
-                                    shade->shadeId);
+                                    shade->getShadeId());
     shade->emitState();
     somfy.updateGroupFlags();
 }
@@ -324,7 +324,7 @@ void SomfyCommandProcessor::processStepCommand(somfy_commands cmd, int8_t stepDi
 
 void SomfyCommandProcessor::processFrame(somfy_frame_t &frame, bool internal)
 {
-    if (shade->shadeId == 255) return;
+    if (shade->getShadeId() == 255) return;
     bool hasRemote = shade->getRemoteAddress() == frame.remoteAddress;
     if (!hasRemote) {
         for (uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++) {
@@ -426,7 +426,7 @@ void SomfyCommandProcessor::processFrame(somfy_frame_t &frame, bool internal)
 
 void SomfyCommandProcessor::processInternalCommand(somfy_commands cmd, uint8_t repeat)
 {
-    if (shade->shadeId == 255) return;
+    if (shade->getShadeId() == 255) return;
     const uint64_t curTime = millis();
     int8_t dir = 0;
     shade->resetMovement(curTime);

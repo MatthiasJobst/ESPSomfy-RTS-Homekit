@@ -565,12 +565,13 @@ bool ShadeConfigFile::readShadeRecord(SomfyShade *shade)
         shade->sortOrder = static_cast<int8_t>(this->readUInt8(static_cast<uint8_t>(shade->getShadeId() - 1)));
     else
         shade->sortOrder = static_cast<int8_t>(shade->getShadeId() - 1);
+    auto &gpio = shade->getGpioControl();
     if (this->header.version > 14) {
-        shade->gpioControl.gpioUp = this->readUInt8(shade->gpioControl.gpioUp);
-        shade->gpioControl.gpioDown = this->readUInt8(shade->gpioControl.gpioDown);
+        gpio.gpioUp = this->readUInt8(gpio.gpioUp);
+        gpio.gpioDown = this->readUInt8(gpio.gpioDown);
     }
-    if (this->header.version > 15) shade->gpioControl.gpioMy = this->readUInt8(shade->gpioControl.gpioMy);
-    if (this->header.version > 16) shade->gpioControl.gpioFlags = this->readUInt8(shade->gpioControl.gpioFlags);
+    if (this->header.version > 15) gpio.gpioMy = this->readUInt8(gpio.gpioMy);
+    if (this->header.version > 16) gpio.gpioFlags = this->readUInt8(gpio.gpioFlags);
     if (shade->getShadeId() == 255)
         shade->clear();
     else if (shade->tiltType == tilt_types::tiltonly) {
@@ -579,11 +580,11 @@ bool ShadeConfigFile::readShadeRecord(SomfyShade *shade)
     }
     pref.end();
     if (shade->proto == radio_proto::GP_Relay || shade->proto == radio_proto::GP_Remote) {
-        gpio_set_direction((gpio_num_t)shade->gpioControl.gpioUp, GPIO_MODE_OUTPUT);
-        gpio_set_direction((gpio_num_t)shade->gpioControl.gpioDown, GPIO_MODE_OUTPUT);
+        gpio_set_direction((gpio_num_t)gpio.gpioUp, GPIO_MODE_OUTPUT);
+        gpio_set_direction((gpio_num_t)gpio.gpioDown, GPIO_MODE_OUTPUT);
     }
     if (shade->proto == radio_proto::GP_Remote)
-        gpio_set_direction((gpio_num_t)shade->gpioControl.gpioMy, GPIO_MODE_OUTPUT);
+        gpio_set_direction((gpio_num_t)gpio.gpioMy, GPIO_MODE_OUTPUT);
     if (this->header.version >= 19) shade->roomId = this->readUInt8(0);
     if (this->file.position() != startPos + this->header.shadeRecordSize) {
         ESP_LOGI(s_TAG, "Reading to end of shade record");

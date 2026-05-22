@@ -28,7 +28,7 @@ bool SomfyMovementTracker::computeDirections()
 
 void SomfyMovementTracker::tickFlagTimers(uint64_t curTime)
 {
-    auto tick = shade->flagManager.tickTimers(shade->flags, curTime, shade->shadeId);
+    auto tick = shade->flagManager.tickTimers(shade->flags, curTime, shade->getShadeId());
     if (tick.setSunTarget) {
         shade->p_target(shade->getMyPos() >= 0 ? shade->getMyPos() : 100.0f);
     }

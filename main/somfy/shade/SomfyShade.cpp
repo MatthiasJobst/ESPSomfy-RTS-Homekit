@@ -1,14 +1,16 @@
 // SomfyShade.cpp — SomfyShade method implementations: movement control (open/close/stop/
 // my/tilt), position interpolation and transformation, internal-command processing,
 // frame emission and relay, JSON and MQTT I/O, NVS load/save, HomeKit bridge callbacks.
-#include "compat/preferences.h"
-#include "esp_log.h"
-#include "driver/gpio.h"
-#include "GitOTA.h"
 #include "SomfyShade.h"
-#include "SomfyTransceiver.h"
-#include "SomfyShadeController.h"
+
+#include <driver/gpio.h>
+#include <esp_log.h>
+
 #include "ConfigFile.h"
+#include "GitOTA.h"
+#include "SomfyShadeController.h"
+#include "SomfyTransceiver.h"
+#include "compat/preferences.h"
 
 extern SomfyShadeController somfy;
 extern ConfigSettings settings;
@@ -26,7 +28,6 @@ void SomfyShade::clear()
     movementTracker.startPos = 0.0f;
     movementTracker.startTiltPos = 0.0f;
     movementTracker.motionState = MotionState{};
-    this->awaitMy = 0;
     mqttPublisher.flipPosition = false;
     this->flipCommands = false;
     this->lastRollingCode = 0;
@@ -63,14 +64,17 @@ void SomfyShade::commit()
 {
     somfy.commit();
 }
+
 void SomfyShade::commitShadePosition()
 {
     somfy.isDirty = true;
 }
+
 void SomfyShade::commitMyPosition()
 {
     somfy.isDirty = true;
 }
+
 void SomfyShade::commitTiltPosition()
 {
     somfy.isDirty = true;
@@ -125,22 +129,27 @@ void SomfyShade::publishDisco()
 {
     mqttPublisher.publishDisco();
 }
+
 void SomfyShade::unpublishDisco()
 {
     mqttPublisher.unpublishDisco();
 }
+
 void SomfyShade::publish()
 {
     mqttPublisher.publish();
 }
+
 void SomfyShade::unpublish()
 {
     mqttPublisher.unpublish();
 }
+
 void SomfyShade::unpublish(uint8_t id)
 {
     SomfyMQTTPublisher::unpublish(id);
 }
+
 void SomfyShade::unpublish(uint8_t id, const char *topic)
 {
     SomfyMQTTPublisher::unpublish(id, topic);
@@ -150,22 +159,27 @@ bool SomfyShade::publish(const char *topic, int8_t val, bool retain)
 {
     return mqttPublisher.publish(topic, val, retain);
 }
+
 bool SomfyShade::publish(const char *topic, const char *val, bool retain)
 {
     return mqttPublisher.publish(topic, val, retain);
 }
+
 bool SomfyShade::publish(const char *topic, uint8_t val, bool retain)
 {
     return mqttPublisher.publish(topic, val, retain);
 }
+
 bool SomfyShade::publish(const char *topic, uint32_t val, bool retain)
 {
     return mqttPublisher.publish(topic, val, retain);
 }
+
 bool SomfyShade::publish(const char *topic, uint16_t val, bool retain)
 {
     return mqttPublisher.publish(topic, val, retain);
 }
+
 bool SomfyShade::publish(const char *topic, bool val, bool retain)
 {
     return mqttPublisher.publish(topic, val, retain);
@@ -292,6 +306,7 @@ void SomfyShade::emitState(const char *evt)
 {
     this->emitState(255, evt);
 }
+
 void SomfyShade::emitState(uint8_t num, const char *evt)
 {
     mqttPublisher.emitState(num, evt);
@@ -301,6 +316,7 @@ void SomfyShade::emitCommand(somfy_commands cmd, const char *source, uint32_t so
 {
     this->emitCommand(255, cmd, source, sourceAddress, evt);
 }
+
 void SomfyShade::emitCommand(uint8_t num, somfy_commands cmd, const char *source, uint32_t sourceAddress,
                              const char *evt)
 {
@@ -327,31 +343,38 @@ void SomfyShade::processSensorCommand(somfy_frame_t &frame, uint64_t curTime)
 {
     commandProcessor.processSensorCommand(frame, curTime);
 }
+
 void SomfyShade::processFlagCommand(bool internal, somfy_frame_t &frame)
 {
     commandProcessor.processFlagCommand(internal, frame);
 }
+
 void SomfyShade::processSunFlagCommand(bool internal, somfy_frame_t &frame)
 {
     commandProcessor.processSunFlagCommand(internal, frame);
 }
+
 void SomfyShade::processMyCommand(bool internal, somfy_frame_t &frame, uint64_t curTime)
 {
     commandProcessor.processMyCommand(internal, frame, curTime);
 }
+
 void SomfyShade::processUpDownCommand(somfy_commands cmd, int8_t moveDir, bool internal, somfy_frame_t &frame,
                                       uint64_t curTime)
 {
     commandProcessor.processUpDownCommand(cmd, moveDir, internal, frame, curTime);
 }
+
 void SomfyShade::processStepCommand(somfy_commands cmd, int8_t stepDir, bool internal, somfy_frame_t &frame)
 {
     commandProcessor.processStepCommand(cmd, stepDir, internal, frame);
 }
+
 void SomfyShade::processFrame(somfy_frame_t &frame, bool internal)
 {
     commandProcessor.processFrame(frame, internal);
 }
+
 void SomfyShade::processInternalCommand(somfy_commands cmd, uint8_t repeat)
 {
     commandProcessor.processInternalCommand(cmd, repeat);
@@ -361,6 +384,7 @@ void SomfyShade::setTiltMovement(int8_t dir)
 {
     movementTracker.setTiltMovement(dir);
 }
+
 void SomfyShade::setMovement(int8_t dir)
 {
     movementTracker.setMovement(dir);
@@ -370,6 +394,7 @@ void SomfyShade::setMyPosition(int8_t pos, int8_t tilt)
 {
     targetSequencer.setMyPosition(pos, tilt);
 }
+
 void SomfyShade::moveToMyPosition()
 {
     targetSequencer.moveToMyPosition();
@@ -379,6 +404,7 @@ float SomfyShade::getMyPos() const
 {
     return targetSequencer.myPos;
 }
+
 float SomfyShade::getMyTiltPos() const
 {
     return targetSequencer.myTiltPos;
@@ -388,22 +414,27 @@ void SomfyShade::setSettingPos(bool v)
 {
     movementTracker.motionState.settingPos = v;
 }
+
 void SomfyShade::setSettingTiltPos(bool v)
 {
     movementTracker.motionState.settingTiltPos = v;
 }
+
 void SomfyShade::setSettingMyPos(bool v)
 {
     movementTracker.motionState.settingMyPos = v;
 }
+
 void SomfyShade::setBoostedStop(bool v)
 {
     movementTracker.motionState.boostedStop = v;
 }
+
 bool SomfyShade::getBoostedStop() const
 {
     return movementTracker.motionState.boostedStop;
 }
+
 void SomfyShade::clearMotionState()
 {
     movementTracker.motionState.clear();
@@ -420,30 +451,37 @@ uint32_t SomfyShade::getUpTime() const
 {
     return commandProcessor.upTime;
 }
+
 uint32_t SomfyShade::getDownTime() const
 {
     return commandProcessor.downTime;
 }
+
 uint32_t SomfyShade::getTiltTime() const
 {
     return commandProcessor.tiltTime;
 }
+
 uint16_t SomfyShade::getStepSize() const
 {
     return commandProcessor.stepSize;
 }
+
 void SomfyShade::setUpTime(uint32_t v)
 {
     commandProcessor.upTime = v;
 }
+
 void SomfyShade::setDownTime(uint32_t v)
 {
     commandProcessor.downTime = v;
 }
+
 void SomfyShade::setTiltTime(uint32_t v)
 {
     commandProcessor.tiltTime = v;
 }
+
 void SomfyShade::setStepSize(uint16_t v)
 {
     commandProcessor.stepSize = v;
@@ -453,6 +491,7 @@ int8_t SomfyShade::getLastMovement() const
 {
     return movementTracker.lastMovement;
 }
+
 void SomfyShade::setLastMovement(int8_t v)
 {
     movementTracker.lastMovement = v;
@@ -467,6 +506,7 @@ bool SomfyShade::getFlipPosition() const
 {
     return mqttPublisher.flipPosition;
 }
+
 void SomfyShade::setFlipPosition(bool v)
 {
     mqttPublisher.flipPosition = v;
@@ -476,10 +516,12 @@ void SomfyShade::sendCommand(somfy_commands cmd)
 {
     commandTransmitter.sendCommand(cmd);
 }
+
 void SomfyShade::sendCommand(somfy_commands cmd, uint8_t repeat, uint8_t stepSize)
 {
     commandTransmitter.sendCommand(cmd, repeat, stepSize);
 }
+
 void SomfyShade::sendTiltCommand(somfy_commands cmd)
 {
     commandTransmitter.sendTiltCommand(cmd);
@@ -489,10 +531,12 @@ void SomfyShade::moveToTiltTarget(float target)
 {
     targetSequencer.moveToTiltTarget(target);
 }
+
 void SomfyShade::moveToTarget(float pos, float tilt)
 {
     targetSequencer.moveToTarget(pos, tilt);
 }
+
 void SomfyShade::moveToTargetForced(float pos, float tilt)
 {
     targetSequencer.moveToTargetForced(pos, tilt);
@@ -528,14 +572,17 @@ int8_t SomfyShade::validateJSON(JsonObject &obj)
 {
     return jsonSerializer.validateJSON(obj);
 }
+
 int8_t SomfyShade::fromJSON(JsonObject &obj)
 {
     return jsonSerializer.fromJSON(obj);
 }
+
 void SomfyShade::toJSONRef(JsonResponse &json)
 {
     jsonSerializer.toJSONRef(json);
 }
+
 void SomfyShade::toJSON(JsonResponse &json)
 {
     jsonSerializer.toJSON(json);

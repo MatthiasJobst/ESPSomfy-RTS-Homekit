@@ -14,11 +14,7 @@
 #include "SomfyMovementTracker.h"
 
 class SomfyShade : public SomfyRemote {
-  protected:
-    uint32_t awaitMy = 0;
-
   public:
-    uint8_t shadeId = 255;
     SomfyShade()
     {
         mqttPublisher.shade = this;
@@ -28,22 +24,15 @@ class SomfyShade : public SomfyRemote {
         commandProcessor.shade = this;
         movementTracker.shade = this;
     }
-    SomfyFlagManager flagManager;
-    SomfyGPIOControl gpioControl;
-    SomfyMQTTPublisher mqttPublisher;
-    SomfyCommandTransmitter commandTransmitter;
-    SomfyJSONSerializer jsonSerializer;
-    SomfyTargetSequencer targetSequencer;
-    SomfyCommandProcessor commandProcessor;
-    SomfyMovementTracker movementTracker;
+    SomfyTargetSequencer targetSequencer;  // Exposed to allow for testing
     uint8_t roomId = 0;
     uint8_t sortOrder = 0;
     shade_types shadeType = shade_types::roller;
     tilt_types tiltType = tilt_types::none;
     float currentPos = 0.0f;
     float currentTiltPos = 0.0f;
-    int8_t direction = 0;     // 0 = stopped, 1=down, -1=up.
-    int8_t tiltDirection = 0; // 0=stopped, 1=clockwise, -1=counter clockwise
+    int8_t direction = 0;     /**< 0 = stopped, 1 = down, -1 = up. */
+    int8_t tiltDirection = 0; /**< 0 = stopped, 1 = clockwise, -1 = counter clockwise. */
     float target = 0.0f;
     float tiltTarget = 0.0f;
     bool paired = false;
@@ -55,6 +44,12 @@ class SomfyShade : public SomfyRemote {
     char name[21] = "";
     void setShadeId(uint8_t id) { shadeId = id; }
     uint8_t getShadeId() { return shadeId; }
+    SomfyFlagManager &getFlagManager() { return flagManager; }
+    const SomfyFlagManager &getFlagManager() const { return flagManager; }
+    void setFlagManager(const SomfyFlagManager &v) { flagManager = v; }
+    SomfyGPIOControl &getGpioControl() { return gpioControl; }
+    const SomfyGPIOControl &getGpioControl() const { return gpioControl; }
+    void setGpioControl(const SomfyGPIOControl &v) { gpioControl = v; }
     bool save();
     bool isIdle();
     bool isInGroup();
@@ -155,4 +150,20 @@ class SomfyShade : public SomfyRemote {
     bool publish(const char *topic, bool val, bool retain = false);
     void publishDisco();
     void unpublishDisco();
+
+  protected:
+    SomfyFlagManager flagManager;
+    SomfyGPIOControl gpioControl;
+    SomfyMQTTPublisher mqttPublisher;
+    SomfyCommandTransmitter commandTransmitter;
+    SomfyJSONSerializer jsonSerializer;
+    SomfyCommandProcessor commandProcessor;
+    SomfyMovementTracker movementTracker;
+
+  private:
+    uint8_t shadeId = 255;
+
+    friend class SomfyCommandProcessor;
+    friend class SomfyMovementTracker;
+    friend class SomfyJSONSerializer;
 };
