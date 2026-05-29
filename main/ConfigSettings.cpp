@@ -229,7 +229,6 @@ bool ConfigSettings::load()
     this->getAppVersion();
     pref.begin("CFG");
     pref.getString("hostname", this->hostname, sizeof(this->hostname));
-    if (pref.isKey("ssdpBroadcast")) pref.remove("ssdpBroadcast");
     this->checkForUpdate = pref.getBool("checkForUpdate", true);
     this->connType = static_cast<conn_types_t>(pref.getChar("connType", 0x00));
     // ESP_LOGI(s_TAG, "Preference GFG Free Entries: %d", pref.freeEntries());
@@ -240,7 +239,6 @@ bool ConfigSettings::load()
         pref.begin("WIFI");
         pref.getString("hostname", this->hostname, sizeof(this->hostname));
         pref.remove("hostname");
-        if (pref.isKey("ssdpBroadcast")) pref.remove("ssdpBroadcast");
         pref.end();
         this->save();
     }

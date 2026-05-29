@@ -912,6 +912,10 @@ bool SomfyTransceiver::begin()
         ESP_ERROR_CHECK(rmt_new_tx_channel(&ch_cfg, &s_rmtTxChan));
 
         somfy_encoder_t *enc = (somfy_encoder_t *)calloc(1, sizeof(somfy_encoder_t));
+        if (enc == nullptr) {
+            ESP_LOGE(s_TAG, "Failed to allocate RMT encoder");
+            abort();
+        }
         enc->base.encode = somfy_encode;
         enc->base.reset = somfy_encoder_reset;
         enc->base.del = somfy_encoder_del;
