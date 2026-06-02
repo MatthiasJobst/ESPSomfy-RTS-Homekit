@@ -1,5 +1,6 @@
 class Somfy {
     initialized = false;
+    mouseDown = false;
     frames = [];
     shadeTypes = [
         { type: 0, name: 'Roller Shade', ico: 'icss-window-shade', lift: true, sun: true, fcmd: true, fpos: true },
@@ -1736,7 +1737,7 @@ class Somfy {
                 this.btnTimer = null;
             }
             if (err) return;
-            if (mouseDown) {
+            if (this.mouseDown) {
                 somfy.sendCommandRepeat(shadeId, 'prog', null, fnRepeatProg);
             }
         }
@@ -1746,6 +1747,7 @@ class Somfy {
             console.log(this);
             console.log(event);
             console.log('close');
+            this.mouseDown = false;
             if (this.btnTimer) {
                 clearInterval(this.btnTimer);
                 this.btnTimer = null;
@@ -1753,18 +1755,20 @@ class Somfy {
             document.getElementById('divPairing').remove();
         });
         let btn = document.getElementById('btnSendPairing');
-        btn.addEventListener('mousedown', (event) => {
+        let fnHoldStart = (event) => {
             console.log(this);
             console.log(event);
-            console.log('mousedown');
+            console.log(event.type);
+            this.mouseDown = true;
             somfy.sendCommand(shadeId, 'prog', null, (err, shade) => { fnRepeatProg(err, shade); });
-        }, true);
-        btn.addEventListener('touchstart', (event) => {
-            console.log(this);
-            console.log(event);
-            console.log('touchstart');
-            somfy.sendCommand(shadeId, 'prog', null, (err, shade) => { fnRepeatProg(err, shade); });
-        }, true);
+        };
+        let fnHoldEnd = () => { this.mouseDown = false; };
+        btn.addEventListener('mousedown', fnHoldStart, true);
+        btn.addEventListener('touchstart', fnHoldStart, true);
+        btn.addEventListener('mouseup', fnHoldEnd, true);
+        btn.addEventListener('mouseleave', fnHoldEnd, true);
+        btn.addEventListener('touchend', fnHoldEnd, true);
+        btn.addEventListener('touchcancel', fnHoldEnd, true);
         return div;
     }
     unpairShade(shadeId) {
@@ -1792,24 +1796,27 @@ class Somfy {
                 this.btnTimer = null;
             }
             if (err) return;
-            if (mouseDown) {
+            if (this.mouseDown) {
                 somfy.sendCommandRepeat(shadeId, 'prog', null, fnRepeatProg);
             }
         }
         document.getElementById('somfyShade').appendChild(div);
+        document.getElementById('btnStopUnpairing').addEventListener('click', () => { this.mouseDown = false; });
         let btn = document.getElementById('btnSendUnpairing');
-        btn.addEventListener('mousedown', (event) => {
+        let fnHoldStart = (event) => {
             console.log(this);
             console.log(event);
-            console.log('mousedown');
+            console.log(event.type);
+            this.mouseDown = true;
             somfy.sendCommand(shadeId, 'prog', null, (err, shade) => { fnRepeatProg(err, shade); });
-        }, true);
-        btn.addEventListener('touchstart', (event) => {
-            console.log(this);
-            console.log(event);
-            console.log('touchstart');
-            somfy.sendCommand(shadeId, 'prog', null, (err, shade) => { fnRepeatProg(err, shade); });
-        }, true);
+        };
+        let fnHoldEnd = () => { this.mouseDown = false; };
+        btn.addEventListener('mousedown', fnHoldStart, true);
+        btn.addEventListener('touchstart', fnHoldStart, true);
+        btn.addEventListener('mouseup', fnHoldEnd, true);
+        btn.addEventListener('mouseleave', fnHoldEnd, true);
+        btn.addEventListener('touchend', fnHoldEnd, true);
+        btn.addEventListener('touchcancel', fnHoldEnd, true);
 
         return div;
     }
@@ -1883,13 +1890,14 @@ class Somfy {
                 break;
         }
         console.log(o);
+        this.mouseDown = true;
         let fnRepeatCommand = (err, shade) => {
             if (this.btnTimer) {
                 clearTimeout(this.btnTimer);
                 this.btnTimer = null;
             }
             if (err) return;
-            if (mouseDown) {
+            if (this.mouseDown) {
                 if (o.cmd === 'Sensor')
                     somfy.sendSetSensor(o);
                 else if (o.type === 'group')
@@ -1906,6 +1914,10 @@ class Somfy {
             somfy.sendGroupCommand(o.groupId, o.cmd, null, (err, group) => { fnRepeatCommand(err, group); });
         else
             somfy.sendCommand(o, (err, shade) => { fnRepeatCommand(err, shade); });
+    }
+    endVRCommand() {
+        // Stop the held-button repeat loop started by sendVRCommand().
+        this.mouseDown = false;
     }
     sendSetSensor(obj, cb) {
         putJSON('/setSensor', obj, (err, device) => {
@@ -2028,7 +2040,7 @@ class Somfy {
                 this.btnTimer = null;
             }
             if (err) return;
-            if (mouseDown) {
+            if (this.mouseDown) {
                 if (o.cmd === 'Sensor')
                     somfy.sendSetSensor(o);
                 else if (typeof o.groupId !== 'undefined')
@@ -2038,11 +2050,11 @@ class Somfy {
             }
         }
         btnPairToGroup.addEventListener('mousedown', (evt) => {
-            mouseDown = true;
+            this.mouseDown = true;
             somfy.sendGroupCommand(groupId, 'prog', null, fnRepeatProgCommand);
         });
         btnPairToGroup.addEventListener('mouseup', (evt) => {
-            mouseDown = false;
+            this.mouseDown = false;
             let obj = ui.fromElement(div);
             let prompt = ui.promptMessage('Confirm Motor Response', () => {
                 putJSONSync('/linkToGroup', { groupId: groupId, shadeId: obj.shadeId }, (err, group) => {

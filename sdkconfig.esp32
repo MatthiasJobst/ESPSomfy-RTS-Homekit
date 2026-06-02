@@ -1,7 +1,13 @@
 # sdkconfig.esp32 — overlay for classic ESP32 (4 MB flash).
-# Applied after sdkconfig.defaults (which targets ESP32-S3 with 8 MB flash):
-#   idf.py set-target esp32
+# Applied after sdkconfig.defaults (which targets ESP32-S3 with 8 MB flash).
+#
+# Release build (WARN logs, assertions off) — CI:
 #   idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.esp32;sdkconfig.release" build
+#
+# Info build (keeps INFO logging; -Os below keeps it within 4 MB):
+#   rm -f sdkconfig
+#   idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.esp32" set-target esp32
+#   idf.py build
 
 # Flash size — 4 MB (overrides sdkconfig.defaults CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y)
 CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
@@ -12,3 +18,7 @@ CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_4mb.csv"
 
 # Boya flash chip support — suppresses "using generic driver" warning on BY25Q32 etc.
 CONFIG_SPI_FLASH_SUPPORT_BOYA_CHIP=y
+
+# Optimize for size (-Os).  Reduces flash and IRAM usage; RF timing is
+# hardware-driven (RMT), so execution speed of the main loop is not critical.
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y
