@@ -1,11 +1,13 @@
+#include "ControllerNetwork.h"
+
+#include <esp_log.h>
+#include <esp_wifi.h>
 #include <ETH.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
-#include <esp_wifi.h>
-#include "esp_log.h"
 #include "AppConfig.h"
 #include "ConfigSettings.h"
-#include "ControllerNetwork.h"
+#include "SomfyShadeController.h"
 #include "Web.h"
 #include "Sockets.h"
 #include "Utils.h"
@@ -25,7 +27,6 @@ static unsigned long s_lastHeapEmit = 0;
 static bool s_apScanning = false;
 static uint32_t s_lastMaxHeap = 0;
 static uint32_t s_lastHeap = 0;
-int connectRetries = 0;
 
 void ControllerNetwork::end()
 {
@@ -71,7 +72,7 @@ conn_types_t ControllerNetwork::preferredConnType()
     }
 }
 
-void ControllerNetwork ::loop()
+void ControllerNetwork::loop()
 {
     // ORDER OF OPERATIONS:
     // ----------------------------------------------
@@ -108,12 +109,12 @@ void ControllerNetwork ::loop()
                 if (this->getStrongestAP(settings.WIFI.ssid, bssid, &channel)) {
                     if (!WiFi.BSSID() || memcmp(bssid, WiFi.BSSID(), sizeof(bssid)) != 0) {
                         if (!this->connected()) {
-                            ESP_LOGI(s_TAG, "Connecting to AP %02X:%02X:%02X:%02X:%02X:%02X CH: %ld", bssid[0], bssid[1],
-                                     bssid[2], bssid[3], bssid[4], bssid[5], channel);
+                            ESP_LOGI(s_TAG, "Connecting to AP %02X:%02X:%02X:%02X:%02X:%02X CH: %ld", bssid[0],
+                                     bssid[1], bssid[2], bssid[3], bssid[4], bssid[5], channel);
                             this->connectWiFi(bssid, channel);
                         } else {
-                            ESP_LOGI(s_TAG, "Found stronger AP %02X:%02X:%02X:%02X:%02X:%02X CH: %ld", bssid[0], bssid[1],
-                                     bssid[2], bssid[3], bssid[4], bssid[5], channel);
+                            ESP_LOGI(s_TAG, "Found stronger AP %02X:%02X:%02X:%02X:%02X:%02X CH: %ld", bssid[0],
+                                     bssid[1], bssid[2], bssid[3], bssid[4], bssid[5], channel);
                             this->changeAP(bssid, channel);
                         }
                     }
@@ -226,11 +227,11 @@ void ControllerNetwork::emitSockets(uint8_t num)
     }
     this->emitHeap(num);
 }
+
 void ControllerNetwork::setConnected(conn_types_t connType)
 {
     this->connType = connType;
     this->connectTime = millis();
-    connectRetries = 0;
     ESP_LOGI(s_TAG, "Setting connected...");
     if (this->connType == conn_types_t::wifi) {
         if (this->softAPOpened && WiFi.softAPgetStationNum() == 0) {

@@ -1,7 +1,6 @@
 // WebSettings.cpp — Web handler implementations for device configuration.
 //
 // Exposes the HTTP API surface for reading and writing all persistent settings:
-//   - Security / authentication (handleGetSecurity, handleSaveSecurity)
 //   - Radio / transceiver configuration (handleGetRadio, handleSaveRadio)
 //   - General device settings (handleSetGeneral)
 //   - Network settings and Wi-Fi connection (handleSetNetwork, handleSetIP, handleConnectWifi, handleNetworkSettings)
@@ -9,9 +8,11 @@
 //   - Module-level settings (handleModuleSettings)
 //   - OTA release listing and firmware download queuing (handleGetReleases, handleCancelFirmware)
 
+#include "WebSettings.h"
+
+#include <esp_log.h>
 #include <WiFi.h>
 #include <WebServer.h>
-#include <esp_log.h>
 #include "ConfigSettings.h"
 #include "Utils.h"
 #include "SomfyShadeController.h"
@@ -25,93 +26,73 @@
 extern ConfigSettings settings;
 extern rebootDelay_t rebootDelay;
 extern SomfyShadeController somfy;
-extern Web webServer;
 extern MQTTClass mqtt;
 extern GitUpdater git;
 extern ControllerNetwork net;
 
-#define WEB_MAX_RESPONSE 4096
-extern char g_content[WEB_MAX_RESPONSE];
-extern const char g_encoding_html[];
-extern const char g_encoding_json[];
-
 static const char *s_TAG = "WebSettings";
+
+void WebSettings::begin()
+{
+    registerHandler("/getReleases", [this]() { handleGetReleases(server); });
+    registerHandler("/cancelFirmware", [this]() { handleCancelFirmware(server); });
+    registerHandler("/saveRadio", [this]() { handleSaveRadio(server); });
+    registerHandler("/getRadio", [this]() { handleGetRadio(server); });
+    registerHandler("/setgeneral", [this]() { handleSetGeneral(server); });
+    registerHandler("/setNetwork", [this]() { handleSetNetwork(server); });
+    registerHandler("/setIP", [this]() { handleSetIP(server); });
+    registerHandler("/connectwifi", [this]() { handleConnectWifi(server); });
+    registerHandler("/modulesettings", [this]() { handleModuleSettings(server); });
+    registerHandler("/networksettings", [this]() { handleNetworkSettings(server); });
+    registerHandler("/connectmqtt", [this]() { handleConnectMQTT(server); });
+    registerHandler("/mqttsettings", [this]() { handleMQTTSettings(server); });
+}
+
+void WebSettings::end()
+{
+    // WebServer exposes no per-route removal; nothing to release.
+}
 
 // ============================================================
 // Settings handlers
 // ============================================================
-void Web::handleGetReleases(WebServer &server)
+void WebSettings::handleGetReleases(WebServer &server)
 {
     GitRepo repo;
     repo.getReleases();
     git.setCurrentRelease(repo);
     JsonResponse resp;
-    resp.beginResponse(&server, g_content, sizeof(g_content));
+    resp.beginResponse(&server, content, sizeof(content));
     resp.beginObject();
     repo.toJSON(resp);
     resp.endObject();
     resp.endResponse();
 }
-void Web::handleCancelFirmware(WebServer &server)
+void WebSettings::handleCancelFirmware(WebServer &server)
 {
     // If we are currently downloading the filesystem we cannot cancel.
     if (!git.lockFS) {
         git.status = GIT_UPDATE_CANCELLING;
         JsonResponse resp;
-        resp.beginResponse(&server, g_content, sizeof(g_content));
+        resp.beginResponse(&server, content, sizeof(content));
         resp.beginObject();
         git.toJSON(resp);
         resp.endObject();
         resp.endResponse();
         git.cancelled = true;
     } else {
-        server.send(500, g_encoding_json,
+        server.send(500, ENCODING_JSON,
                     F("{\"status\":\"ERROR\",\"desc\":\"Cannot cancel during filesystem update.\"}"));
     }
 }
-void Web::handleSaveSecurity(WebServer &server)
+void WebSettings::handleSaveRadio(WebServer &server)
 {
     JsonDocument doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
     if (err) {
         ESP_LOGE(s_TAG, "Error parsing JSON %s", err.c_str());
         String msg = err.c_str();
-        server.send(400, g_encoding_html, "Error parsing JSON body<br>" + msg);
-    } else {
-        JsonObject obj = doc.as<JsonObject>();
-        HTTPMethod method = server.method();
-        if (method == HTTP_POST || method == HTTP_PUT) {
-            settings.Security.fromJSON(obj);
-            settings.Security.save();
-            char token[65];
-            webServer.createAPIToken(server.client().remoteIP(), token);
-            obj["apiKey"] = token;
-            JsonDocument sdoc;
-            JsonObject sobj = sdoc.to<JsonObject>();
-            settings.Security.toJSON(sobj);
-            serializeJson(sdoc, g_content);
-            server.send(200, g_encoding_json, g_content);
-        } else {
-            server.send(201, "application/json", "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
-        }
-    }
-}
-void Web::handleGetSecurity(WebServer &server)
-{
-    JsonDocument doc;
-    JsonObject obj = doc.to<JsonObject>();
-    settings.Security.toJSON(obj);
-    serializeJson(doc, g_content);
-    server.send(200, g_encoding_json, g_content);
-}
-void Web::handleSaveRadio(WebServer &server)
-{
-    JsonDocument doc;
-    DeserializationError err = deserializeJson(doc, server.arg("plain"));
-    if (err) {
-        ESP_LOGE(s_TAG, "Error parsing JSON %s", err.c_str());
-        String msg = err.c_str();
-        server.send(400, g_encoding_html, "Error parsing JSON body<br>" + msg);
+        server.send(400, ENCODING_HTML, "Error parsing JSON body<br>" + msg);
     } else {
         JsonObject obj = doc.as<JsonObject>();
         HTTPMethod method = server.method();
@@ -119,7 +100,7 @@ void Web::handleSaveRadio(WebServer &server)
             somfy.transceiver.fromJSON(obj);
             somfy.transceiver.save();
             JsonResponse resp;
-            resp.beginResponse(&server, g_content, sizeof(g_content));
+            resp.beginResponse(&server, content, sizeof(content));
             resp.beginObject();
             somfy.transceiver.toJSON(resp);
             resp.endObject();
@@ -129,16 +110,16 @@ void Web::handleSaveRadio(WebServer &server)
         }
     }
 }
-void Web::handleGetRadio(WebServer &server)
+void WebSettings::handleGetRadio(WebServer &server)
 {
     JsonResponse resp;
-    resp.beginResponse(&server, g_content, sizeof(g_content));
+    resp.beginResponse(&server, content, sizeof(content));
     resp.beginObject();
     somfy.transceiver.toJSON(resp);
     resp.endObject();
     resp.endResponse();
 }
-void Web::handleSetGeneral(WebServer &server)
+void WebSettings::handleSetGeneral(WebServer &server)
 {
     ESP_LOGI(s_TAG, "Plain: %d %s", server.method(), server.arg("plain").c_str());
     JsonDocument doc;
@@ -162,14 +143,14 @@ void Web::handleSetGeneral(WebServer &server)
         server.send(201, "application/json", "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
     }
 }
-void Web::handleSetNetwork(WebServer &server)
+void WebSettings::handleSetNetwork(WebServer &server)
 {
     JsonDocument doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
     if (err) {
         ESP_LOGE(s_TAG, "Error parsing JSON %s", err.c_str());
         String msg = err.c_str();
-        server.send(400, g_encoding_html, "Error parsing JSON body<br>" + msg);
+        server.send(400, ENCODING_HTML, "Error parsing JSON body<br>" + msg);
     } else {
         JsonObject obj = doc.as<JsonObject>();
         HTTPMethod method = server.method();
@@ -214,7 +195,7 @@ void Web::handleSetNetwork(WebServer &server)
         }
     }
 }
-void Web::handleSetIP(WebServer &server)
+void WebSettings::handleSetIP(WebServer &server)
 {
     ESP_LOGI(s_TAG, "Setting IP...");
     JsonDocument doc;
@@ -226,10 +207,10 @@ void Web::handleSetIP(WebServer &server)
         settings.IP.save();
         server.send(200, "application/json", "{\"status\":\"OK\",\"desc\":\"Successfully set Network Settings\"}");
     } else {
-        server.send(201, g_encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
+        server.send(201, ENCODING_JSON, "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
     }
 }
-void Web::handleConnectWifi(WebServer &server)
+void WebSettings::handleConnectWifi(WebServer &server)
 {
     ESP_LOGI(s_TAG, "Settings WIFI connection...");
     JsonDocument doc;
@@ -245,13 +226,13 @@ void Web::handleConnectWifi(WebServer &server)
         if (ssid.compareTo(settings.WIFI.ssid) != 0) reboot = true;
         if (passphrase.compareTo(settings.WIFI.passphrase) != 0) reboot = true;
         if (!settings.WIFI.ssidExists(ssid.c_str()) && ssid.length() > 0) {
-            server.send(400, g_encoding_json, "{\"status\":\"ERROR\",\"desc\":\"WiFi Network Does not exist\"}");
+            server.send(400, ENCODING_JSON, "{\"status\":\"ERROR\",\"desc\":\"WiFi Network Does not exist\"}");
         } else {
             SETCHARPROP(settings.WIFI.ssid, ssid.c_str(), sizeof(settings.WIFI.ssid));
             SETCHARPROP(settings.WIFI.passphrase, passphrase.c_str(), sizeof(settings.WIFI.passphrase));
             settings.WIFI.save();
             settings.WIFI.print();
-            server.send(201, g_encoding_json, "{\"status\":\"OK\",\"desc\":\"Successfully set server connection\"}");
+            server.send(201, ENCODING_JSON, "{\"status\":\"OK\",\"desc\":\"Successfully set server connection\"}");
             if (reboot) {
                 ESP_LOGI(s_TAG, "Rebooting ESP for new WiFi settings...");
                 rebootDelay.reboot = true;
@@ -259,13 +240,13 @@ void Web::handleConnectWifi(WebServer &server)
             }
         }
     } else {
-        server.send(201, g_encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
+        server.send(201, ENCODING_JSON, "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
     }
 }
-void Web::handleModuleSettings(WebServer &server)
+void WebSettings::handleModuleSettings(WebServer &server)
 {
     JsonResponse resp;
-    resp.beginResponse(&server, g_content, sizeof(g_content));
+    resp.beginResponse(&server, content, sizeof(content));
     resp.beginObject();
     resp.addElem("fwVersion", settings.fwVersion.name);
     resp.addElem("buildVersion", getBuildVersion());
@@ -275,10 +256,10 @@ void Web::handleModuleSettings(WebServer &server)
     resp.endObject();
     resp.endResponse();
 }
-void Web::handleNetworkSettings(WebServer &server)
+void WebSettings::handleNetworkSettings(WebServer &server)
 {
     JsonResponse resp;
-    resp.beginResponse(&server, g_content, sizeof(g_content));
+    resp.beginResponse(&server, content, sizeof(content));
     resp.beginObject();
     settings.toJSON(resp);
     resp.addElem("fwVersion", settings.fwVersion.name);
@@ -295,7 +276,7 @@ void Web::handleNetworkSettings(WebServer &server)
     resp.endObject();
     resp.endResponse();
 }
-void Web::handleConnectMQTT(WebServer &server)
+void WebSettings::handleConnectMQTT(WebServer &server)
 {
     JsonDocument doc;
     JsonObject obj;
@@ -307,7 +288,7 @@ void Web::handleConnectMQTT(WebServer &server)
         settings.MQTT.fromJSON(obj);
         settings.MQTT.save();
         JsonResponse resp;
-        resp.beginResponse(&server, g_content, sizeof(g_content));
+        resp.beginResponse(&server, content, sizeof(content));
         resp.beginObject();
         settings.MQTT.toJSON(resp);
         resp.endObject();
@@ -316,10 +297,10 @@ void Web::handleConnectMQTT(WebServer &server)
         server.send(201, "application/json", "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
     }
 }
-void Web::handleMQTTSettings(WebServer &server)
+void WebSettings::handleMQTTSettings(WebServer &server)
 {
     JsonResponse resp;
-    resp.beginResponse(&server, g_content, sizeof(g_content));
+    resp.beginResponse(&server, content, sizeof(content));
     resp.beginObject();
     settings.MQTT.toJSON(resp);
     resp.endObject();

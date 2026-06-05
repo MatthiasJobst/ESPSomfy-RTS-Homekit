@@ -9,46 +9,75 @@
 //   - Pairing/unpairing with the motor (handleSetPaired, handleUnpairShade)
 //   - Linking and unlinking hardware repeaters (handleLinkRepeater, handleUnlinkRepeater)
 //   - Linking and unlinking physical remotes (handleLinkRemote, handleUnlinkRemote)
+//   - Next available shade ID scaffold (handleGetNextShade)
+//   - Persisting shade sort order (handleShadeSortOrder)
 
-#include <WebServer.h>
+#include "WebShades.h"
+
 #include <esp_log.h>
-#include "ConfigSettings.h"
+#include <WebServer.h>
 #include "Utils.h"
 #include "SomfyShadeController.h"
 #include "WResp.h"
 #include "Web.h"
 #include "WebHelpers.h"
 
-extern ConfigSettings settings;
 extern SomfyShadeController somfy;
-extern Web webServer;
-
-#define WEB_MAX_RESPONSE 4096
-extern char g_content[WEB_MAX_RESPONSE];
-extern const char g_encoding_text[];
-extern const char g_encoding_json[];
-extern const char g_response_404[];
 
 static const char *s_TAG = "WebShades";
 
+void WebShades::begin()
+{
+    // REST API routes
+    registerApiHandler("/shades", [this]() { handleGetShades(apiServer); });
+    registerApiHandler("/shade", HTTP_GET, [this]() { handleShade(apiServer); });
+    registerApiHandler("/shadeCommand", [this]() { handleShadeCommand(apiServer); });
+    registerApiHandler("/tiltCommand", [this]() { handleTiltCommand(apiServer); });
+    registerApiHandler("/setPositions", [this]() { handleSetPositions(apiServer); });
+    // Web UI routes
+    registerHandler("/shades", [this]() { handleGetShades(server); });
+    registerHandler("/shade", [this]() { handleShade(server); });
+    registerHandler("/shadeCommand", [this]() { handleShadeCommand(server); });
+    registerHandler("/tiltCommand", [this]() { handleTiltCommand(server); });
+    registerHandler("/setPositions", [this]() { handleSetPositions(server); });
+    registerHandler("/getNextShade", [this]() { handleGetNextShade(server); });
+    registerHandler("/shadeSortOrder", [this]() { handleShadeSortOrder(server); });
+    registerHandler("/addShade", [this]() { handleAddShade(server); });
+    registerHandler("/saveShade", [this]() { handleSaveShade(server); });
+    registerHandler("/deleteShade", [this]() { handleDeleteShade(server); });
+    registerHandler("/setMyPosition", [this]() { handleSetMyPosition(server); });
+    registerHandler("/setRollingCode", [this]() { handleSetRollingCode(server); });
+    registerHandler("/setPaired", [this]() { handleSetPaired(server); });
+    registerHandler("/unpairShade", [this]() { handleUnpairShade(server); });
+    registerHandler("/linkRepeater", [this]() { handleLinkRepeater(server); });
+    registerHandler("/unlinkRepeater", [this]() { handleUnlinkRepeater(server); });
+    registerHandler("/linkRemote", [this]() { handleLinkRemote(server); });
+    registerHandler("/unlinkRemote", [this]() { handleUnlinkRemote(server); });
+}
+
+void WebShades::end()
+{
+    // WebServer exposes no per-route removal; nothing to release.
+}
+
 // ---------------------------------------------------------------------------
-// File-local helpers — shared by all handlers in this translation unit
+// Private helpers — shared by the handlers in this module (declared in WebShades.h)
 // ---------------------------------------------------------------------------
 
 // Look up a shade by id. Sends a 500 error and returns nullptr if not found.
-static SomfyShade *requireShade(WebServer &server, uint8_t shadeId)
+SomfyShade *WebShades::requireShade(WebServer &server, uint8_t shadeId)
 {
     SomfyShade *shade = somfy.getShadeById(shadeId);
-    if (!shade) server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Shade not found.\"}"));
+    if (!shade) server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Shade not found.\"}"));
     return shade;
 }
 
 // Send the shade's JSON state as the HTTP response.
 // Pass ref=true to use toJSONRef() (minimal reference fields) instead of toJSON().
-static void sendShadeJSON(WebServer &server, SomfyShade *shade, bool ref = false)
+void WebShades::sendShadeJSON(WebServer &server, SomfyShade *shade, bool ref)
 {
     JsonResponse resp;
-    resp.beginResponse(&server, g_content, sizeof(g_content));
+    resp.beginResponse(&server, content, sizeof(content));
     resp.beginObject();
     if (ref)
         shade->toJSONRef(resp);
@@ -60,21 +89,21 @@ static void sendShadeJSON(WebServer &server, SomfyShade *shade, bool ref = false
 
 // ---------------------------------------------------------------------------
 
-void Web::handleGetShades(WebServer &server)
+void WebShades::handleGetShades(WebServer &server)
 {
     HTTPMethod method = server.method();
     if (method == HTTP_POST || method == HTTP_GET) {
         JsonResponse resp;
-        resp.beginResponse(&server, g_content, sizeof(g_content));
+        resp.beginResponse(&server, content, sizeof(content));
         resp.beginArray();
         somfy.toJSONShades(resp);
         resp.endArray();
         resp.endResponse();
     } else
-        server.send(404, g_encoding_text, g_response_404);
+        server.send(404, ENCODING_TEXT, RESPONSE_404);
 }
 
-void Web::handleShadeCommand(WebServer &server)
+void WebShades::handleShadeCommand(WebServer &server)
 {
     if (server.method() == HTTP_OPTIONS) {
         server.send(200, "OK");
@@ -103,7 +132,7 @@ void Web::handleShadeCommand(WebServer &server)
             if (obj.containsKey("shadeId"))
                 shadeId = obj["shadeId"];
             else
-                server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No shade id was supplied.\"}"));
+                server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade id was supplied.\"}"));
             if (obj.containsKey("command")) {
                 String scmd = obj["command"];
                 command = translateSomfyCommand(scmd);
@@ -112,7 +141,7 @@ void Web::handleShadeCommand(WebServer &server)
             if (obj.containsKey("repeat")) repeat = obj["repeat"].as<uint8_t>();
             if (obj.containsKey("stepSize")) stepSize = obj["stepSize"].as<uint8_t>();
         } else
-            server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No shade object supplied.\"}"));
+            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade object supplied.\"}"));
         SomfyShade *shade = requireShade(server, shadeId);
         if (shade) {
             ESP_LOGI(s_TAG, "Received: %s", server.arg("plain").c_str());
@@ -123,10 +152,10 @@ void Web::handleShadeCommand(WebServer &server)
             sendShadeJSON(server, shade, true);
         }
     } else
-        server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
+        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
 }
 
-void Web::handleTiltCommand(WebServer &server)
+void WebShades::handleTiltCommand(WebServer &server)
 {
     HTTPMethod method = server.method();
     uint8_t shadeId = 255;
@@ -147,14 +176,14 @@ void Web::handleTiltCommand(WebServer &server)
             if (obj.containsKey("shadeId"))
                 shadeId = obj["shadeId"];
             else
-                server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No shade id was supplied.\"}"));
+                server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade id was supplied.\"}"));
             if (obj.containsKey("command")) {
                 String scmd = obj["command"];
                 command = translateSomfyCommand(scmd);
             } else if (obj.containsKey("target"))
                 target = obj["target"].as<uint8_t>();
         } else
-            server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No shade object supplied.\"}"));
+            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade object supplied.\"}"));
         SomfyShade *shade = requireShade(server, shadeId);
         if (shade) {
             ESP_LOGI(s_TAG, "Received: %s", server.arg("plain").c_str());
@@ -165,24 +194,24 @@ void Web::handleTiltCommand(WebServer &server)
             sendShadeJSON(server, shade, true);
         }
     } else
-        server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
+        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
 }
 
-void Web::handleShade(WebServer &server)
+void WebShades::handleShade(WebServer &server)
 {
     if (server.method() == HTTP_GET) {
         if (server.hasArg("shadeId")) {
             SomfyShade *shade = requireShade(server, atoi(server.arg("shadeId").c_str()));
             if (shade) sendShadeJSON(server, shade);
         } else {
-            server.send(500, g_encoding_json,
+            server.send(500, ENCODING_JSON,
                         F("{\"status\":\"ERROR\",\"desc\":\"You must supply a valid shade id.\"}"));
         }
     } else
-        server.send(404, g_encoding_text, g_response_404);
+        server.send(404, ENCODING_TEXT, RESPONSE_404);
 }
 
-void Web::handleSetPositions(WebServer &server)
+void WebShades::handleSetPositions(WebServer &server)
 {
     uint8_t shadeId = (server.hasArg("shadeId")) ? atoi(server.arg("shadeId").c_str()) : 255;
     int8_t pos = (server.hasArg("position")) ? static_cast<int8_t>(atoi(server.arg("position").c_str())) : int8_t{-1};
@@ -206,11 +235,53 @@ void Web::handleSetPositions(WebServer &server)
             sendShadeJSON(server, shade);
         }
     } else {
-        server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"shadeId was not provided\"}"));
+        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"shadeId was not provided\"}"));
     }
 }
 
-void Web::handleAddShade(WebServer &server)
+void WebShades::handleGetNextShade(WebServer &server)
+{
+    uint8_t shadeId = somfy.getNextShadeId();
+    JsonResponse resp;
+    resp.beginResponse(&server, content, sizeof(content));
+    resp.beginObject();
+    resp.addElem("shadeId", shadeId);
+    resp.addElem("remoteAddress", (uint32_t)somfy.getNextRemoteAddress(shadeId));
+    resp.addElem("bitLength", somfy.transceiver.config.type);
+    resp.addElem("stepSize", (uint8_t)100);
+    resp.addElem("proto", static_cast<uint8_t>(somfy.transceiver.config.proto));
+    resp.endObject();
+    resp.endResponse();
+}
+
+void WebShades::handleShadeSortOrder(WebServer &server)
+{
+    JsonDocument doc;
+    ESP_LOGI(s_TAG, "Plain: %s", server.arg("plain").c_str());
+    DeserializationError err = deserializeJson(doc, server.arg("plain"));
+    if (err) {
+        sendDeserializationError(server, err);
+        return;
+    } else {
+        JsonArray arr = doc.as<JsonArray>();
+        HTTPMethod method = server.method();
+        if (method == HTTP_POST || method == HTTP_PUT) {
+            uint8_t order = 0;
+            for (JsonVariant v : arr) {
+                uint8_t shadeId = v.as<uint8_t>();
+                if (shadeId != 255) {
+                    SomfyShade *shade = somfy.getShadeById(shadeId);
+                    if (shade) shade->sortOrder = order++;
+                }
+            }
+            server.send(200, "application/json", "{\"status\":\"OK\",\"desc\":\"Successfully set shade order\"}");
+        } else {
+            server.send(201, "application/json", "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
+        }
+    }
+}
+
+void WebShades::handleAddShade(WebServer &server)
 {
     HTTPMethod method = server.method();
     SomfyShade *shade = nullptr;
@@ -221,24 +292,24 @@ void Web::handleAddShade(WebServer &server)
         if (!parseBody(server, doc, obj)) return;
         ESP_LOGI(s_TAG, "Counting shades");
         if (somfy.shadeCount() > SOMFY_MAX_SHADES) {
-            server.send(500, g_encoding_json,
+            server.send(500, ENCODING_JSON,
                         F("{\"status\":\"ERROR\",\"desc\":\"Maximum number of shades exceeded.\"}"));
             return;
         }
         ESP_LOGI(s_TAG, "Adding shade");
         shade = somfy.addShade(obj);
         if (!shade) {
-            server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Error adding shade.\"}"));
+            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Error adding shade.\"}"));
             return;
         }
     }
     if (shade)
         sendShadeJSON(server, shade);
     else
-        server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Error saving Somfy Shade.\"}"));
+        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Error saving Somfy Shade.\"}"));
 }
 
-void Web::handleSaveShade(WebServer &server)
+void WebShades::handleSaveShade(WebServer &server)
 {
     HTTPMethod method = server.method();
     if (method == HTTP_PUT || method == HTTP_POST) {
@@ -255,19 +326,19 @@ void Web::handleSaveShade(WebServer &server)
                         shade->save();
                         sendShadeJSON(server, shade);
                     } else {
-                        snprintf(g_content, sizeof(g_content),
+                        snprintf(content, sizeof(content),
                                  "{\"status\":\"DATA\",\"desc\":\"Data Error.\", \"code\":%d}", err);
-                        server.send(500, g_encoding_json, g_content);
+                        server.send(500, ENCODING_JSON, content);
                     }
                 }
             } else
-                server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No shade id was supplied.\"}"));
+                server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade id was supplied.\"}"));
         } else
-            server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No shade object supplied.\"}"));
+            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade object supplied.\"}"));
     }
 }
 
-void Web::handleDeleteShade(WebServer &server)
+void WebShades::handleDeleteShade(WebServer &server)
 {
     HTTPMethod method = server.method();
     uint8_t shadeId = 255;
@@ -282,22 +353,22 @@ void Web::handleDeleteShade(WebServer &server)
             if (obj.containsKey("shadeId"))
                 shadeId = obj["shadeId"];
             else
-                server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No shade id was supplied.\"}"));
+                server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade id was supplied.\"}"));
         } else
-            server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No shade object supplied.\"}"));
+            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade object supplied.\"}"));
     }
     SomfyShade *shade = requireShade(server, shadeId);
     if (!shade) return;
     if (shade->isInGroup())
-        server.send(400, g_encoding_json,
+        server.send(400, ENCODING_JSON,
                     F("{\"status\":\"ERROR\",\"desc\":\"This shade is a member of a group and cannot be deleted.\"}"));
     else {
         somfy.deleteShade(shadeId);
-        server.send(200, g_encoding_json, F("{\"status\":\"SUCCESS\",\"desc\":\"Shade deleted.\"}"));
+        server.send(200, ENCODING_JSON, F("{\"status\":\"SUCCESS\",\"desc\":\"Shade deleted.\"}"));
     }
 }
 
-void Web::handleSetMyPosition(WebServer &server)
+void WebShades::handleSetMyPosition(WebServer &server)
 {
     HTTPMethod method = server.method();
     uint8_t shadeId = 255;
@@ -315,11 +386,11 @@ void Web::handleSetMyPosition(WebServer &server)
             if (obj.containsKey("shadeId"))
                 shadeId = obj["shadeId"];
             else
-                server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No shade id was supplied.\"}"));
+                server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade id was supplied.\"}"));
             if (obj.containsKey("pos")) pos = obj["pos"].as<int8_t>();
             if (obj.containsKey("tilt")) tilt = obj["tilt"].as<int8_t>();
         } else
-            server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No shade object supplied.\"}"));
+            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade object supplied.\"}"));
         SomfyShade *shade = requireShade(server, shadeId);
         if (shade) {
             if (tilt < 0) tilt = static_cast<int8_t>(shade->getMyPos());
@@ -329,10 +400,10 @@ void Web::handleSetMyPosition(WebServer &server)
             sendShadeJSON(server, shade, true);
         }
     } else
-        server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
+        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
 }
 
-void Web::handleSetRollingCode(WebServer &server)
+void WebShades::handleSetRollingCode(WebServer &server)
 {
     HTTPMethod method = server.method();
     if (method == HTTP_PUT || method == HTTP_POST) {
@@ -356,7 +427,7 @@ void Web::handleSetRollingCode(WebServer &server)
     }
 }
 
-void Web::handleSetPaired(WebServer &server)
+void WebShades::handleSetPaired(WebServer &server)
 {
     uint8_t shadeId = 255;
     bool paired = false;
@@ -377,7 +448,7 @@ void Web::handleSetPaired(WebServer &server)
     }
 }
 
-void Web::handleUnpairShade(WebServer &server)
+void WebShades::handleUnpairShade(WebServer &server)
 {
     HTTPMethod method = server.method();
     if (method == HTTP_PUT || method == HTTP_POST) {
@@ -399,7 +470,7 @@ void Web::handleUnpairShade(WebServer &server)
     }
 }
 
-static void repeaterLinkOp(WebServer &server, bool link)
+void WebShades::repeaterLinkOp(WebServer &server, bool link)
 {
     HTTPMethod method = server.method();
     if (method == HTTP_PUT || method == HTTP_POST) {
@@ -416,7 +487,7 @@ static void repeaterLinkOp(WebServer &server, bool link)
         } else if (server.hasArg("address"))
             address = atoi(server.arg("address").c_str());
         if (address == 0)
-            server.send(500, g_encoding_json,
+            server.send(500, ENCODING_JSON,
                         F("{\"status\":\"ERROR\",\"desc\":\"No repeater address was supplied.\"}"));
         else {
             if (link)
@@ -424,7 +495,7 @@ static void repeaterLinkOp(WebServer &server, bool link)
             else
                 somfy.unlinkRepeater(address);
             JsonResponse resp;
-            resp.beginResponse(&server, g_content, sizeof(g_content));
+            resp.beginResponse(&server, content, sizeof(content));
             resp.beginArray();
             somfy.toJSONRepeaters(resp);
             resp.endArray();
@@ -433,17 +504,17 @@ static void repeaterLinkOp(WebServer &server, bool link)
     }
 }
 
-void Web::handleLinkRepeater(WebServer &server)
+void WebShades::handleLinkRepeater(WebServer &server)
 {
     repeaterLinkOp(server, true);
 }
 
-void Web::handleUnlinkRepeater(WebServer &server)
+void WebShades::handleUnlinkRepeater(WebServer &server)
 {
     repeaterLinkOp(server, false);
 }
 
-static void remoteLinkOp(WebServer &server, bool link)
+void WebShades::remoteLinkOp(WebServer &server, bool link)
 {
     HTTPMethod method = server.method();
     if (method == HTTP_PUT || method == HTTP_POST) {
@@ -465,24 +536,24 @@ static void remoteLinkOp(WebServer &server, bool link)
                             shade->unlinkRemote(obj["remoteAddress"]);
                         }
                     } else {
-                        server.send(500, g_encoding_json,
+                        server.send(500, ENCODING_JSON,
                                     F("{\"status\":\"ERROR\",\"desc\":\"Remote address not provided.\"}"));
                     }
                     sendShadeJSON(server, shade);
                 }
             } else
-                server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No shade id was supplied.\"}"));
+                server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade id was supplied.\"}"));
         } else
-            server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No remote object supplied.\"}"));
+            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No remote object supplied.\"}"));
     }
 }
 
-void Web::handleLinkRemote(WebServer &server)
+void WebShades::handleLinkRemote(WebServer &server)
 {
     remoteLinkOp(server, true);
 }
 
-void Web::handleUnlinkRemote(WebServer &server)
+void WebShades::handleUnlinkRemote(WebServer &server)
 {
     remoteLinkOp(server, false);
 }

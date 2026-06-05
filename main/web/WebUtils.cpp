@@ -1,78 +1,46 @@
 // WebUtils.cpp — Web handler implementations for utility and scan operations.
 //
 // Miscellaneous endpoints that don't belong to a single domain:
-//   - Next available shade ID scaffold (handleGetNextShade)
-//   - Shade sort order persistence (handleShadeSortOrder)
 //   - Wi-Fi AP scanning (handleScanAPs)
 //   - Sending raw remote commands (handleSendRemoteCommand)
 //   - Frequency scan lifecycle (handleBeginFrequencyScan, handleEndFrequencyScan)
 //   - LittleFS filesystem recovery from GitHub (handleRecoverFilesystem)
 
+#include "WebUtils.h"
+
+#include <esp_log.h>
+#include <esp_task_wdt.h>
 #include <WiFi.h>
 #include <WebServer.h>
-#include <esp_task_wdt.h>
-#include <esp_log.h>
 #include "ConfigSettings.h"
 #include "Utils.h"
 #include "SomfyShadeController.h"
 #include "WResp.h"
 #include "Web.h"
+#include "WebHelpers.h"
 #include "GitOTA.h"
 
 extern ConfigSettings settings;
 extern SomfyShadeController somfy;
-extern Web webServer;
 extern GitUpdater git;
-
-#define WEB_MAX_RESPONSE 4096
-extern char g_content[WEB_MAX_RESPONSE];
-extern const char g_encoding_json[];
 
 static const char *s_TAG = "WebUtils";
 
-void Web::handleGetNextShade(WebServer &server)
+void WebUtils::begin()
 {
-    uint8_t shadeId = somfy.getNextShadeId();
-    JsonResponse resp;
-    resp.beginResponse(&server, g_content, sizeof(g_content));
-    resp.beginObject();
-    resp.addElem("shadeId", shadeId);
-    resp.addElem("remoteAddress", (uint32_t)somfy.getNextRemoteAddress(shadeId));
-    resp.addElem("bitLength", somfy.transceiver.config.type);
-    resp.addElem("stepSize", (uint8_t)100);
-    resp.addElem("proto", static_cast<uint8_t>(somfy.transceiver.config.proto));
-    resp.endObject();
-    resp.endResponse();
+    registerHandler("/scanaps", [this]() { handleScanAPs(server); });
+    registerHandler("/sendRemoteCommand", [this]() { handleSendRemoteCommand(server); });
+    registerHandler("/beginFrequencyScan", [this]() { handleBeginFrequencyScan(server); });
+    registerHandler("/endFrequencyScan", [this]() { handleEndFrequencyScan(server); });
+    registerHandler("/recoverFilesystem", [this]() { handleRecoverFilesystem(server); });
 }
 
-void Web::handleShadeSortOrder(WebServer &server)
+void WebUtils::end()
 {
-    JsonDocument doc;
-    ESP_LOGI(s_TAG, "Plain: %s", server.arg("plain").c_str());
-    DeserializationError err = deserializeJson(doc, server.arg("plain"));
-    if (err) {
-        webServer.handleDeserializationError(server, err);
-        return;
-    } else {
-        JsonArray arr = doc.as<JsonArray>();
-        HTTPMethod method = server.method();
-        if (method == HTTP_POST || method == HTTP_PUT) {
-            uint8_t order = 0;
-            for (JsonVariant v : arr) {
-                uint8_t shadeId = v.as<uint8_t>();
-                if (shadeId != 255) {
-                    SomfyShade *shade = somfy.getShadeById(shadeId);
-                    if (shade) shade->sortOrder = order++;
-                }
-            }
-            server.send(200, "application/json", "{\"status\":\"OK\",\"desc\":\"Successfully set shade order\"}");
-        } else {
-            server.send(201, "application/json", "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
-        }
-    }
+    // WebServer exposes no per-route removal; nothing to release.
 }
 
-void Web::handleScanAPs(WebServer &server)
+void WebUtils::handleScanAPs(WebServer &server)
 {
     esp_task_wdt_delete(NULL);
     if (WiFi.getMode() & WIFI_AP) WiFi.disconnect(false);
@@ -80,7 +48,7 @@ void Web::handleScanAPs(WebServer &server)
     esp_task_wdt_add(NULL);
     ESP_LOGI(s_TAG, "Scanned %d networks", n);
     JsonResponse resp;
-    resp.beginResponse(&server, g_content, sizeof(g_content));
+    resp.beginResponse(&server, content, sizeof(content));
     resp.beginObject();
     resp.beginObject("connected");
     resp.addElem("name", settings.WIFI.ssid);
@@ -103,7 +71,7 @@ void Web::handleScanAPs(WebServer &server)
     resp.endResponse();
 }
 
-void Web::handleSendRemoteCommand(WebServer &server)
+void WebUtils::handleSendRemoteCommand(WebServer &server)
 {
     HTTPMethod method = server.method();
     if (method == HTTP_GET || method == HTTP_PUT || method == HTTP_POST) {
@@ -119,7 +87,7 @@ void Web::handleSendRemoteCommand(WebServer &server)
             StaticJsonDocument<128> doc;
             DeserializationError err = deserializeJson(doc, server.arg("plain"));
             if (err) {
-                webServer.handleDeserializationError(server, err);
+                sendDeserializationError(server, err);
                 return;
             } else {
                 JsonObject obj = doc.as<JsonObject>();
@@ -134,36 +102,36 @@ void Web::handleSendRemoteCommand(WebServer &server)
         }
         if (frame.remoteAddress > 0 && frame.rollingCode > 0) {
             somfy.sendFrame(frame, repeats);
-            server.send(200, g_encoding_json, F("{\"status\":\"SUCCESS\",\"desc\":\"Command Sent\"}"));
+            server.send(200, ENCODING_JSON, F("{\"status\":\"SUCCESS\",\"desc\":\"Command Sent\"}"));
         } else
-            server.send(500, g_encoding_json,
+            server.send(500, ENCODING_JSON,
                         F("{\"status\":\"ERROR\",\"desc\":\"No address or rolling code provided\"}"));
     }
 }
 
-void Web::handleBeginFrequencyScan(WebServer &server)
+void WebUtils::handleBeginFrequencyScan(WebServer &server)
 {
     somfy.transceiver.beginFrequencyScan();
     JsonResponse resp;
-    resp.beginResponse(&server, g_content, sizeof(g_content));
+    resp.beginResponse(&server, content, sizeof(content));
     resp.beginObject();
     somfy.transceiver.toJSON(resp);
     resp.endObject();
     resp.endResponse();
 }
 
-void Web::handleEndFrequencyScan(WebServer &server)
+void WebUtils::handleEndFrequencyScan(WebServer &server)
 {
     somfy.transceiver.endFrequencyScan();
     JsonResponse resp;
-    resp.beginResponse(&server, g_content, sizeof(g_content));
+    resp.beginResponse(&server, content, sizeof(content));
     resp.beginObject();
     somfy.transceiver.toJSON(resp);
     resp.endObject();
     resp.endResponse();
 }
 
-void Web::handleRecoverFilesystem(WebServer &server)
+void WebUtils::handleRecoverFilesystem(WebServer &server)
 {
     if (git.status == GIT_UPDATING)
         server.send(200, "application/json",

@@ -7,7 +7,8 @@
 //   - Shade config migration (handleUpdateShadeConfig, handleUpdateShadeConfigUpload)
 //   - Application / filesystem update (handleUpdateApplication, handleUpdateApplicationUpload)
 
-#include "Web.h"
+#include "WebOTA.h"
+
 #include <esp_log.h>
 #include <esp_task_wdt.h>
 #include <LittleFS.h>
@@ -21,33 +22,53 @@
 #include "SomfyShadeController.h"
 #include "Utils.h"
 #include "WResp.h"
+#include "Web.h"
+#include "WebHelpers.h"
 
 extern ConfigSettings settings;
 extern SomfyShadeController somfy;
-extern Web webServer;
 extern GitUpdater git;
 extern rebootDelay_t rebootDelay;
 extern MQTTClass mqtt;
 
-#define WEB_MAX_RESPONSE 4096
-extern char g_content[WEB_MAX_RESPONSE];
-extern const char g_encoding_text[];
-extern const char g_encoding_json[];
-
 static const char *s_TAG = "WebOTA";
 
-void Web::handleDownloadFirmware(WebServer &server)
+void WebOTA::begin()
+{
+    // REST API routes
+    registerApiHandler("/downloadFirmware", [this]() { handleDownloadFirmware(apiServer); });
+    // Web UI routes
+    registerHandler("/downloadFirmware", [this]() { handleDownloadFirmware(server); });
+    registerHandler(
+        "/restore", HTTP_POST, [this]() { handleRestore(server); }, [this]() { handleRestoreUpload(server); });
+    registerHandler(
+        "/updateFirmware", HTTP_POST, [this]() { handleUpdateFirmware(server); },
+        [this]() { handleUpdateFirmwareUpload(server); });
+    registerHandler(
+        "/updateShadeConfig", HTTP_POST, [this]() { handleUpdateShadeConfig(server); },
+        [this]() { handleUpdateShadeConfigUpload(server); });
+    registerHandler(
+        "/updateApplication", HTTP_POST, [this]() { handleUpdateApplication(server); },
+        [this]() { handleUpdateApplicationUpload(server); });
+}
+
+void WebOTA::end()
+{
+    // WebServer exposes no per-route removal; nothing to release.
+}
+
+void WebOTA::handleDownloadFirmware(WebServer &server)
 {
     ESP_LOGI(s_TAG, "downloadFirmware called...");
     if (!server.hasArg("ver")) {
-        server.send(400, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Release version not supplied.\"}"));
+        server.send(400, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Release version not supplied.\"}"));
         return;
     }
     String ver = server.arg("ver");
     // The ver value comes from the dropdown which was populated by getReleases(),
     // so it is already a valid tag name (e.g. "v0.4.2") or "main".
     JsonResponse resp;
-    resp.beginResponse(&server, g_content, sizeof(g_content));
+    resp.beginResponse(&server, content, sizeof(content));
     resp.beginObject();
     resp.addElem("name", ver.c_str());
     resp.endObject();
@@ -56,19 +77,19 @@ void Web::handleDownloadFirmware(WebServer &server)
     git.status = GIT_AWAITING_UPDATE;
 }
 
-void Web::handleRestore(WebServer &server)
+void WebOTA::handleRestore(WebServer &server)
 {
     server.sendHeader("Connection", "close");
-    if (webServer.uploadSuccess) {
+    if (uploadSuccess) {
         ESP_LOGI(s_TAG, "Restoring Shade settings");
-        server.send(200, g_encoding_json, "{\"status\":\"Success\",\"desc\":\"Restoring Shade settings\"}");
+        server.send(200, ENCODING_JSON, "{\"status\":\"Success\",\"desc\":\"Restoring Shade settings\"}");
         restore_options_t opts;
         if (server.hasArg("data")) {
             ESP_LOGI(s_TAG, "Restore data: %s", server.arg("data").c_str());
             StaticJsonDocument<256> doc;
             DeserializationError err = deserializeJson(doc, server.arg("data"));
             if (err) {
-                webServer.handleDeserializationError(server, err);
+                sendDeserializationError(server, err);
                 return;
             } else {
                 JsonObject obj = doc.as<JsonObject>();
@@ -84,11 +105,11 @@ void Web::handleRestore(WebServer &server)
         rebootDelay.rebootTime = millis() + 1000;
     }
 }
-void Web::handleRestoreUpload(WebServer &server)
+void WebOTA::handleRestoreUpload(WebServer &server)
 {
     HTTPUpload &upload = server.upload();
     if (upload.status == UPLOAD_FILE_START) {
-        webServer.uploadSuccess = false;
+        uploadSuccess = false;
         ESP_LOGI(s_TAG, "Restore: %s", upload.filename.c_str());
         File fup = LittleFS.open("/shades.tmp", "w");
         fup.close();
@@ -97,23 +118,23 @@ void Web::handleRestoreUpload(WebServer &server)
         fup.write(upload.buf, upload.currentSize);
         fup.close();
     } else if (upload.status == UPLOAD_FILE_END) {
-        webServer.uploadSuccess = true;
+        uploadSuccess = true;
     }
 }
-void Web::handleUpdateFirmware(WebServer &server)
+void WebOTA::handleUpdateFirmware(WebServer &server)
 {
     if (Update.hasError())
-        server.send(500, g_encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Error updating firmware: \"}");
+        server.send(500, ENCODING_JSON, "{\"status\":\"ERROR\",\"desc\":\"Error updating firmware: \"}");
     else
-        server.send(200, g_encoding_json, "{\"status\":\"SUCCESS\",\"desc\":\"Successfully updated firmware\"}");
+        server.send(200, ENCODING_JSON, "{\"status\":\"SUCCESS\",\"desc\":\"Successfully updated firmware\"}");
     rebootDelay.reboot = true;
     rebootDelay.rebootTime = millis() + 500;
 }
-void Web::handleUpdateFirmwareUpload(WebServer &server)
+void WebOTA::handleUpdateFirmwareUpload(WebServer &server)
 {
     HTTPUpload &upload = server.upload();
     if (upload.status == UPLOAD_FILE_START) {
-        webServer.uploadSuccess = false;
+        uploadSuccess = false;
         ESP_LOGI(s_TAG, "Update: %s - %d", upload.filename.c_str(), upload.totalSize);
         if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
             Update.printError(Serial);
@@ -134,23 +155,23 @@ void Web::handleUpdateFirmwareUpload(WebServer &server)
     } else if (upload.status == UPLOAD_FILE_END) {
         if (Update.end(true)) {
             ESP_LOGI(s_TAG, "Update Success: %u\nRebooting...\n", upload.totalSize);
-            webServer.uploadSuccess = true;
+            uploadSuccess = true;
         } else {
             Update.printError(Serial);
             ESP_LOGE(s_TAG, "Update failed");
         }
     }
 }
-void Web::handleUpdateShadeConfig(WebServer &server)
+void WebOTA::handleUpdateShadeConfig(WebServer &server)
 {
     if (git.lockFS) {
-        server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Filesystem update in progress\"}"));
+        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Filesystem update in progress\"}"));
         return;
     }
     server.sendHeader("Connection", "close");
-    server.send(200, g_encoding_json, "{\"status\":\"ERROR\",\"desc\":\"Updating Shade Config: \"}");
+    server.send(200, ENCODING_JSON, "{\"status\":\"ERROR\",\"desc\":\"Updating Shade Config: \"}");
 }
-void Web::handleUpdateShadeConfigUpload(WebServer &server)
+void WebOTA::handleUpdateShadeConfigUpload(WebServer &server)
 {
     HTTPUpload &upload = server.upload();
     if (upload.status == UPLOAD_FILE_START) {
@@ -167,23 +188,23 @@ void Web::handleUpdateShadeConfigUpload(WebServer &server)
         somfy.loadShadesFile("/shades.tmp");
     }
 }
-void Web::handleUpdateApplication(WebServer &server)
+void WebOTA::handleUpdateApplication(WebServer &server)
 {
     server.sendHeader("Connection", "close");
     if (Update.hasError()) {
-        snprintf(g_content, sizeof(g_content), "{\"status\":\"ERROR\",\"desc\":\"%s\"}", Update.errorString());
-        server.send(500, g_encoding_json, g_content);
+        snprintf(content, sizeof(content), "{\"status\":\"ERROR\",\"desc\":\"%s\"}", Update.errorString());
+        server.send(500, ENCODING_JSON, content);
     } else {
-        server.send(200, g_encoding_json, "{\"status\":\"SUCCESS\",\"desc\":\"Successfully updated application\"}");
+        server.send(200, ENCODING_JSON, "{\"status\":\"SUCCESS\",\"desc\":\"Successfully updated application\"}");
         rebootDelay.reboot = true;
         rebootDelay.rebootTime = millis() + 500;
     }
 }
-void Web::handleUpdateApplicationUpload(WebServer &server)
+void WebOTA::handleUpdateApplicationUpload(WebServer &server)
 {
     HTTPUpload &upload = server.upload();
     if (upload.status == UPLOAD_FILE_START) {
-        webServer.uploadSuccess = false;
+        uploadSuccess = false;
         ESP_LOGI(s_TAG, "Update: %s %d", upload.filename.c_str(), upload.totalSize);
         somfy.commit();
         LittleFS.end();
@@ -205,7 +226,7 @@ void Web::handleUpdateApplicationUpload(WebServer &server)
         }
     } else if (upload.status == UPLOAD_FILE_END) {
         if (Update.end(true)) {
-            webServer.uploadSuccess = true;
+            uploadSuccess = true;
             ESP_LOGI(s_TAG, "Update Success: %u\nRebooting...\n", upload.totalSize);
         } else {
             Update.printError(Serial);

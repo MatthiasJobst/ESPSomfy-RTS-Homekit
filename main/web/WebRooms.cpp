@@ -7,40 +7,56 @@
 //   - Persisting room sort order (handleRoomSortOrder)
 //   - CRUD operations: add, save, delete (handleAddRoom, handleSaveRoom, handleDeleteRoom)
 
-#include <WebServer.h>
+#include "WebRooms.h"
+
 #include <esp_log.h>
+#include <WebServer.h>
 #include "ConfigSettings.h"
 #include "Utils.h"
 #include "SomfyShadeController.h"
 #include "WResp.h"
 #include "Web.h"
+#include "WebHelpers.h"
 
 extern SomfyShadeController somfy;
-extern Web webServer;
-
-#define WEB_MAX_RESPONSE 4096
-extern char g_content[WEB_MAX_RESPONSE];
-extern const char g_encoding_text[];
-extern const char g_encoding_json[];
-extern const char g_response_404[];
 
 static const char *s_TAG = "WebRooms";
 
-void Web::handleGetRooms(WebServer &server)
+void WebRooms::begin()
+{
+    // REST API routes
+    registerApiHandler("/rooms", [this]() { handleGetRooms(apiServer); });
+    registerApiHandler("/room", HTTP_GET, [this]() { handleRoom(apiServer); });
+    // Web UI routes
+    registerHandler("/rooms", [this]() { handleGetRooms(server); });
+    registerHandler("/room", [this]() { handleRoom(server); });
+    registerHandler("/getNextRoom", [this]() { handleGetNextRoom(server); });
+    registerHandler("/addRoom", [this]() { handleAddRoom(server); });
+    registerHandler("/saveRoom", [this]() { handleSaveRoom(server); });
+    registerHandler("/deleteRoom", [this]() { handleDeleteRoom(server); });
+    registerHandler("/roomSortOrder", [this]() { handleRoomSortOrder(server); });
+}
+
+void WebRooms::end()
+{
+    // WebServer exposes no per-route removal; nothing to release.
+}
+
+void WebRooms::handleGetRooms(WebServer &server)
 {
     HTTPMethod method = server.method();
     if (method == HTTP_POST || method == HTTP_GET) {
         JsonResponse resp;
-        resp.beginResponse(&server, g_content, sizeof(g_content));
+        resp.beginResponse(&server, content, sizeof(content));
         resp.beginArray();
         somfy.toJSONRooms(resp);
         resp.endArray();
         resp.endResponse();
     } else
-        server.send(404, g_encoding_text, g_response_404);
+        server.send(404, ENCODING_TEXT, RESPONSE_404);
 }
 
-void Web::handleRoom(WebServer &server)
+void WebRooms::handleRoom(WebServer &server)
 {
     HTTPMethod method = server.method();
     if (method == HTTP_GET) {
@@ -49,15 +65,15 @@ void Web::handleRoom(WebServer &server)
             SomfyRoom *room = somfy.getRoomById(roomId);
             if (room) {
                 JsonResponse resp;
-                resp.beginResponse(&server, g_content, sizeof(g_content));
+                resp.beginResponse(&server, content, sizeof(content));
                 resp.beginObject();
                 room->toJSON(resp);
                 resp.endObject();
                 resp.endResponse();
             } else
-                server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Room Id not found.\"}"));
+                server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Room Id not found.\"}"));
         } else {
-            server.send(500, g_encoding_json,
+            server.send(500, ENCODING_JSON,
                         F("{\"status\":\"ERROR\",\"desc\":\"You must supply a valid room id.\"}"));
         }
     } else if (method == HTTP_PUT || method == HTTP_POST) {
@@ -67,7 +83,7 @@ void Web::handleRoom(WebServer &server)
             JsonDocument doc;
             DeserializationError err = deserializeJson(doc, server.arg("plain"));
             if (err) {
-                this->handleDeserializationError(server, err);
+                sendDeserializationError(server, err);
                 return;
             } else {
                 JsonObject obj = doc.as<JsonObject>();
@@ -78,46 +94,46 @@ void Web::handleRoom(WebServer &server)
                         if (err == 0) {
                             room->save();
                             JsonResponse resp;
-                            resp.beginResponse(&server, g_content, sizeof(g_content));
+                            resp.beginResponse(&server, content, sizeof(content));
                             resp.beginObject();
                             room->toJSON(resp);
                             resp.endObject();
                             resp.endResponse();
                         } else {
-                            snprintf(g_content, sizeof(g_content),
+                            snprintf(content, sizeof(content),
                                      "{\"status\":\"DATA\",\"desc\":\"Data Error.\", \"code\":%d}", err);
-                            server.send(500, g_encoding_json, g_content);
+                            server.send(500, ENCODING_JSON, content);
                         }
                     } else
-                        server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Room Id not found.\"}"));
+                        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Room Id not found.\"}"));
                 } else
-                    server.send(500, g_encoding_json,
+                    server.send(500, ENCODING_JSON,
                                 F("{\"status\":\"ERROR\",\"desc\":\"No room id was supplied.\"}"));
             }
         } else
-            server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No room object supplied.\"}"));
+            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No room object supplied.\"}"));
     } else
-        server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
+        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
 }
 
-void Web::handleGetNextRoom(WebServer &server)
+void WebRooms::handleGetNextRoom(WebServer &server)
 {
     JsonResponse resp;
-    resp.beginResponse(&server, g_content, sizeof(g_content));
+    resp.beginResponse(&server, content, sizeof(content));
     resp.beginObject();
     resp.addElem("roomId", somfy.getNextRoomId());
     resp.endObject();
     resp.endResponse();
 }
 
-void Web::handleRoomSortOrder(WebServer &server)
+void WebRooms::handleRoomSortOrder(WebServer &server)
 {
     JsonDocument doc;
     ESP_LOGI(s_TAG, "Plain: %s", server.arg("plain").c_str());
     ESP_LOGI(s_TAG, "Method: %d", server.method());
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
     if (err) {
-        webServer.handleDeserializationError(server, err);
+        sendDeserializationError(server, err);
         return;
     } else {
         JsonArray arr = doc.as<JsonArray>();
@@ -138,7 +154,7 @@ void Web::handleRoomSortOrder(WebServer &server)
     }
 }
 
-void Web::handleAddRoom(WebServer &server)
+void WebRooms::handleAddRoom(WebServer &server)
 {
     HTTPMethod method = server.method();
     SomfyRoom *room = nullptr;
@@ -147,20 +163,20 @@ void Web::handleAddRoom(WebServer &server)
         JsonDocument doc;
         DeserializationError err = deserializeJson(doc, server.arg("plain"));
         if (err) {
-            webServer.handleDeserializationError(server, err);
+            sendDeserializationError(server, err);
             return;
         } else {
             JsonObject obj = doc.as<JsonObject>();
             ESP_LOGI(s_TAG, "Counting rooms");
             if (somfy.roomCount() > SOMFY_MAX_ROOMS) {
-                server.send(500, g_encoding_json,
+                server.send(500, ENCODING_JSON,
                             F("{\"status\":\"ERROR\",\"desc\":\"Maximum number of rooms exceeded.\"}"));
                 return;
             } else {
                 ESP_LOGI(s_TAG, "Adding room");
                 room = somfy.addRoom(obj);
                 if (!room) {
-                    server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Error adding room.\"}"));
+                    server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Error adding room.\"}"));
                     return;
                 }
             }
@@ -168,17 +184,17 @@ void Web::handleAddRoom(WebServer &server)
     }
     if (room) {
         JsonResponse resp;
-        resp.beginResponse(&server, g_content, sizeof(g_content));
+        resp.beginResponse(&server, content, sizeof(content));
         resp.beginObject();
         room->toJSON(resp);
         resp.endObject();
         resp.endResponse();
     } else {
-        server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Error saving Somfy Room.\"}"));
+        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Error saving Somfy Room.\"}"));
     }
 }
 
-void Web::handleSaveRoom(WebServer &server)
+void WebRooms::handleSaveRoom(WebServer &server)
 {
     HTTPMethod method = server.method();
     if (method == HTTP_PUT || method == HTTP_POST) {
@@ -187,7 +203,7 @@ void Web::handleSaveRoom(WebServer &server)
             JsonDocument doc;
             DeserializationError err = deserializeJson(doc, server.arg("plain"));
             if (err) {
-                webServer.handleDeserializationError(server, err);
+                sendDeserializationError(server, err);
                 return;
             } else {
                 JsonObject obj = doc.as<JsonObject>();
@@ -197,23 +213,23 @@ void Web::handleSaveRoom(WebServer &server)
                         room->fromJSON(obj);
                         room->save();
                         JsonResponse resp;
-                        resp.beginResponse(&server, g_content, sizeof(g_content));
+                        resp.beginResponse(&server, content, sizeof(content));
                         resp.beginObject();
                         room->toJSON(resp);
                         resp.endObject();
                         resp.endResponse();
                     } else
-                        server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"Room Id not found.\"}"));
+                        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Room Id not found.\"}"));
                 } else
-                    server.send(500, g_encoding_json,
+                    server.send(500, ENCODING_JSON,
                                 F("{\"status\":\"ERROR\",\"desc\":\"No room id was supplied.\"}"));
             }
         } else
-            server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No room object supplied.\"}"));
+            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No room object supplied.\"}"));
     }
 }
 
-void Web::handleDeleteRoom(WebServer &server)
+void WebRooms::handleDeleteRoom(WebServer &server)
 {
     HTTPMethod method = server.method();
     uint8_t roomId = 0;
@@ -225,25 +241,25 @@ void Web::handleDeleteRoom(WebServer &server)
             JsonDocument doc;
             DeserializationError err = deserializeJson(doc, server.arg("plain"));
             if (err) {
-                webServer.handleDeserializationError(server, err);
+                sendDeserializationError(server, err);
                 return;
             } else {
                 JsonObject obj = doc.as<JsonObject>();
                 if (obj.containsKey("roomId"))
                     roomId = obj["roomId"];
                 else
-                    server.send(500, g_encoding_json,
+                    server.send(500, ENCODING_JSON,
                                 F("{\"status\":\"ERROR\",\"desc\":\"No room id was supplied.\"}"));
             }
         } else
-            server.send(500, g_encoding_json, F("{\"status\":\"ERROR\",\"desc\":\"No room object supplied.\"}"));
+            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No room object supplied.\"}"));
     }
     SomfyRoom *room = somfy.getRoomById(roomId);
     if (!room)
-        server.send(500, g_encoding_json,
+        server.send(500, ENCODING_JSON,
                     F("{\"status\":\"ERROR\",\"desc\":\"Room with the specified id not found.\"}"));
     else {
         somfy.deleteRoom(roomId);
-        server.send(200, g_encoding_json, F("{\"status\":\"SUCCESS\",\"desc\":\"Room deleted.\"}"));
+        server.send(200, ENCODING_JSON, F("{\"status\":\"SUCCESS\",\"desc\":\"Room deleted.\"}"));
     }
 }
