@@ -2,7 +2,7 @@
 // WebSettings.h — HTTP handler module for device configuration.
 //
 // Concrete WebHandler owning the settings routes (radio, general, network/Wi-Fi,
-// MQTT, module, release listing). All routes are on the public HTTP server only.
+// MQTT, module). All routes are on the public HTTP server only.
 // begin() registers the routes; end() is a no-op (WebServer has no per-route
 // removal). Security/auth handlers stay in Web (they need the private API-token
 // helpers).
@@ -21,18 +21,6 @@ class WebSettings : public WebHandler {
     void end() override;
 
   private:
-    /**
-     * @brief List the available GitHub releases and current version.
-     * @param server The server the request arrived on.
-     */
-    void handleGetReleases(WebServer &server);
-
-    /**
-     * @brief Cancel an in-progress firmware download (not during FS update).
-     * @param server The server the request arrived on.
-     */
-    void handleCancelFirmware(WebServer &server);
-
     /**
      * @brief Save transceiver/radio configuration.
      * @param server The server the request arrived on.

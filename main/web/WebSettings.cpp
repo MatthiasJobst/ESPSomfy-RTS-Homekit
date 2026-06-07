@@ -21,6 +21,7 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include "ConfigSettings.h"
+#include "OtaService.h"
 #include "Utils.h"
 #include "SomfyShadeController.h"
 #include "Web.h"
@@ -33,15 +34,13 @@ extern ConfigSettings settings;
 extern rebootDelay_t rebootDelay;
 extern SomfyShadeController somfy;
 extern MQTTClass mqtt;
-extern GitUpdater git;
 extern ControllerNetwork net;
+extern OtaService ota;
 
 static const char *s_TAG = "WebSettings";
 
 void WebSettings::begin()
 {
-    registerHandler("/getReleases", [this]() { handleGetReleases(server); });
-    registerHandler("/cancelFirmware", [this]() { handleCancelFirmware(server); });
     registerHandler("/saveRadio", [this]() { handleSaveRadio(server); });
     registerHandler("/getRadio", [this]() { handleGetRadio(server); });
     registerHandler("/setgeneral", [this]() { handleSetGeneral(server); });
@@ -62,30 +61,6 @@ void WebSettings::end()
 // ============================================================
 // Settings handlers
 // ============================================================
-void WebSettings::handleGetReleases(WebServer &server)
-{
-    WebJsonResponder json(server);
-    GitRepo repo;
-    repo.getReleases();
-    git.setCurrentRelease(repo);
-    auto objJson = json.respondJson().object();
-    repo.toJSON(objJson);
-}
-void WebSettings::handleCancelFirmware(WebServer &server)
-{
-    WebJsonResponder json(server);
-    // If we are currently downloading the filesystem we cannot cancel.
-    if (!git.lockFS) {
-        git.status = GIT_UPDATE_CANCELLING;
-        {
-            auto objJson = json.respondJson().object();
-            git.toJSON(objJson);
-        }
-        git.cancelled = true;
-    } else {
-        json.respondJson().error("Cannot cancel during filesystem update.");
-    }
-}
 void WebSettings::handleSaveRadio(WebServer &server)
 {
     WebJsonResponder json(server);
@@ -108,12 +83,14 @@ void WebSettings::handleSaveRadio(WebServer &server)
         }
     }
 }
+
 void WebSettings::handleGetRadio(WebServer &server)
 {
     WebJsonResponder json(server);
     auto objJson = json.respondJson().object();
     somfy.transceiver.toJSON(objJson);
 }
+
 void WebSettings::handleSetGeneral(WebServer &server)
 {
     WebJsonResponder json(server);
@@ -126,7 +103,7 @@ void WebSettings::handleSetGeneral(WebServer &server)
             bool checkForUpdate = settings.checkForUpdate;
             settings.fromJSON(obj);
             settings.save();
-            if (settings.checkForUpdate != checkForUpdate) git.emitUpdateCheck();
+            if (settings.checkForUpdate != checkForUpdate) ota.emitUpdateCheck();
             if (obj.containsKey("hostname")) net.updateHostname();
         }
         if (obj.containsKey("ntpServer") || obj.containsKey("ntpServer")) {
@@ -138,6 +115,7 @@ void WebSettings::handleSetGeneral(WebServer &server)
         json.respondJson().error("Invalid HTTP Method: ", 403);
     }
 }
+
 void WebSettings::handleSetNetwork(WebServer &server)
 {
     WebJsonResponder json(server);
@@ -190,6 +168,7 @@ void WebSettings::handleSetNetwork(WebServer &server)
         }
     }
 }
+
 void WebSettings::handleSetIP(WebServer &server)
 {
     WebJsonResponder json(server);
@@ -205,6 +184,7 @@ void WebSettings::handleSetIP(WebServer &server)
         json.respondJson().error("Invalid HTTP Method: ", 403);
     }
 }
+
 void WebSettings::handleConnectWifi(WebServer &server)
 {
     WebJsonResponder json(server);
@@ -237,6 +217,7 @@ void WebSettings::handleConnectWifi(WebServer &server)
         json.respondJson().error("Invalid HTTP Method: ", 403);
     }
 }
+
 void WebSettings::handleModuleSettings(WebServer &server)
 {
     WebJsonResponder json(server);
@@ -247,6 +228,7 @@ void WebSettings::handleModuleSettings(WebServer &server)
     settings.toJSON(objJson);
     settings.NTP.toJSON(objJson);
 }
+
 void WebSettings::handleNetworkSettings(WebServer &server)
 {
     WebJsonResponder json(server);
@@ -281,6 +263,7 @@ void WebSettings::handleConnectMQTT(WebServer &server)
         json.respondJson().error("Invalid HTTP Method: ", 403);
     }
 }
+
 void WebSettings::handleMQTTSettings(WebServer &server)
 {
     WebJsonResponder json(server);

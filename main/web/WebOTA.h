@@ -21,6 +21,18 @@ class WebOTA : public WebHandler {
 
   private:
     /**
+     * @brief List the available GitHub releases and current version.
+     * @param server The server the request arrived on.
+     */
+    void handleGetReleases(WebServer &server);
+
+    /**
+     * @brief Cancel an in-progress firmware download (not during FS update).
+     * @param server The server the request arrived on.
+     */
+    void handleCancelFirmware(WebServer &server);
+
+    /**
      * @brief Queue a firmware download from GitHub for the supplied version.
      * @param server The server the request arrived on.
      */
@@ -73,6 +85,4 @@ class WebOTA : public WebHandler {
      * @param server The server the request arrived on.
      */
     void handleUpdateApplicationUpload(WebServer &server);
-
-    bool uploadSuccess = false; /**< Set by the upload callbacks, read on completion. */
 };

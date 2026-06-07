@@ -8,10 +8,10 @@
 #include <LittleFS.h>
 #include <esp_log.h>
 #include <esp_task_wdt.h>
-#include "GitOTA.h"
+#include "OtaService.h"
 #include "Sockets.h"
 
-extern GitUpdater git;
+extern OtaService ota;
 extern SocketEmitter sockEmit;
 
 static const char *s_TAG = "WebFiles";
@@ -60,7 +60,7 @@ void WebFiles::sendCacheHeaders(uint32_t seconds)
 
 void WebFiles::handleStreamFile(const char *filename, const char *encoding)
 {
-    if (git.lockFS) {
+    if (ota.filesystemLocked()) {
         server.send(500, "application/json", F("{\"status\":\"ERROR\",\"desc\":\"Filesystem update in progress\"}"));
         return;
     }

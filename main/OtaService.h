@@ -12,6 +12,8 @@
 
 #include <WebServer.h> // HTTPUpload
 
+struct restore_options_t;
+
 class OtaService {
   public:
     /**
@@ -40,6 +42,56 @@ class OtaService {
     /** @brief Human-readable description of the last Update.h error. */
     const char *lastImageError() const;
 
+    /**
+     * @brief Stream an uploaded backup file to LittleFS (/shades.tmp).
+     *
+     * @param upload The current upload chunk from server.upload().
+     */
+    void backupUploadChunk(HTTPUpload &upload);
+
+    /** @brief True if a backup file was fully received by backupUploadChunk(). */
+    bool backupReceived() const { return _backupReceived; }
+
+    /**
+     * @brief Apply the received backup (/shades.tmp) and schedule a reboot.
+     *
+     * @param opts Which record types to restore.
+     */
+    void applyBackup(restore_options_t &opts);
+
+    /**
+     * @brief Stream an uploaded shade config (shades.cfg) to LittleFS and reload it.
+     *
+     * @param upload The current upload chunk from server.upload().
+     */
+    void shadeConfigUploadChunk(HTTPUpload &upload);
+
+    /**
+     * @brief Queue a GitHub firmware download for the given release/tag.
+     * @param version Release tag (e.g. "v0.4.2") or "main".
+     */
+    void queueFirmwareDownload(const char *version);
+
+    /**
+     * @brief Cancel an in-progress firmware download (not during FS update).
+     *
+     * Sets the updater to the cancelling state; GitUpdater::loop() completes the
+     * cancel (sets cancelled + emits). Caller should check filesystemLocked().
+     */
+    void cancelFirmwareUpdate();
+
+    /** @brief Re-emit the update-availability status over the websocket. */
+    void emitUpdateCheck();
+
+    /** @brief True if a filesystem update is in progress (uploads must wait). */
+    bool filesystemLocked() const;
+
+    /**
+     * @brief Schedule a post-update reboot @p ms milliseconds from now.
+     * @param ms Delay before the main loop performs the reboot.
+     */
+    void requestReboot(uint32_t ms);
+
   private:
     /** @brief Stop the RF transceiver and MQTT so flashing isn't disturbed. */
     void quiesceForUpdate();
@@ -48,4 +100,5 @@ class OtaService {
     void writeOrFinish(HTTPUpload &upload);
 
     bool _uploadOk = false;
+    bool _backupReceived = false;
 };

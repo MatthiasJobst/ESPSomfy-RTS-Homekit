@@ -10,22 +10,14 @@
 #include "WebOTA.h"
 
 #include <esp_log.h>
-#include <LittleFS.h>
-#include <Update.h>
 #include <WebServer.h>
-#include <WiFi.h>
 #include "ConfigSettings.h"
 #include "GitOTA.h"
 #include "OtaService.h"
-#include "ShadeConfigFile.h"
-#include "SomfyShadeController.h"
-#include "Utils.h"
 #include "Web.h"
 #include "WebJsonResponder.h"
 
-extern SomfyShadeController somfy;
 extern GitUpdater git;
-extern rebootDelay_t rebootDelay;
 extern OtaService ota;
 
 static const char *s_TAG = "WebOTA";
@@ -35,6 +27,8 @@ void WebOTA::begin()
     // REST API routes
     registerApiHandler("/downloadFirmware", [this]() { handleDownloadFirmware(apiServer); });
     // Web UI routes
+    registerHandler("/getReleases", [this]() { handleGetReleases(server); });
+    registerHandler("/cancelFirmware", [this]() { handleCancelFirmware(server); });
     registerHandler("/downloadFirmware", [this]() { handleDownloadFirmware(server); });
     registerHandler(
         "/restore", HTTP_POST, [this]() { handleRestore(server); }, [this]() { handleRestoreUpload(server); });
@@ -54,6 +48,27 @@ void WebOTA::end()
     // WebServer exposes no per-route removal; nothing to release.
 }
 
+void WebOTA::handleGetReleases(WebServer &server)
+{
+    WebJsonResponder json(server);
+    GitRepo repo;
+    repo.getReleases();
+    git.setCurrentRelease(repo);
+    auto objJson = json.respondJson().object();
+    repo.toJSON(objJson);
+}
+void WebOTA::handleCancelFirmware(WebServer &server)
+{
+    WebJsonResponder json(server);
+    // If we are currently downloading the filesystem we cannot cancel.
+    if (!ota.filesystemLocked()) {
+        ota.cancelFirmwareUpdate();
+        auto objJson = json.respondJson().object();
+        git.toJSON(objJson);
+    } else {
+        json.respondJson().error("Cannot cancel during filesystem update.");
+    }
+}
 void WebOTA::handleDownloadFirmware(WebServer &server)
 {
     WebJsonResponder json(server);
@@ -69,15 +84,14 @@ void WebOTA::handleDownloadFirmware(WebServer &server)
         auto objJson = json.respondJson().object();
         objJson.addElem("name", ver.c_str());
     }
-    strlcpy(git.targetRelease, ver.c_str(), sizeof(git.targetRelease));
-    git.status = GIT_AWAITING_UPDATE;
+    ota.queueFirmwareDownload(ver.c_str());
 }
 
 void WebOTA::handleRestore(WebServer &server)
 {
     WebJsonResponder json(server);
     server.sendHeader("Connection", "close");
-    if (uploadSuccess) {
+    if (ota.backupReceived()) {
         ESP_LOGI(s_TAG, "Restoring Shade settings");
         json.respondJson().success("Restoring Shade settings");
         restore_options_t opts;
@@ -90,26 +104,12 @@ void WebOTA::handleRestore(WebServer &server)
             ESP_LOGI(s_TAG, "No restore options sent.  Using defaults...");
             opts.shades = true;
         }
-        ShadeConfigFile::restore(&somfy, "/shades.tmp", opts);
-        ESP_LOGI(s_TAG, "Rebooting ESP for restored settings...");
-        rebootDelay.requestReboot(1000);
+        ota.applyBackup(opts);
     }
 }
 void WebOTA::handleRestoreUpload(WebServer &server)
 {
-    HTTPUpload &upload = server.upload();
-    if (upload.status == UPLOAD_FILE_START) {
-        uploadSuccess = false;
-        ESP_LOGI(s_TAG, "Restore: %s", upload.filename.c_str());
-        File fup = LittleFS.open("/shades.tmp", "w");
-        fup.close();
-    } else if (upload.status == UPLOAD_FILE_WRITE) {
-        File fup = LittleFS.open("/shades.tmp", "a");
-        fup.write(upload.buf, upload.currentSize);
-        fup.close();
-    } else if (upload.status == UPLOAD_FILE_END) {
-        uploadSuccess = true;
-    }
+    ota.backupUploadChunk(server.upload());
 }
 void WebOTA::handleUpdateFirmware(WebServer &server)
 {
@@ -118,7 +118,7 @@ void WebOTA::handleUpdateFirmware(WebServer &server)
         json.respondJson().error("Error updating firmware: ");
     else
         json.respondJson().success("Successfully updated firmware");
-    rebootDelay.requestReboot(500);
+    ota.requestReboot(500);
 }
 void WebOTA::handleUpdateFirmwareUpload(WebServer &server)
 {
@@ -127,7 +127,7 @@ void WebOTA::handleUpdateFirmwareUpload(WebServer &server)
 void WebOTA::handleUpdateShadeConfig(WebServer &server)
 {
     WebJsonResponder json(server);
-    if (git.lockFS) {
+    if (ota.filesystemLocked()) {
         json.respondJson().error("Filesystem update in progress");
         return;
     }
@@ -136,20 +136,7 @@ void WebOTA::handleUpdateShadeConfig(WebServer &server)
 }
 void WebOTA::handleUpdateShadeConfigUpload(WebServer &server)
 {
-    HTTPUpload &upload = server.upload();
-    if (upload.status == UPLOAD_FILE_START) {
-        ESP_LOGI(s_TAG, "Update: shades.cfg");
-        File fup = LittleFS.open("/shades.tmp", "w");
-        fup.close();
-    } else if (upload.status == UPLOAD_FILE_WRITE) {
-        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-            File fup = LittleFS.open("/shades.tmp", "a");
-            fup.write(upload.buf, upload.currentSize);
-            fup.close();
-        }
-    } else if (upload.status == UPLOAD_FILE_END) {
-        somfy.loadShadesFile("/shades.tmp");
-    }
+    ota.shadeConfigUploadChunk(server.upload());
 }
 void WebOTA::handleUpdateApplication(WebServer &server)
 {
@@ -159,7 +146,7 @@ void WebOTA::handleUpdateApplication(WebServer &server)
         json.respondJson().error(ota.lastImageError());
     } else {
         json.respondJson().success("Successfully updated application");
-        rebootDelay.requestReboot(500);
+        ota.requestReboot(500);
     }
 }
 void WebOTA::handleUpdateApplicationUpload(WebServer &server)
