@@ -17,8 +17,8 @@
 #include "SomfyShadeController.h"
 #include "GitOTA.h"
 #include "ControllerNetwork.h"
-#include "WResp.h"
 #include "Web.h"
+#include "WebJsonResponder.h"
 
 extern ConfigSettings settings;
 extern rebootDelay_t rebootDelay;
@@ -51,44 +51,42 @@ void WebSystem::end()
 
 void WebSystem::handleController(WebServer &server)
 {
+    WebJsonResponder json(server);
     HTTPMethod method = server.method();
     settings.printAvailHeap();
     if (method == HTTP_POST || method == HTTP_GET) {
-        JsonResponse resp;
-        resp.beginResponse(&server, content, sizeof(content));
-        resp.beginObject();
-        resp.addElem("maxRooms", (uint8_t)SOMFY_MAX_ROOMS);
-        resp.addElem("maxShades", (uint8_t)SOMFY_MAX_SHADES);
-        resp.addElem("maxGroups", (uint8_t)SOMFY_MAX_GROUPS);
-        resp.addElem("maxGroupedShades", (uint8_t)SOMFY_MAX_GROUPED_SHADES);
-        resp.addElem("maxLinkedRemotes", (uint8_t)SOMFY_MAX_LINKED_REMOTES);
-        resp.addElem("startingAddress", (uint32_t)somfy.startingAddress);
-        resp.beginObject("transceiver");
-        somfy.transceiver.toJSON(resp);
-        resp.endObject();
-        resp.beginObject("version");
-        git.toJSON(resp);
-        resp.endObject();
-        resp.beginArray("rooms");
-        somfy.toJSONRooms(resp);
-        resp.endArray();
-        resp.beginArray("shades");
-        somfy.toJSONShades(resp);
-        resp.endArray();
-        resp.beginArray("groups");
-        somfy.toJSONGroups(resp);
-        resp.endArray();
-        resp.beginArray("repeaters");
-        somfy.toJSONRepeaters(resp);
-        resp.endArray();
-        resp.endObject();
-        resp.endResponse();
+        auto objJson = json.respondJson().object();
+        objJson.addElem("maxRooms", (uint8_t)SOMFY_MAX_ROOMS);
+        objJson.addElem("maxShades", (uint8_t)SOMFY_MAX_SHADES);
+        objJson.addElem("maxGroups", (uint8_t)SOMFY_MAX_GROUPS);
+        objJson.addElem("maxGroupedShades", (uint8_t)SOMFY_MAX_GROUPED_SHADES);
+        objJson.addElem("maxLinkedRemotes", (uint8_t)SOMFY_MAX_LINKED_REMOTES);
+        objJson.addElem("startingAddress", (uint32_t)somfy.startingAddress);
+        objJson.beginObject("transceiver");
+        somfy.transceiver.toJSON(objJson);
+        objJson.endObject();
+        objJson.beginObject("version");
+        git.toJSON(objJson);
+        objJson.endObject();
+        objJson.beginArray("rooms");
+        somfy.toJSONRooms(objJson);
+        objJson.endArray();
+        objJson.beginArray("shades");
+        somfy.toJSONShades(objJson);
+        objJson.endArray();
+        objJson.beginArray("groups");
+        somfy.toJSONGroups(objJson);
+        objJson.endArray();
+        objJson.beginArray("repeaters");
+        somfy.toJSONRepeaters(objJson);
+        objJson.endArray();
     } else
-        server.send(404, ENCODING_TEXT, RESPONSE_404);
+        json.respondJson().notFound();
 }
 
 void WebSystem::handleDiscovery(WebServer &server)
 {
+    WebJsonResponder json(server);
     HTTPMethod method = apiServer.method();
     if (method == HTTP_POST || method == HTTP_GET) {
         ESP_LOGI(s_TAG, "Discovery Requested");
@@ -98,36 +96,34 @@ void WebSystem::handleDiscovery(WebServer &server)
         else if (net.connType == conn_types_t::wifi)
             strcpy(connType, "Wifi");
 
-        JsonResponse resp;
-        resp.beginResponse(&server, content, sizeof(content));
-        resp.beginObject();
-        resp.addElem("serverId", settings.serverId);
-        resp.addElem("version", settings.fwVersion.name);
-        resp.addElem("latest", git.latest.name);
-        resp.addElem("model", "ESPSomfyRTS");
-        resp.addElem("hostname", settings.hostname);
-        resp.addElem("authType", static_cast<uint8_t>(settings.Security.type));
-        resp.addElem("permissions", settings.Security.permissions);
-        resp.addElem("chipModel", settings.chipModel);
-        resp.addElem("connType", connType);
-        resp.addElem("checkForUpdate", settings.checkForUpdate);
-        resp.beginObject("memory");
-        resp.addElem("max", ESP.getMaxAllocHeap());
-        resp.addElem("free", ESP.getFreeHeap());
-        resp.addElem("min", ESP.getMinFreeHeap());
-        resp.addElem("total", ESP.getHeapSize());
-        resp.endObject();
-        resp.beginArray("rooms");
-        somfy.toJSONRooms(resp);
-        resp.endArray();
-        resp.beginArray("shades");
-        somfy.toJSONShades(resp);
-        resp.endArray();
-        resp.beginArray("groups");
-        somfy.toJSONGroups(resp);
-        resp.endArray();
-        resp.endObject();
-        resp.endResponse();
+        {
+            auto objJson = json.respondJson().object();
+            objJson.addElem("serverId", settings.serverId);
+            objJson.addElem("version", settings.fwVersion.name);
+            objJson.addElem("latest", git.latest.name);
+            objJson.addElem("model", "ESPSomfyRTS");
+            objJson.addElem("hostname", settings.hostname);
+            objJson.addElem("authType", static_cast<uint8_t>(settings.Security.type));
+            objJson.addElem("permissions", settings.Security.permissions);
+            objJson.addElem("chipModel", settings.chipModel);
+            objJson.addElem("connType", connType);
+            objJson.addElem("checkForUpdate", settings.checkForUpdate);
+            objJson.beginObject("memory");
+            objJson.addElem("max", ESP.getMaxAllocHeap());
+            objJson.addElem("free", ESP.getFreeHeap());
+            objJson.addElem("min", ESP.getMinFreeHeap());
+            objJson.addElem("total", ESP.getHeapSize());
+            objJson.endObject();
+            objJson.beginArray("rooms");
+            somfy.toJSONRooms(objJson);
+            objJson.endArray();
+            objJson.beginArray("shades");
+            somfy.toJSONShades(objJson);
+            objJson.endArray();
+            objJson.beginArray("groups");
+            somfy.toJSONGroups(objJson);
+            objJson.endArray();
+        }
         net.emitSockets();
     } else
         server.send(500, ENCODING_TEXT, "Invalid http method");
@@ -193,19 +189,19 @@ void WebSystem::handleNotFound(WebServer &server)
         ESP_LOGI(s_TAG, "[%d]", method);
         break;
     }
-    snprintf(content, sizeof(content), "404 Service Not Found: %s", server.uri().c_str());
-    server.send(404, ENCODING_TEXT, content);
+    server.send(404, ENCODING_TEXT, "404 Service Not Found: " + server.uri());
 }
 
 void WebSystem::handleReboot(WebServer &server)
 {
+    WebJsonResponder json(server);
     HTTPMethod method = server.method();
     if (method == HTTP_POST || method == HTTP_PUT) {
         ESP_LOGI(s_TAG, "Rebooting ESP...");
         rebootDelay.reboot = true;
         rebootDelay.rebootTime = millis() + 500;
-        server.send(200, "application/json", "{\"status\":\"OK\",\"desc\":\"Successfully started reboot\"}");
+        json.respondJson().ok("Successfully started reboot");
     } else {
-        server.send(201, ENCODING_JSON, "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
+        json.respondJson().error("Invalid HTTP Method: ", 403);
     }
 }

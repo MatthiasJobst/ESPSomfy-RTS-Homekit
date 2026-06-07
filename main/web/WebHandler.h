@@ -46,7 +46,7 @@ class WebHandler {
      * @param uri The request path (e.g. "/shades").
      * @param fn The callback invoked when the route is requested.
      */
-    void registerHandler(const Uri &uri, Handler fn) { server.on(uri, fn); }
+    void registerHandler(const Uri &uri, Handler fn) { server.on(uri, std::move(fn)); }
 
     /**
      * @brief Register a method-specific route on the public HTTP server.
@@ -55,7 +55,7 @@ class WebHandler {
      * @param method The HTTP method to match (HTTP_GET, HTTP_POST, …).
      * @param fn The callback invoked when the route is requested.
      */
-    void registerHandler(const Uri &uri, HTTPMethod method, Handler fn) { server.on(uri, method, fn); }
+    void registerHandler(const Uri &uri, HTTPMethod method, Handler fn) { server.on(uri, method, std::move(fn)); }
 
     /**
      * @brief Register a route with a file-upload callback on the public HTTP server.
@@ -67,7 +67,7 @@ class WebHandler {
      */
     void registerHandler(const Uri &uri, HTTPMethod method, Handler fn, Handler ufn)
     {
-        server.on(uri, method, fn, ufn);
+        server.on(uri, method, std::move(fn), std::move(ufn));
     }
 
     /**
@@ -76,7 +76,7 @@ class WebHandler {
      * @param uri The request path (e.g. "/shades").
      * @param fn The callback invoked when the route is requested.
      */
-    void registerApiHandler(const Uri &uri, Handler fn) { apiServer.on(uri, fn); }
+    void registerApiHandler(const Uri &uri, Handler fn) { apiServer.on(uri, std::move(fn)); }
 
     /**
      * @brief Register a method-specific route on the REST API server.
@@ -85,17 +85,7 @@ class WebHandler {
      * @param method The HTTP method to match (HTTP_GET, HTTP_POST, …).
      * @param fn The callback invoked when the route is requested.
      */
-    void registerApiHandler(const Uri &uri, HTTPMethod method, Handler fn) { apiServer.on(uri, method, fn); }
-
-    /**
-     * @brief Shared scratch buffer for building HTTP responses.
-     *
-     * @note Reused by every handler. Safe only because the Arduino WebServer is
-     *       synchronous — handlers run sequentially on one task, never
-     *       concurrently, so the buffer is never contended.
-     */
-    static constexpr size_t MAX_RESPONSE = 4096;
-    inline static char content[MAX_RESPONSE];
+    void registerApiHandler(const Uri &uri, HTTPMethod method, Handler fn) { apiServer.on(uri, method, std::move(fn)); }
 
     // Common content-type and status strings.
     static constexpr const char *ENCODING_TEXT = "text/plain";       /**< Content-Type: text/plain. */

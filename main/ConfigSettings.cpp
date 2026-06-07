@@ -763,8 +763,8 @@ bool EthernetSettings::usesPin(uint8_t pin)
     // Index matches eth_clock_mode_t: GPIO0_IN, GPIO0_OUT, GPIO16_OUT, GPIO17_OUT.
     static constexpr int8_t clkPins[] = {0, 0, 16, 17};
     int8_t p = static_cast<int8_t>(pin);
-    return (this->CLKMode < 4 && p == clkPins[this->CLKMode]) || p == this->PWRPin || p == this->MDCPin ||
-           p == this->MDIOPin;
+    return (static_cast<int>(this->CLKMode) < 4 && p == clkPins[this->CLKMode]) || p == this->PWRPin ||
+           p == this->MDCPin || p == this->MDIOPin;
 }
 bool EthernetSettings::save()
 {

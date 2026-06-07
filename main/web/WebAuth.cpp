@@ -14,9 +14,8 @@
 #include <WebServer.h>
 #include <ArduinoJson.h>
 #include "ConfigSettings.h"
-#include "WResp.h"
 #include "Web.h"
-#include "WebHelpers.h"
+#include "WebJsonResponder.h"
 
 extern ConfigSettings settings;
 
@@ -89,8 +88,9 @@ void WebAuth::handleLogin(WebServer &server)
         obj["apiKey"] = token;
         obj["msg"] = "Success";
         obj["success"] = true;
-        serializeJson(doc, content);
-        server.send(200, ENCODING_JSON, content);
+        String out;
+        serializeJson(doc, out);
+        server.send(200, ENCODING_JSON, out);
         return;
     }
     ESP_LOGI(s_TAG, "Web logging in...");
@@ -101,12 +101,12 @@ void WebAuth::handleLogin(WebServer &server)
     memset(password, 0x00, sizeof(password));
     memset(pin, 0x00, sizeof(pin));
     if (server.hasArg("plain")) {
-        JsonDocument doc;
-        JsonObject obj;
-        if (!parseBody(server, doc, obj)) return;
-        if (obj.containsKey("username") && obj["username"]) strlcpy(username, obj["username"], sizeof(username));
-        if (obj.containsKey("password") && obj["password"]) strlcpy(password, obj["password"], sizeof(password));
-        if (obj.containsKey("pin") && obj["pin"]) strlcpy(pin, obj["pin"], sizeof(pin));
+        WebJsonResponder json(server);
+        JsonObject body;
+        if (!json.parseBody(body)) return;
+        if (body.containsKey("username") && body["username"]) strlcpy(username, body["username"], sizeof(username));
+        if (body.containsKey("password") && body["password"]) strlcpy(password, body["password"], sizeof(password));
+        if (body.containsKey("pin") && body["pin"]) strlcpy(pin, body["pin"], sizeof(pin));
     } else {
         if (server.hasArg("username")) strlcpy(username, server.arg("username").c_str(), sizeof(username));
         if (server.hasArg("password")) strlcpy(password, server.arg("password").c_str(), sizeof(password));
@@ -135,8 +135,9 @@ void WebAuth::handleLogin(WebServer &server)
             obj["apiKey"] = token;
         }
     }
-    serializeJson(doc, content);
-    server.send(200, ENCODING_JSON, content);
+    String out;
+    serializeJson(doc, out);
+    server.send(200, ENCODING_JSON, out);
     return;
 }
 void WebAuth::handleSaveSecurity(WebServer &server)
@@ -159,10 +160,11 @@ void WebAuth::handleSaveSecurity(WebServer &server)
             JsonDocument sdoc;
             JsonObject sobj = sdoc.to<JsonObject>();
             settings.Security.toJSON(sobj);
-            serializeJson(sdoc, content);
-            server.send(200, ENCODING_JSON, content);
+            String out;
+            serializeJson(sdoc, out);
+            server.send(200, ENCODING_JSON, out);
         } else {
-            server.send(201, "application/json", "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
+            server.send(403, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}"));
         }
     }
 }
@@ -171,20 +173,18 @@ void WebAuth::handleGetSecurity(WebServer &server)
     JsonDocument doc;
     JsonObject obj = doc.to<JsonObject>();
     settings.Security.toJSON(obj);
-    serializeJson(doc, content);
-    server.send(200, ENCODING_JSON, content);
+    String out;
+    serializeJson(doc, out);
+    server.send(200, ENCODING_JSON, out);
 }
 void WebAuth::handleLoginContext(WebServer &server)
 {
-    JsonResponse resp;
-    resp.beginResponse(&server, content, sizeof(content));
-    resp.beginObject();
-    resp.addElem("type", static_cast<uint8_t>(settings.Security.type));
-    resp.addElem("permissions", settings.Security.permissions);
-    resp.addElem("serverId", settings.serverId);
-    resp.addElem("version", settings.fwVersion.name);
-    resp.addElem("model", "ESPSomfyRTS");
-    resp.addElem("hostname", settings.hostname);
-    resp.endObject();
-    resp.endResponse();
+    WebJsonResponder json(server);
+    auto objJson = json.respondJson().object();
+    objJson.addElem("type", static_cast<uint8_t>(settings.Security.type));
+    objJson.addElem("permissions", settings.Security.permissions);
+    objJson.addElem("serverId", settings.serverId);
+    objJson.addElem("version", settings.fwVersion.name);
+    objJson.addElem("model", "ESPSomfyRTS");
+    objJson.addElem("hostname", settings.hostname);
 }

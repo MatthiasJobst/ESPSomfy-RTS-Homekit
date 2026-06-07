@@ -7,6 +7,13 @@
 //   - MQTT broker configuration and connection (handleMQTTSettings, handleConnectMQTT)
 //   - Module-level settings (handleModuleSettings)
 //   - OTA release listing and firmware download queuing (handleGetReleases, handleCancelFirmware)
+//
+// Request parsing and JSON/status responses go through a per-handler
+// WebJsonResponder (`WebJsonResponder json(server);`): json.parseBody() reads
+// the body, and json.respondJson() exposes the writer for
+// .object()/.error()/.ok()/… responses. handleSaveRadio/handleSetNetwork keep
+// an inline deserializeJson because they answer a bad body with a 400 HTML page
+// rather than the facade's standard JSON error.
 
 #include "WebSettings.h"
 
@@ -16,9 +23,8 @@
 #include "ConfigSettings.h"
 #include "Utils.h"
 #include "SomfyShadeController.h"
-#include "WResp.h"
 #include "Web.h"
-#include "WebHelpers.h"
+#include "WebJsonResponder.h"
 #include "MQTT.h"
 #include "GitOTA.h"
 #include "ControllerNetwork.h"
@@ -58,35 +64,31 @@ void WebSettings::end()
 // ============================================================
 void WebSettings::handleGetReleases(WebServer &server)
 {
+    WebJsonResponder json(server);
     GitRepo repo;
     repo.getReleases();
     git.setCurrentRelease(repo);
-    JsonResponse resp;
-    resp.beginResponse(&server, content, sizeof(content));
-    resp.beginObject();
-    repo.toJSON(resp);
-    resp.endObject();
-    resp.endResponse();
+    auto objJson = json.respondJson().object();
+    repo.toJSON(objJson);
 }
 void WebSettings::handleCancelFirmware(WebServer &server)
 {
+    WebJsonResponder json(server);
     // If we are currently downloading the filesystem we cannot cancel.
     if (!git.lockFS) {
         git.status = GIT_UPDATE_CANCELLING;
-        JsonResponse resp;
-        resp.beginResponse(&server, content, sizeof(content));
-        resp.beginObject();
-        git.toJSON(resp);
-        resp.endObject();
-        resp.endResponse();
+        {
+            auto objJson = json.respondJson().object();
+            git.toJSON(objJson);
+        }
         git.cancelled = true;
     } else {
-        server.send(500, ENCODING_JSON,
-                    F("{\"status\":\"ERROR\",\"desc\":\"Cannot cancel during filesystem update.\"}"));
+        json.respondJson().error("Cannot cancel during filesystem update.");
     }
 }
 void WebSettings::handleSaveRadio(WebServer &server)
 {
+    WebJsonResponder json(server);
     JsonDocument doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
     if (err) {
@@ -99,32 +101,25 @@ void WebSettings::handleSaveRadio(WebServer &server)
         if (method == HTTP_POST || method == HTTP_PUT) {
             somfy.transceiver.fromJSON(obj);
             somfy.transceiver.save();
-            JsonResponse resp;
-            resp.beginResponse(&server, content, sizeof(content));
-            resp.beginObject();
-            somfy.transceiver.toJSON(resp);
-            resp.endObject();
-            resp.endResponse();
+            auto objJson = json.respondJson().object();
+            somfy.transceiver.toJSON(objJson);
         } else {
-            server.send(201, "application/json", "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
+            json.respondJson().error("Invalid HTTP Method: ", 403);
         }
     }
 }
 void WebSettings::handleGetRadio(WebServer &server)
 {
-    JsonResponse resp;
-    resp.beginResponse(&server, content, sizeof(content));
-    resp.beginObject();
-    somfy.transceiver.toJSON(resp);
-    resp.endObject();
-    resp.endResponse();
+    WebJsonResponder json(server);
+    auto objJson = json.respondJson().object();
+    somfy.transceiver.toJSON(objJson);
 }
 void WebSettings::handleSetGeneral(WebServer &server)
 {
+    WebJsonResponder json(server);
     ESP_LOGI(s_TAG, "Plain: %d %s", server.method(), server.arg("plain").c_str());
-    JsonDocument doc;
     JsonObject obj;
-    if (!parseBody(server, doc, obj)) return;
+    if (!json.parseBody(obj)) return;
     HTTPMethod method = server.method();
     if (method == HTTP_POST || method == HTTP_PUT) {
         if (obj.containsKey("hostname") || obj.containsKey("checkForUpdate")) {
@@ -138,13 +133,14 @@ void WebSettings::handleSetGeneral(WebServer &server)
             settings.NTP.fromJSON(obj);
             settings.NTP.save();
         }
-        server.send(200, "application/json", "{\"status\":\"OK\",\"desc\":\"Successfully set General Settings\"}");
+        json.respondJson().ok("Successfully set General Settings");
     } else {
-        server.send(201, "application/json", "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
+        json.respondJson().error("Invalid HTTP Method: ", 403);
     }
 }
 void WebSettings::handleSetNetwork(WebServer &server)
 {
+    WebJsonResponder json(server);
     JsonDocument doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
     if (err) {
@@ -189,50 +185,50 @@ void WebSettings::handleSetNetwork(WebServer &server)
                 rebootDelay.reboot = true;
                 rebootDelay.rebootTime = millis() + 1000;
             }
-            server.send(200, "application/json", "{\"status\":\"OK\",\"desc\":\"Successfully set Network Settings\"}");
+            json.respondJson().ok("Successfully set Network Settings");
         } else {
-            server.send(201, "application/json", "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
+            json.respondJson().error("Invalid HTTP Method: ", 403);
         }
     }
 }
 void WebSettings::handleSetIP(WebServer &server)
 {
+    WebJsonResponder json(server);
     ESP_LOGI(s_TAG, "Setting IP...");
-    JsonDocument doc;
     JsonObject obj;
-    if (!parseBody(server, doc, obj)) return;
+    if (!json.parseBody(obj)) return;
     HTTPMethod method = server.method();
     if (method == HTTP_POST || method == HTTP_PUT) {
         settings.IP.fromJSON(obj);
         settings.IP.save();
-        server.send(200, "application/json", "{\"status\":\"OK\",\"desc\":\"Successfully set Network Settings\"}");
+        json.respondJson().ok("Successfully set Network Settings");
     } else {
-        server.send(201, ENCODING_JSON, "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
+        json.respondJson().error("Invalid HTTP Method: ", 403);
     }
 }
 void WebSettings::handleConnectWifi(WebServer &server)
 {
+    WebJsonResponder json(server);
     ESP_LOGI(s_TAG, "Settings WIFI connection...");
-    JsonDocument doc;
     JsonObject obj;
-    if (!parseBody(server, doc, obj)) return;
+    if (!json.parseBody(obj)) return;
     HTTPMethod method = server.method();
     if (method == HTTP_POST || method == HTTP_PUT) {
         String ssid = "";
         String passphrase = "";
         if (obj.containsKey("ssid")) ssid = obj["ssid"].as<String>();
         if (obj.containsKey("passphrase")) passphrase = obj["passphrase"].as<String>();
-        bool reboot;
+        bool reboot = false;
         if (ssid.compareTo(settings.WIFI.ssid) != 0) reboot = true;
         if (passphrase.compareTo(settings.WIFI.passphrase) != 0) reboot = true;
         if (!settings.WIFI.ssidExists(ssid.c_str()) && ssid.length() > 0) {
-            server.send(400, ENCODING_JSON, "{\"status\":\"ERROR\",\"desc\":\"WiFi Network Does not exist\"}");
+            json.respondJson().error("WiFi Network Does not exist", 400);
         } else {
             SETCHARPROP(settings.WIFI.ssid, ssid.c_str(), sizeof(settings.WIFI.ssid));
             SETCHARPROP(settings.WIFI.passphrase, passphrase.c_str(), sizeof(settings.WIFI.passphrase));
             settings.WIFI.save();
             settings.WIFI.print();
-            server.send(201, ENCODING_JSON, "{\"status\":\"OK\",\"desc\":\"Successfully set server connection\"}");
+            json.respondJson().ok("Successfully set server connection");
             if (reboot) {
                 ESP_LOGI(s_TAG, "Rebooting ESP for new WiFi settings...");
                 rebootDelay.reboot = true;
@@ -240,69 +236,56 @@ void WebSettings::handleConnectWifi(WebServer &server)
             }
         }
     } else {
-        server.send(201, ENCODING_JSON, "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
+        json.respondJson().error("Invalid HTTP Method: ", 403);
     }
 }
 void WebSettings::handleModuleSettings(WebServer &server)
 {
-    JsonResponse resp;
-    resp.beginResponse(&server, content, sizeof(content));
-    resp.beginObject();
-    resp.addElem("fwVersion", settings.fwVersion.name);
-    resp.addElem("buildVersion", getBuildVersion());
-    resp.addElem("gitRepo", GIT_REPO);
-    settings.toJSON(resp);
-    settings.NTP.toJSON(resp);
-    resp.endObject();
-    resp.endResponse();
+    WebJsonResponder json(server);
+    auto objJson = json.respondJson().object();
+    objJson.addElem("fwVersion", settings.fwVersion.name);
+    objJson.addElem("buildVersion", getBuildVersion());
+    objJson.addElem("gitRepo", GIT_REPO);
+    settings.toJSON(objJson);
+    settings.NTP.toJSON(objJson);
 }
 void WebSettings::handleNetworkSettings(WebServer &server)
 {
-    JsonResponse resp;
-    resp.beginResponse(&server, content, sizeof(content));
-    resp.beginObject();
-    settings.toJSON(resp);
-    resp.addElem("fwVersion", settings.fwVersion.name);
-    resp.addElem("buildVersion", getBuildVersion());
-    resp.beginObject("ethernet");
-    settings.Ethernet.toJSON(resp);
-    resp.endObject();
-    resp.beginObject("wifi");
-    settings.WIFI.toJSON(resp);
-    resp.endObject();
-    resp.beginObject("ip");
-    settings.IP.toJSON(resp);
-    resp.endObject();
-    resp.endObject();
-    resp.endResponse();
+    WebJsonResponder json(server);
+    auto objJson = json.respondJson().object();
+    settings.toJSON(objJson);
+    objJson.addElem("fwVersion", settings.fwVersion.name);
+    objJson.addElem("buildVersion", getBuildVersion());
+    objJson.beginObject("ethernet");
+    settings.Ethernet.toJSON(objJson);
+    objJson.endObject();
+    objJson.beginObject("wifi");
+    settings.WIFI.toJSON(objJson);
+    objJson.endObject();
+    objJson.beginObject("ip");
+    settings.IP.toJSON(objJson);
+    objJson.endObject();
 }
 void WebSettings::handleConnectMQTT(WebServer &server)
 {
-    JsonDocument doc;
+    WebJsonResponder json(server);
     JsonObject obj;
-    if (!parseBody(server, doc, obj)) return;
+    if (!json.parseBody(obj)) return;
     HTTPMethod method = server.method();
     ESP_LOGI(s_TAG, "Saving MQTT HTTP Method: %d", server.method());
     if (method == HTTP_POST || method == HTTP_PUT) {
         mqtt.disconnect();
         settings.MQTT.fromJSON(obj);
         settings.MQTT.save();
-        JsonResponse resp;
-        resp.beginResponse(&server, content, sizeof(content));
-        resp.beginObject();
-        settings.MQTT.toJSON(resp);
-        resp.endObject();
-        resp.endResponse();
+        auto objJson = json.respondJson().object();
+        settings.MQTT.toJSON(objJson);
     } else {
-        server.send(201, "application/json", "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
+        json.respondJson().error("Invalid HTTP Method: ", 403);
     }
 }
 void WebSettings::handleMQTTSettings(WebServer &server)
 {
-    JsonResponse resp;
-    resp.beginResponse(&server, content, sizeof(content));
-    resp.beginObject();
-    settings.MQTT.toJSON(resp);
-    resp.endObject();
-    resp.endResponse();
+    WebJsonResponder json(server);
+    auto objJson = json.respondJson().object();
+    settings.MQTT.toJSON(objJson);
 }

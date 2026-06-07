@@ -21,9 +21,8 @@
 #include "ShadeConfigFile.h"
 #include "SomfyShadeController.h"
 #include "Utils.h"
-#include "WResp.h"
 #include "Web.h"
-#include "WebHelpers.h"
+#include "WebJsonResponder.h"
 
 extern ConfigSettings settings;
 extern SomfyShadeController somfy;
@@ -59,42 +58,36 @@ void WebOTA::end()
 
 void WebOTA::handleDownloadFirmware(WebServer &server)
 {
+    WebJsonResponder json(server);
     ESP_LOGI(s_TAG, "downloadFirmware called...");
     if (!server.hasArg("ver")) {
-        server.send(400, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Release version not supplied.\"}"));
+        json.respondJson().error("Release version not supplied.", 400);
         return;
     }
     String ver = server.arg("ver");
     // The ver value comes from the dropdown which was populated by getReleases(),
     // so it is already a valid tag name (e.g. "v0.4.2") or "main".
-    JsonResponse resp;
-    resp.beginResponse(&server, content, sizeof(content));
-    resp.beginObject();
-    resp.addElem("name", ver.c_str());
-    resp.endObject();
-    resp.endResponse();
+    {
+        auto objJson = json.respondJson().object();
+        objJson.addElem("name", ver.c_str());
+    }
     strlcpy(git.targetRelease, ver.c_str(), sizeof(git.targetRelease));
     git.status = GIT_AWAITING_UPDATE;
 }
 
 void WebOTA::handleRestore(WebServer &server)
 {
+    WebJsonResponder json(server);
     server.sendHeader("Connection", "close");
     if (uploadSuccess) {
         ESP_LOGI(s_TAG, "Restoring Shade settings");
-        server.send(200, ENCODING_JSON, "{\"status\":\"Success\",\"desc\":\"Restoring Shade settings\"}");
+        json.respondJson().success("Restoring Shade settings");
         restore_options_t opts;
         if (server.hasArg("data")) {
             ESP_LOGI(s_TAG, "Restore data: %s", server.arg("data").c_str());
-            StaticJsonDocument<256> doc;
-            DeserializationError err = deserializeJson(doc, server.arg("data"));
-            if (err) {
-                sendDeserializationError(server, err);
-                return;
-            } else {
-                JsonObject obj = doc.as<JsonObject>();
-                opts.fromJSON(obj);
-            }
+            JsonObject obj;
+            if (!json.parseArg("data", obj)) return;
+            opts.fromJSON(obj);
         } else {
             ESP_LOGI(s_TAG, "No restore options sent.  Using defaults...");
             opts.shades = true;
@@ -123,10 +116,11 @@ void WebOTA::handleRestoreUpload(WebServer &server)
 }
 void WebOTA::handleUpdateFirmware(WebServer &server)
 {
+    WebJsonResponder json(server);
     if (Update.hasError())
-        server.send(500, ENCODING_JSON, "{\"status\":\"ERROR\",\"desc\":\"Error updating firmware: \"}");
+        json.respondJson().error("Error updating firmware: ");
     else
-        server.send(200, ENCODING_JSON, "{\"status\":\"SUCCESS\",\"desc\":\"Successfully updated firmware\"}");
+        json.respondJson().success("Successfully updated firmware");
     rebootDelay.reboot = true;
     rebootDelay.rebootTime = millis() + 500;
 }
@@ -164,12 +158,13 @@ void WebOTA::handleUpdateFirmwareUpload(WebServer &server)
 }
 void WebOTA::handleUpdateShadeConfig(WebServer &server)
 {
+    WebJsonResponder json(server);
     if (git.lockFS) {
-        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Filesystem update in progress\"}"));
+        json.respondJson().error("Filesystem update in progress");
         return;
     }
     server.sendHeader("Connection", "close");
-    server.send(200, ENCODING_JSON, "{\"status\":\"ERROR\",\"desc\":\"Updating Shade Config: \"}");
+    json.respondJson().ok("Updating Shade Config: ");
 }
 void WebOTA::handleUpdateShadeConfigUpload(WebServer &server)
 {
@@ -190,12 +185,12 @@ void WebOTA::handleUpdateShadeConfigUpload(WebServer &server)
 }
 void WebOTA::handleUpdateApplication(WebServer &server)
 {
+    WebJsonResponder json(server);
     server.sendHeader("Connection", "close");
     if (Update.hasError()) {
-        snprintf(content, sizeof(content), "{\"status\":\"ERROR\",\"desc\":\"%s\"}", Update.errorString());
-        server.send(500, ENCODING_JSON, content);
+        json.respondJson().error(Update.errorString());
     } else {
-        server.send(200, ENCODING_JSON, "{\"status\":\"SUCCESS\",\"desc\":\"Successfully updated application\"}");
+        json.respondJson().success("Successfully updated application");
         rebootDelay.reboot = true;
         rebootDelay.rebootTime = millis() + 500;
     }

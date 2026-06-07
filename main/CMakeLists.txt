@@ -30,6 +30,8 @@ idf_component_register(
         "Utils.cpp"
         "WResp.cpp"
         "web/Web.cpp"
+        "web/WebResponder.cpp"
+        "web/WebJsonResponder.cpp"
         "web/WebFiles.cpp"
         "web/WebSettings.cpp"
         "web/WebShades.cpp"

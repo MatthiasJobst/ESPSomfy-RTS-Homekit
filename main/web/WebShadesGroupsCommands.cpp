@@ -3,15 +3,19 @@
 // Endpoints that target either a shade or a group, selected by shadeId/groupId:
 //   - Send/repeat a movement command (handleRepeatCommand)
 //   - Send a sun/wind sensor command (handleSetSensor)
+//
+// Request parsing and JSON/status responses go through a per-handler
+// WebJsonResponder (`WebJsonResponder json(server);`): json.parseBody() reads
+// the body, and json.respondJson() exposes the writer for
+// .object()/.array()/.error()/… responses.
 
 #include "WebShadesGroupsCommands.h"
 
 #include <WebServer.h>
 #include "Utils.h"
 #include "SomfyShadeController.h"
-#include "WResp.h"
 #include "Web.h"
-#include "WebHelpers.h"
+#include "WebJsonResponder.h"
 
 extern SomfyShadeController somfy;
 
@@ -32,6 +36,7 @@ void WebShadesGroupsCommands::end()
 
 void WebShadesGroupsCommands::handleRepeatCommand(WebServer &server)
 {
+    WebJsonResponder json(server);
     HTTPMethod method = server.method();
     if (method == HTTP_OPTIONS) {
         server.send(200, "OK");
@@ -51,9 +56,8 @@ void WebShadesGroupsCommands::handleRepeatCommand(WebServer &server)
         if (server.hasArg("repeat")) repeat = static_cast<uint8_t>(atoi(server.arg("repeat").c_str()));
         if (server.hasArg("stepSize")) stepSize = static_cast<uint8_t>(atoi(server.arg("stepSize").c_str()));
         if (shadeId == 255 && groupId == 255 && server.hasArg("plain")) {
-            JsonDocument doc;
             JsonObject obj;
-            if (!parseBody(server, doc, obj)) return;
+            if (!json.parseBody(obj)) return;
             if (obj.containsKey("shadeId")) shadeId = obj["shadeId"];
             if (obj.containsKey("groupId")) groupId = obj["groupId"];
             if (obj.containsKey("stepSize")) stepSize = obj["stepSize"];
@@ -66,8 +70,7 @@ void WebShadesGroupsCommands::handleRepeatCommand(WebServer &server)
         if (shadeId != 255) {
             SomfyShade *shade = somfy.getShadeById(shadeId);
             if (!shade) {
-                server.send(500, ENCODING_JSON,
-                            F("{\"status\":\"ERROR\",\"desc\":\"Shade reference could not be found.\"}"));
+                json.respondJson().error("Shade reference could not be found.");
                 return;
             }
             if (shade->shadeType == shade_types::garage1 && command == somfy_commands::Prog)
@@ -78,17 +81,12 @@ void WebShadesGroupsCommands::handleRepeatCommand(WebServer &server)
             } else {
                 shade->repeatFrame(repeat >= 0 ? repeat : shade->repeats);
             }
-            JsonResponse resp;
-            resp.beginResponse(&server, content, sizeof(content));
-            resp.beginArray();
-            shade->toJSONRef(resp);
-            resp.endArray();
-            resp.endResponse();
+            auto arrJson = json.respondJson().array();
+            shade->toJSONRef(arrJson);
         } else if (groupId != 255) {
             SomfyGroup *group = somfy.getGroupById(groupId);
             if (!group) {
-                server.send(500, ENCODING_JSON,
-                            F("{\"status\":\"ERROR\",\"desc\":\"Group reference could not be found.\"}"));
+                json.respondJson().error("Group reference could not be found.");
                 return;
             }
             if (!group->isLastCommand(command)) {
@@ -96,20 +94,17 @@ void WebShadesGroupsCommands::handleRepeatCommand(WebServer &server)
                 group->sendCommand(command, repeat >= 0 ? repeat : group->repeats, stepSize);
             } else
                 group->repeatFrame(repeat >= 0 ? repeat : group->repeats);
-            JsonResponse resp;
-            resp.beginResponse(&server, content, sizeof(content));
-            resp.beginObject();
-            group->toJSONRef(resp);
-            resp.endObject();
-            resp.endResponse();
+            auto objJson = json.respondJson().object();
+            group->toJSONRef(objJson);
         }
     } else {
-        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
+        json.respondJson().invalidMethod();
     }
 }
 
 void WebShadesGroupsCommands::handleSetSensor(WebServer &server)
 {
+    WebJsonResponder json(server);
     uint8_t shadeId = (server.hasArg("shadeId")) ? static_cast<uint8_t>(atoi(server.arg("shadeId").c_str())) : 255;
     uint8_t groupId = (server.hasArg("groupId")) ? static_cast<uint8_t>(atoi(server.arg("groupId").c_str())) : 255;
     int8_t sunny =
@@ -117,9 +112,8 @@ void WebShadesGroupsCommands::handleSetSensor(WebServer &server)
     int8_t windy = (server.hasArg("windy")) ? static_cast<int8_t>(atoi(server.arg("windy").c_str())) : int8_t{-1};
     int16_t repeat = (server.hasArg("repeat")) ? static_cast<int16_t>(atoi(server.arg("repeat").c_str())) : int16_t{-1};
     if (server.hasArg("plain")) {
-        JsonDocument doc;
         JsonObject obj;
-        if (!parseBody(server, doc, obj)) return;
+        if (!json.parseBody(obj)) return;
         if (obj.containsKey("shadeId")) shadeId = obj["shadeId"].as<uint8_t>();
         if (obj.containsKey("groupId")) groupId = obj["groupId"].as<uint8_t>();
         if (obj.containsKey("sunny")) {
@@ -141,29 +135,21 @@ void WebShadesGroupsCommands::handleSetSensor(WebServer &server)
         if (shade) {
             shade->sendSensorCommand(windy, sunny, repeat >= 0 ? (uint8_t)repeat : shade->repeats);
             shade->emitState();
-            JsonResponse resp;
-            resp.beginResponse(&server, content, sizeof(content));
-            resp.beginObject();
-            shade->toJSON(resp);
-            resp.endObject();
-            resp.endResponse();
+            auto objJson = json.respondJson().object();
+            shade->toJSON(objJson);
         } else
-            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"An invalid shadeId was provided\"}"));
+            json.respondJson().error("An invalid shadeId was provided");
 
     } else if (groupId != 255) {
         SomfyGroup *group = somfy.getGroupById(groupId);
         if (group) {
             group->sendSensorCommand(windy, sunny, repeat >= 0 ? (uint8_t)repeat : group->repeats);
             group->emitState();
-            JsonResponse resp;
-            resp.beginResponse(&server, content, sizeof(content));
-            resp.beginObject();
-            group->toJSON(resp);
-            resp.endObject();
-            resp.endResponse();
+            auto objJson = json.respondJson().object();
+            group->toJSON(objJson);
         } else
-            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"An invalid groupId was provided\"}"));
+            json.respondJson().error("An invalid groupId was provided");
     } else {
-        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"shadeId was not provided\"}"));
+        json.respondJson().error("shadeId was not provided");
     }
 }

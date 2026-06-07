@@ -6,6 +6,11 @@
 //   - Next available room ID scaffold (handleGetNextRoom)
 //   - Persisting room sort order (handleRoomSortOrder)
 //   - CRUD operations: add, save, delete (handleAddRoom, handleSaveRoom, handleDeleteRoom)
+//
+// Request parsing and JSON/status responses go through a per-handler
+// WebJsonResponder (`WebJsonResponder json(server);`): json.parseBody() reads
+// the body, and json.respondJson() exposes the writer for
+// .object()/.array()/.error()/.success()/… responses.
 
 #include "WebRooms.h"
 
@@ -14,9 +19,8 @@
 #include "ConfigSettings.h"
 #include "Utils.h"
 #include "SomfyShadeController.h"
-#include "WResp.h"
 #include "Web.h"
-#include "WebHelpers.h"
+#include "WebJsonResponder.h"
 
 extern SomfyShadeController somfy;
 
@@ -44,193 +48,149 @@ void WebRooms::end()
 
 void WebRooms::handleGetRooms(WebServer &server)
 {
+    WebJsonResponder json(server);
     HTTPMethod method = server.method();
     if (method == HTTP_POST || method == HTTP_GET) {
-        JsonResponse resp;
-        resp.beginResponse(&server, content, sizeof(content));
-        resp.beginArray();
-        somfy.toJSONRooms(resp);
-        resp.endArray();
-        resp.endResponse();
+        auto arrJson = json.respondJson().array();
+        somfy.toJSONRooms(arrJson);
     } else
-        server.send(404, ENCODING_TEXT, RESPONSE_404);
+        json.respondJson().notFound();
 }
 
 void WebRooms::handleRoom(WebServer &server)
 {
+    WebJsonResponder json(server);
     HTTPMethod method = server.method();
     if (method == HTTP_GET) {
         if (server.hasArg("roomId")) {
             int roomId = atoi(server.arg("roomId").c_str());
             SomfyRoom *room = somfy.getRoomById(roomId);
             if (room) {
-                JsonResponse resp;
-                resp.beginResponse(&server, content, sizeof(content));
-                resp.beginObject();
-                room->toJSON(resp);
-                resp.endObject();
-                resp.endResponse();
+                auto objJson = json.respondJson().object();
+                room->toJSON(objJson);
             } else
-                server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Room Id not found.\"}"));
+                json.respondJson().error("Room Id not found.");
         } else {
-            server.send(500, ENCODING_JSON,
-                        F("{\"status\":\"ERROR\",\"desc\":\"You must supply a valid room id.\"}"));
+            json.respondJson().error("You must supply a valid room id.");
         }
     } else if (method == HTTP_PUT || method == HTTP_POST) {
         // We are updating an existing room.
         if (server.hasArg("plain")) {
             ESP_LOGI(s_TAG, "Updating a room");
-            JsonDocument doc;
-            DeserializationError err = deserializeJson(doc, server.arg("plain"));
-            if (err) {
-                sendDeserializationError(server, err);
-                return;
-            } else {
-                JsonObject obj = doc.as<JsonObject>();
-                if (obj.containsKey("roomId")) {
-                    SomfyRoom *room = somfy.getRoomById(obj["roomId"]);
-                    if (room) {
-                        uint8_t err = room->fromJSON(obj);
-                        if (err == 0) {
-                            room->save();
-                            JsonResponse resp;
-                            resp.beginResponse(&server, content, sizeof(content));
-                            resp.beginObject();
-                            room->toJSON(resp);
-                            resp.endObject();
-                            resp.endResponse();
-                        } else {
-                            snprintf(content, sizeof(content),
-                                     "{\"status\":\"DATA\",\"desc\":\"Data Error.\", \"code\":%d}", err);
-                            server.send(500, ENCODING_JSON, content);
-                        }
-                    } else
-                        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Room Id not found.\"}"));
+            JsonObject obj;
+            if (!json.parseBody(obj)) return;
+            if (obj.containsKey("roomId")) {
+                SomfyRoom *room = somfy.getRoomById(obj["roomId"]);
+                if (room) {
+                    uint8_t err = room->fromJSON(obj);
+                    if (err == 0) {
+                        room->save();
+                        auto objJson = json.respondJson().object();
+                        room->toJSON(objJson);
+                    } else {
+                        char buf[96];
+                        snprintf(buf, sizeof(buf),
+                                 "{\"status\":\"DATA\",\"desc\":\"Data Error.\", \"code\":%d}", err);
+                        server.send(500, ENCODING_JSON, buf);
+                    }
                 } else
-                    server.send(500, ENCODING_JSON,
-                                F("{\"status\":\"ERROR\",\"desc\":\"No room id was supplied.\"}"));
-            }
+                    json.respondJson().error("Room Id not found.");
+            } else
+                json.respondJson().error("No room id was supplied.");
         } else
-            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No room object supplied.\"}"));
+            json.respondJson().error("No room object supplied.");
     } else
-        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
+        json.respondJson().invalidMethod();
 }
 
 void WebRooms::handleGetNextRoom(WebServer &server)
 {
-    JsonResponse resp;
-    resp.beginResponse(&server, content, sizeof(content));
-    resp.beginObject();
-    resp.addElem("roomId", somfy.getNextRoomId());
-    resp.endObject();
-    resp.endResponse();
+    WebJsonResponder json(server);
+    auto objJson = json.respondJson().object();
+    objJson.addElem("roomId", somfy.getNextRoomId());
 }
 
 void WebRooms::handleRoomSortOrder(WebServer &server)
 {
-    JsonDocument doc;
+    WebJsonResponder json(server);
     ESP_LOGI(s_TAG, "Plain: %s", server.arg("plain").c_str());
     ESP_LOGI(s_TAG, "Method: %d", server.method());
-    DeserializationError err = deserializeJson(doc, server.arg("plain"));
-    if (err) {
-        sendDeserializationError(server, err);
-        return;
-    } else {
-        JsonArray arr = doc.as<JsonArray>();
-        HTTPMethod method = server.method();
-        if (method == HTTP_POST || method == HTTP_PUT) {
-            uint8_t order = 0;
-            for (JsonVariant v : arr) {
-                uint8_t roomId = v.as<uint8_t>();
-                if (roomId != 0) {
-                    SomfyRoom *room = somfy.getRoomById(roomId);
-                    if (room) room->sortOrder = order++;
-                }
+    JsonArray arr;
+    if (!json.parseBody(arr)) return;
+    HTTPMethod method = server.method();
+    if (method == HTTP_POST || method == HTTP_PUT) {
+        uint8_t order = 0;
+        for (JsonVariant v : arr) {
+            uint8_t roomId = v.as<uint8_t>();
+            if (roomId != 0) {
+                SomfyRoom *room = somfy.getRoomById(roomId);
+                if (room) room->sortOrder = order++;
             }
-            server.send(200, "application/json", "{\"status\":\"OK\",\"desc\":\"Successfully set room order\"}");
-        } else {
-            server.send(201, "application/json", "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
         }
+        json.respondJson().ok("Successfully set room order");
+    } else {
+        json.respondJson().error("Invalid HTTP Method: ", 403);
     }
 }
 
 void WebRooms::handleAddRoom(WebServer &server)
 {
+    WebJsonResponder json(server);
     HTTPMethod method = server.method();
     SomfyRoom *room = nullptr;
     if (method == HTTP_POST || method == HTTP_PUT) {
         ESP_LOGI(s_TAG, "Adding a room");
-        JsonDocument doc;
-        DeserializationError err = deserializeJson(doc, server.arg("plain"));
-        if (err) {
-            sendDeserializationError(server, err);
+        JsonObject obj;
+        if (!json.parseBody(obj)) return;
+        ESP_LOGI(s_TAG, "Counting rooms");
+        if (somfy.roomCount() > SOMFY_MAX_ROOMS) {
+            json.respondJson().error("Maximum number of rooms exceeded.");
             return;
         } else {
-            JsonObject obj = doc.as<JsonObject>();
-            ESP_LOGI(s_TAG, "Counting rooms");
-            if (somfy.roomCount() > SOMFY_MAX_ROOMS) {
-                server.send(500, ENCODING_JSON,
-                            F("{\"status\":\"ERROR\",\"desc\":\"Maximum number of rooms exceeded.\"}"));
+            ESP_LOGI(s_TAG, "Adding room");
+            room = somfy.addRoom(obj);
+            if (!room) {
+                json.respondJson().error("Error adding room.");
                 return;
-            } else {
-                ESP_LOGI(s_TAG, "Adding room");
-                room = somfy.addRoom(obj);
-                if (!room) {
-                    server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Error adding room.\"}"));
-                    return;
-                }
             }
         }
     }
     if (room) {
-        JsonResponse resp;
-        resp.beginResponse(&server, content, sizeof(content));
-        resp.beginObject();
-        room->toJSON(resp);
-        resp.endObject();
-        resp.endResponse();
+        auto objJson = json.respondJson().object();
+        room->toJSON(objJson);
     } else {
-        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Error saving Somfy Room.\"}"));
+        json.respondJson().error("Error saving Somfy Room.");
     }
 }
 
 void WebRooms::handleSaveRoom(WebServer &server)
 {
+    WebJsonResponder json(server);
     HTTPMethod method = server.method();
     if (method == HTTP_PUT || method == HTTP_POST) {
         if (server.hasArg("plain")) {
             ESP_LOGI(s_TAG, "Updating a room");
-            JsonDocument doc;
-            DeserializationError err = deserializeJson(doc, server.arg("plain"));
-            if (err) {
-                sendDeserializationError(server, err);
-                return;
-            } else {
-                JsonObject obj = doc.as<JsonObject>();
-                if (obj.containsKey("roomId")) {
-                    SomfyRoom *room = somfy.getRoomById(obj["roomId"]);
-                    if (room) {
-                        room->fromJSON(obj);
-                        room->save();
-                        JsonResponse resp;
-                        resp.beginResponse(&server, content, sizeof(content));
-                        resp.beginObject();
-                        room->toJSON(resp);
-                        resp.endObject();
-                        resp.endResponse();
-                    } else
-                        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Room Id not found.\"}"));
+            JsonObject obj;
+            if (!json.parseBody(obj)) return;
+            if (obj.containsKey("roomId")) {
+                SomfyRoom *room = somfy.getRoomById(obj["roomId"]);
+                if (room) {
+                    room->fromJSON(obj);
+                    room->save();
+                    auto objJson = json.respondJson().object();
+                    room->toJSON(objJson);
                 } else
-                    server.send(500, ENCODING_JSON,
-                                F("{\"status\":\"ERROR\",\"desc\":\"No room id was supplied.\"}"));
-            }
+                    json.respondJson().error("Room Id not found.");
+            } else
+                json.respondJson().error("No room id was supplied.");
         } else
-            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No room object supplied.\"}"));
+            json.respondJson().error("No room object supplied.");
     }
 }
 
 void WebRooms::handleDeleteRoom(WebServer &server)
 {
+    WebJsonResponder json(server);
     HTTPMethod method = server.method();
     uint8_t roomId = 0;
     if (method == HTTP_GET || method == HTTP_PUT || method == HTTP_POST) {
@@ -238,28 +198,20 @@ void WebRooms::handleDeleteRoom(WebServer &server)
             roomId = atoi(server.arg("roomId").c_str());
         } else if (server.hasArg("plain")) {
             ESP_LOGI(s_TAG, "Deleting a Room");
-            JsonDocument doc;
-            DeserializationError err = deserializeJson(doc, server.arg("plain"));
-            if (err) {
-                sendDeserializationError(server, err);
-                return;
-            } else {
-                JsonObject obj = doc.as<JsonObject>();
-                if (obj.containsKey("roomId"))
-                    roomId = obj["roomId"];
-                else
-                    server.send(500, ENCODING_JSON,
-                                F("{\"status\":\"ERROR\",\"desc\":\"No room id was supplied.\"}"));
-            }
+            JsonObject obj;
+            if (!json.parseBody(obj)) return;
+            if (obj.containsKey("roomId"))
+                roomId = obj["roomId"];
+            else
+                json.respondJson().error("No room id was supplied.");
         } else
-            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No room object supplied.\"}"));
+            json.respondJson().error("No room object supplied.");
     }
     SomfyRoom *room = somfy.getRoomById(roomId);
     if (!room)
-        server.send(500, ENCODING_JSON,
-                    F("{\"status\":\"ERROR\",\"desc\":\"Room with the specified id not found.\"}"));
+        json.respondJson().error("Room with the specified id not found.");
     else {
         somfy.deleteRoom(roomId);
-        server.send(200, ENCODING_JSON, F("{\"status\":\"SUCCESS\",\"desc\":\"Room deleted.\"}"));
+        json.respondJson().success("Room deleted.");
     }
 }

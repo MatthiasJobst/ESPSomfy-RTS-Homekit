@@ -9,6 +9,7 @@
 #include "WebHandler.h"
 
 class SomfyShade;
+class WebJsonResponder;
 
 class WebShades : public WebHandler {
   public:
@@ -23,19 +24,19 @@ class WebShades : public WebHandler {
   private:
     /**
      * @brief Look up a shade by id, sending a 500 error if not found.
-     * @param server The server to send the error on.
+     * @param json The responder to send the error on.
      * @param shadeId The shade id to look up.
      * @return The shade, or nullptr (after sending the error) if not found.
      */
-    static SomfyShade *requireShade(WebServer &server, uint8_t shadeId);
+    static SomfyShade *requireShade(WebJsonResponder &json, uint8_t shadeId);
 
     /**
      * @brief Send a shade's JSON state as the response.
-     * @param server The server the request arrived on.
+     * @param json The responder to write the response on.
      * @param shade The shade to serialize.
      * @param ref When true, emit the minimal toJSONRef() form.
      */
-    static void sendShadeJSON(WebServer &server, SomfyShade *shade, bool ref = false);
+    static void sendShadeJSON(WebJsonResponder &json, SomfyShade *shade, bool ref = false);
 
     /**
      * @brief Link or unlink a hardware repeater by address.

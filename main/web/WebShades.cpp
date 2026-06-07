@@ -11,6 +11,12 @@
 //   - Linking and unlinking physical remotes (handleLinkRemote, handleUnlinkRemote)
 //   - Next available shade ID scaffold (handleGetNextShade)
 //   - Persisting shade sort order (handleShadeSortOrder)
+//
+// Request parsing and JSON/status responses go through a per-handler
+// WebJsonResponder (`WebJsonResponder json(server);`): json.parseBody() reads
+// the body, and json.respondJson() exposes the writer for
+// .object()/.array()/.error()/… responses. The requireShade()/sendShadeJSON()
+// helpers take that responder so all output flows through one facade.
 
 #include "WebShades.h"
 
@@ -18,9 +24,8 @@
 #include <WebServer.h>
 #include "Utils.h"
 #include "SomfyShadeController.h"
-#include "WResp.h"
 #include "Web.h"
-#include "WebHelpers.h"
+#include "WebJsonResponder.h"
 
 extern SomfyShadeController somfy;
 
@@ -65,46 +70,40 @@ void WebShades::end()
 // ---------------------------------------------------------------------------
 
 // Look up a shade by id. Sends a 500 error and returns nullptr if not found.
-SomfyShade *WebShades::requireShade(WebServer &server, uint8_t shadeId)
+SomfyShade *WebShades::requireShade(WebJsonResponder &json, uint8_t shadeId)
 {
     SomfyShade *shade = somfy.getShadeById(shadeId);
-    if (!shade) server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Shade not found.\"}"));
+    if (!shade) json.respondJson().error("Shade not found.");
     return shade;
 }
 
 // Send the shade's JSON state as the HTTP response.
 // Pass ref=true to use toJSONRef() (minimal reference fields) instead of toJSON().
-void WebShades::sendShadeJSON(WebServer &server, SomfyShade *shade, bool ref)
+void WebShades::sendShadeJSON(WebJsonResponder &json, SomfyShade *shade, bool ref)
 {
-    JsonResponse resp;
-    resp.beginResponse(&server, content, sizeof(content));
-    resp.beginObject();
+    auto objJson = json.respondJson().object();
     if (ref)
-        shade->toJSONRef(resp);
+        shade->toJSONRef(objJson);
     else
-        shade->toJSON(resp);
-    resp.endObject();
-    resp.endResponse();
+        shade->toJSON(objJson);
 }
 
 // ---------------------------------------------------------------------------
 
 void WebShades::handleGetShades(WebServer &server)
 {
+    WebJsonResponder json(server);
     HTTPMethod method = server.method();
     if (method == HTTP_POST || method == HTTP_GET) {
-        JsonResponse resp;
-        resp.beginResponse(&server, content, sizeof(content));
-        resp.beginArray();
-        somfy.toJSONShades(resp);
-        resp.endArray();
-        resp.endResponse();
+        auto arrJson = json.respondJson().array();
+        somfy.toJSONShades(arrJson);
     } else
-        server.send(404, ENCODING_TEXT, RESPONSE_404);
+        json.respondJson().notFound();
 }
 
 void WebShades::handleShadeCommand(WebServer &server)
 {
+    WebJsonResponder json(server);
     if (server.method() == HTTP_OPTIONS) {
         server.send(200, "OK");
         return;
@@ -126,13 +125,12 @@ void WebShades::handleShadeCommand(WebServer &server)
             if (server.hasArg("stepSize")) stepSize = atoi(server.arg("stepSize").c_str());
         } else if (server.hasArg("plain")) {
             ESP_LOGI(s_TAG, "Sending Shade Command");
-            JsonDocument doc;
             JsonObject obj;
-            if (!parseBody(server, doc, obj)) return;
+            if (!json.parseBody(obj)) return;
             if (obj.containsKey("shadeId"))
                 shadeId = obj["shadeId"];
             else
-                server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade id was supplied.\"}"));
+                json.respondJson().error("No shade id was supplied.");
             if (obj.containsKey("command")) {
                 String scmd = obj["command"];
                 command = translateSomfyCommand(scmd);
@@ -141,22 +139,23 @@ void WebShades::handleShadeCommand(WebServer &server)
             if (obj.containsKey("repeat")) repeat = obj["repeat"].as<uint8_t>();
             if (obj.containsKey("stepSize")) stepSize = obj["stepSize"].as<uint8_t>();
         } else
-            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade object supplied.\"}"));
-        SomfyShade *shade = requireShade(server, shadeId);
+            json.respondJson().error("No shade object supplied.");
+        SomfyShade *shade = requireShade(json, shadeId);
         if (shade) {
             ESP_LOGI(s_TAG, "Received: %s", server.arg("plain").c_str());
             if (target <= 100)
                 somfy.enqueueShadeTarget(shadeId, shade->transformPosition(target));
             else
                 somfy.enqueueShadeCommand(shadeId, command, repeat > 0 ? repeat : shade->repeats, stepSize);
-            sendShadeJSON(server, shade, true);
+            sendShadeJSON(json, shade, true);
         }
     } else
-        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
+        json.respondJson().invalidMethod();
 }
 
 void WebShades::handleTiltCommand(WebServer &server)
 {
+    WebJsonResponder json(server);
     HTTPMethod method = server.method();
     uint8_t shadeId = 255;
     uint8_t target = 255;
@@ -170,176 +169,168 @@ void WebShades::handleTiltCommand(WebServer &server)
                 target = atoi(server.arg("target").c_str());
         } else if (server.hasArg("plain")) {
             ESP_LOGI(s_TAG, "Sending Shade Tilt Command");
-            JsonDocument doc;
             JsonObject obj;
-            if (!parseBody(server, doc, obj)) return;
+            if (!json.parseBody(obj)) return;
             if (obj.containsKey("shadeId"))
                 shadeId = obj["shadeId"];
             else
-                server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade id was supplied.\"}"));
+                json.respondJson().error("No shade id was supplied.");
             if (obj.containsKey("command")) {
                 String scmd = obj["command"];
                 command = translateSomfyCommand(scmd);
             } else if (obj.containsKey("target"))
                 target = obj["target"].as<uint8_t>();
         } else
-            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade object supplied.\"}"));
-        SomfyShade *shade = requireShade(server, shadeId);
+            json.respondJson().error("No shade object supplied.");
+        SomfyShade *shade = requireShade(json, shadeId);
         if (shade) {
             ESP_LOGI(s_TAG, "Received: %s", server.arg("plain").c_str());
             if (target <= 100)
                 somfy.enqueueShadeTiltTarget(shadeId, shade->transformPosition(target));
             else
                 somfy.enqueueShadeTiltCommand(shadeId, command);
-            sendShadeJSON(server, shade, true);
+            sendShadeJSON(json, shade, true);
         }
     } else
-        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
+        json.respondJson().invalidMethod();
 }
 
 void WebShades::handleShade(WebServer &server)
 {
+    WebJsonResponder json(server);
     if (server.method() == HTTP_GET) {
         if (server.hasArg("shadeId")) {
-            SomfyShade *shade = requireShade(server, atoi(server.arg("shadeId").c_str()));
-            if (shade) sendShadeJSON(server, shade);
+            SomfyShade *shade = requireShade(json, atoi(server.arg("shadeId").c_str()));
+            if (shade) sendShadeJSON(json, shade);
         } else {
-            server.send(500, ENCODING_JSON,
-                        F("{\"status\":\"ERROR\",\"desc\":\"You must supply a valid shade id.\"}"));
+            json.respondJson().error("You must supply a valid shade id.");
         }
     } else
-        server.send(404, ENCODING_TEXT, RESPONSE_404);
+        json.respondJson().notFound();
 }
 
 void WebShades::handleSetPositions(WebServer &server)
 {
+    WebJsonResponder json(server);
     uint8_t shadeId = (server.hasArg("shadeId")) ? atoi(server.arg("shadeId").c_str()) : 255;
     int8_t pos = (server.hasArg("position")) ? static_cast<int8_t>(atoi(server.arg("position").c_str())) : int8_t{-1};
     int8_t tiltPos =
         (server.hasArg("tiltPosition")) ? static_cast<int8_t>(atoi(server.arg("tiltPosition").c_str())) : int8_t{-1};
     if (server.hasArg("plain")) {
-        JsonDocument doc;
         JsonObject obj;
-        if (!parseBody(server, doc, obj)) return;
+        if (!json.parseBody(obj)) return;
         if (obj.containsKey("shadeId")) shadeId = obj["shadeId"];
         if (obj.containsKey("position")) pos = obj["position"].as<int8_t>();
         if (obj.containsKey("tiltPosition")) tiltPos = obj["tiltPosition"].as<int8_t>();
     }
     if (shadeId != 255) {
-        SomfyShade *shade = requireShade(server, shadeId);
+        SomfyShade *shade = requireShade(json, shadeId);
         if (shade) {
             if (pos >= 0) shade->target = shade->currentPos = pos;
             if (tiltPos >= 0 && shade->tiltType != tilt_types::none)
                 shade->tiltTarget = shade->currentTiltPos = tiltPos;
             shade->emitState();
-            sendShadeJSON(server, shade);
+            sendShadeJSON(json, shade);
         }
     } else {
-        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"shadeId was not provided\"}"));
+        json.respondJson().error("shadeId was not provided");
     }
 }
 
 void WebShades::handleGetNextShade(WebServer &server)
 {
+    WebJsonResponder json(server);
     uint8_t shadeId = somfy.getNextShadeId();
-    JsonResponse resp;
-    resp.beginResponse(&server, content, sizeof(content));
-    resp.beginObject();
-    resp.addElem("shadeId", shadeId);
-    resp.addElem("remoteAddress", (uint32_t)somfy.getNextRemoteAddress(shadeId));
-    resp.addElem("bitLength", somfy.transceiver.config.type);
-    resp.addElem("stepSize", (uint8_t)100);
-    resp.addElem("proto", static_cast<uint8_t>(somfy.transceiver.config.proto));
-    resp.endObject();
-    resp.endResponse();
+    auto objJson = json.respondJson().object();
+    objJson.addElem("shadeId", shadeId);
+    objJson.addElem("remoteAddress", (uint32_t)somfy.getNextRemoteAddress(shadeId));
+    objJson.addElem("bitLength", somfy.transceiver.config.type);
+    objJson.addElem("stepSize", (uint8_t)100);
+    objJson.addElem("proto", static_cast<uint8_t>(somfy.transceiver.config.proto));
 }
 
 void WebShades::handleShadeSortOrder(WebServer &server)
 {
-    JsonDocument doc;
+    WebJsonResponder json(server);
     ESP_LOGI(s_TAG, "Plain: %s", server.arg("plain").c_str());
-    DeserializationError err = deserializeJson(doc, server.arg("plain"));
-    if (err) {
-        sendDeserializationError(server, err);
-        return;
-    } else {
-        JsonArray arr = doc.as<JsonArray>();
-        HTTPMethod method = server.method();
-        if (method == HTTP_POST || method == HTTP_PUT) {
-            uint8_t order = 0;
-            for (JsonVariant v : arr) {
-                uint8_t shadeId = v.as<uint8_t>();
-                if (shadeId != 255) {
-                    SomfyShade *shade = somfy.getShadeById(shadeId);
-                    if (shade) shade->sortOrder = order++;
-                }
+    JsonArray arr;
+    if (!json.parseBody(arr)) return;
+    HTTPMethod method = server.method();
+    if (method == HTTP_POST || method == HTTP_PUT) {
+        uint8_t order = 0;
+        for (JsonVariant v : arr) {
+            uint8_t shadeId = v.as<uint8_t>();
+            if (shadeId != 255) {
+                SomfyShade *shade = somfy.getShadeById(shadeId);
+                if (shade) shade->sortOrder = order++;
             }
-            server.send(200, "application/json", "{\"status\":\"OK\",\"desc\":\"Successfully set shade order\"}");
-        } else {
-            server.send(201, "application/json", "{\"status\":\"ERROR\",\"desc\":\"Invalid HTTP Method: \"}");
         }
+        json.respondJson().ok("Successfully set shade order");
+    } else {
+        json.respondJson().error("Invalid HTTP Method: ", 403);
     }
 }
 
 void WebShades::handleAddShade(WebServer &server)
 {
+    WebJsonResponder json(server);
     HTTPMethod method = server.method();
     SomfyShade *shade = nullptr;
     if (method == HTTP_POST || method == HTTP_PUT) {
         ESP_LOGI(s_TAG, "Adding a shade");
-        JsonDocument doc;
         JsonObject obj;
-        if (!parseBody(server, doc, obj)) return;
+        if (!json.parseBody(obj)) return;
         ESP_LOGI(s_TAG, "Counting shades");
         if (somfy.shadeCount() > SOMFY_MAX_SHADES) {
-            server.send(500, ENCODING_JSON,
-                        F("{\"status\":\"ERROR\",\"desc\":\"Maximum number of shades exceeded.\"}"));
+            json.respondJson().error("Maximum number of shades exceeded.");
             return;
         }
         ESP_LOGI(s_TAG, "Adding shade");
         shade = somfy.addShade(obj);
         if (!shade) {
-            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Error adding shade.\"}"));
+            json.respondJson().error("Error adding shade.");
             return;
         }
     }
     if (shade)
-        sendShadeJSON(server, shade);
+        sendShadeJSON(json, shade);
     else
-        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Error saving Somfy Shade.\"}"));
+        json.respondJson().error("Error saving Somfy Shade.");
 }
 
 void WebShades::handleSaveShade(WebServer &server)
 {
+    WebJsonResponder json(server);
     HTTPMethod method = server.method();
     if (method == HTTP_PUT || method == HTTP_POST) {
         if (server.hasArg("plain")) {
             ESP_LOGI(s_TAG, "Updating a shade");
-            JsonDocument doc;
             JsonObject obj;
-            if (!parseBody(server, doc, obj)) return;
+            if (!json.parseBody(obj)) return;
             if (obj.containsKey("shadeId")) {
-                SomfyShade *shade = requireShade(server, obj["shadeId"].as<uint8_t>());
+                SomfyShade *shade = requireShade(json, obj["shadeId"].as<uint8_t>());
                 if (shade) {
                     int8_t err = shade->fromJSON(obj);
                     if (err == 0) {
                         shade->save();
-                        sendShadeJSON(server, shade);
+                        sendShadeJSON(json, shade);
                     } else {
-                        snprintf(content, sizeof(content),
+                        char buf[96];
+                        snprintf(buf, sizeof(buf),
                                  "{\"status\":\"DATA\",\"desc\":\"Data Error.\", \"code\":%d}", err);
-                        server.send(500, ENCODING_JSON, content);
+                        server.send(500, ENCODING_JSON, buf);
                     }
                 }
             } else
-                server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade id was supplied.\"}"));
+                json.respondJson().error("No shade id was supplied.");
         } else
-            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade object supplied.\"}"));
+            json.respondJson().error("No shade object supplied.");
     }
 }
 
 void WebShades::handleDeleteShade(WebServer &server)
 {
+    WebJsonResponder json(server);
     HTTPMethod method = server.method();
     uint8_t shadeId = 255;
     if (method == HTTP_GET || method == HTTP_PUT || method == HTTP_POST) {
@@ -347,29 +338,28 @@ void WebShades::handleDeleteShade(WebServer &server)
             shadeId = atoi(server.arg("shadeId").c_str());
         } else if (server.hasArg("plain")) {
             ESP_LOGI(s_TAG, "Deleting a shade");
-            JsonDocument doc;
             JsonObject obj;
-            if (!parseBody(server, doc, obj)) return;
+            if (!json.parseBody(obj)) return;
             if (obj.containsKey("shadeId"))
                 shadeId = obj["shadeId"];
             else
-                server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade id was supplied.\"}"));
+                json.respondJson().error("No shade id was supplied.");
         } else
-            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade object supplied.\"}"));
+            json.respondJson().error("No shade object supplied.");
     }
-    SomfyShade *shade = requireShade(server, shadeId);
+    SomfyShade *shade = requireShade(json, shadeId);
     if (!shade) return;
     if (shade->isInGroup())
-        server.send(400, ENCODING_JSON,
-                    F("{\"status\":\"ERROR\",\"desc\":\"This shade is a member of a group and cannot be deleted.\"}"));
+        json.respondJson().error("This shade is a member of a group and cannot be deleted.", 400);
     else {
         somfy.deleteShade(shadeId);
-        server.send(200, ENCODING_JSON, F("{\"status\":\"SUCCESS\",\"desc\":\"Shade deleted.\"}"));
+        json.respondJson().success("Shade deleted.");
     }
 }
 
 void WebShades::handleSetMyPosition(WebServer &server)
 {
+    WebJsonResponder json(server);
     HTTPMethod method = server.method();
     uint8_t shadeId = 255;
     int8_t pos = -1;
@@ -380,106 +370,105 @@ void WebShades::handleSetMyPosition(WebServer &server)
             if (server.hasArg("pos")) pos = static_cast<int8_t>(atoi(server.arg("pos").c_str()));
             if (server.hasArg("tilt")) tilt = static_cast<int8_t>(atoi(server.arg("tilt").c_str()));
         } else if (server.hasArg("plain")) {
-            JsonDocument doc;
             JsonObject obj;
-            if (!parseBody(server, doc, obj)) return;
+            if (!json.parseBody(obj)) return;
             if (obj.containsKey("shadeId"))
                 shadeId = obj["shadeId"];
             else
-                server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade id was supplied.\"}"));
+                json.respondJson().error("No shade id was supplied.");
             if (obj.containsKey("pos")) pos = obj["pos"].as<int8_t>();
             if (obj.containsKey("tilt")) tilt = obj["tilt"].as<int8_t>();
         } else
-            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade object supplied.\"}"));
-        SomfyShade *shade = requireShade(server, shadeId);
+            json.respondJson().error("No shade object supplied.");
+        SomfyShade *shade = requireShade(json, shadeId);
         if (shade) {
             if (tilt < 0) tilt = static_cast<int8_t>(shade->getMyPos());
             if (shade->tiltType == tilt_types::none) tilt = -1;
             if (pos >= 0 && pos <= 100)
                 shade->setMyPosition(shade->transformPosition(pos), shade->transformPosition(tilt));
-            sendShadeJSON(server, shade, true);
+            sendShadeJSON(json, shade, true);
         }
     } else
-        server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"Invalid Http method\"}"));
+        json.respondJson().invalidMethod();
 }
 
 void WebShades::handleSetRollingCode(WebServer &server)
 {
+    WebJsonResponder json(server);
     HTTPMethod method = server.method();
     if (method == HTTP_PUT || method == HTTP_POST) {
         uint8_t shadeId = 255;
         uint16_t rollingCode = 0;
         if (server.hasArg("plain")) {
-            JsonDocument doc;
             JsonObject obj;
-            if (!parseBody(server, doc, obj)) return;
+            if (!json.parseBody(obj)) return;
             if (obj.containsKey("shadeId")) shadeId = obj["shadeId"];
             if (obj.containsKey("rollingCode")) rollingCode = obj["rollingCode"];
         } else if (server.hasArg("shadeId")) {
             shadeId = atoi(server.arg("shadeId").c_str());
             rollingCode = atoi(server.arg("rollingCode").c_str());
         }
-        SomfyShade *shade = requireShade(server, shadeId);
+        SomfyShade *shade = requireShade(json, shadeId);
         if (shade) {
             shade->setRollingCode(rollingCode);
-            sendShadeJSON(server, shade);
+            sendShadeJSON(json, shade);
         }
     }
 }
 
 void WebShades::handleSetPaired(WebServer &server)
 {
+    WebJsonResponder json(server);
     uint8_t shadeId = 255;
     bool paired = false;
     if (server.hasArg("plain")) {
-        JsonDocument doc;
         JsonObject obj;
-        if (!parseBody(server, doc, obj)) return;
+        if (!json.parseBody(obj)) return;
         if (obj.containsKey("shadeId")) shadeId = obj["shadeId"];
         if (obj.containsKey("paired")) paired = obj["paired"];
     } else if (server.hasArg("shadeId"))
         shadeId = atoi(server.arg("shadeId").c_str());
     if (server.hasArg("paired")) paired = toBoolean(server.arg("paired").c_str(), false);
-    SomfyShade *shade = requireShade(server, shadeId);
+    SomfyShade *shade = requireShade(json, shadeId);
     if (shade) {
         shade->paired = paired;
         shade->save();
-        sendShadeJSON(server, shade);
+        sendShadeJSON(json, shade);
     }
 }
 
 void WebShades::handleUnpairShade(WebServer &server)
 {
+    WebJsonResponder json(server);
     HTTPMethod method = server.method();
     if (method == HTTP_PUT || method == HTTP_POST) {
         uint8_t shadeId = 255;
         if (server.hasArg("plain")) {
-            JsonDocument doc;
             JsonObject obj;
-            if (!parseBody(server, doc, obj)) return;
+            if (!json.parseBody(obj)) return;
             if (obj.containsKey("shadeId")) shadeId = obj["shadeId"];
         } else if (server.hasArg("shadeId"))
             shadeId = atoi(server.arg("shadeId").c_str());
-        SomfyShade *shade = requireShade(server, shadeId);
+        SomfyShade *shade = requireShade(json, shadeId);
         if (shade) {
             shade->sendCommand(somfy_commands::Prog, shade->bitLength == 56 ? 7 : 1);
             shade->paired = false;
             shade->save();
-            sendShadeJSON(server, shade);
+            sendShadeJSON(json, shade);
         }
     }
 }
 
 void WebShades::repeaterLinkOp(WebServer &server, bool link)
 {
+    WebJsonResponder json(server);
     HTTPMethod method = server.method();
     if (method == HTTP_PUT || method == HTTP_POST) {
         uint32_t address = 0;
         if (server.hasArg("plain")) {
             ESP_LOGI(s_TAG, "%s a repeater", link ? "Linking" : "Unlinking");
-            JsonDocument doc;
             JsonObject obj;
-            if (!parseBody(server, doc, obj)) return;
+            if (!json.parseBody(obj)) return;
             if (obj.containsKey("address"))
                 address = obj["address"];
             else if (obj.containsKey("remoteAddress"))
@@ -487,19 +476,14 @@ void WebShades::repeaterLinkOp(WebServer &server, bool link)
         } else if (server.hasArg("address"))
             address = atoi(server.arg("address").c_str());
         if (address == 0)
-            server.send(500, ENCODING_JSON,
-                        F("{\"status\":\"ERROR\",\"desc\":\"No repeater address was supplied.\"}"));
+            json.respondJson().error("No repeater address was supplied.");
         else {
             if (link)
                 somfy.linkRepeater(address);
             else
                 somfy.unlinkRepeater(address);
-            JsonResponse resp;
-            resp.beginResponse(&server, content, sizeof(content));
-            resp.beginArray();
-            somfy.toJSONRepeaters(resp);
-            resp.endArray();
-            resp.endResponse();
+            auto arrJson = json.respondJson().array();
+            somfy.toJSONRepeaters(arrJson);
         }
     }
 }
@@ -516,15 +500,15 @@ void WebShades::handleUnlinkRepeater(WebServer &server)
 
 void WebShades::remoteLinkOp(WebServer &server, bool link)
 {
+    WebJsonResponder json(server);
     HTTPMethod method = server.method();
     if (method == HTTP_PUT || method == HTTP_POST) {
         if (server.hasArg("plain")) {
             if (link) ESP_LOGI(s_TAG, "Linking a remote");
-            JsonDocument doc;
             JsonObject obj;
-            if (!parseBody(server, doc, obj)) return;
+            if (!json.parseBody(obj)) return;
             if (obj.containsKey("shadeId")) {
-                SomfyShade *shade = requireShade(server, obj["shadeId"].as<uint8_t>());
+                SomfyShade *shade = requireShade(json, obj["shadeId"].as<uint8_t>());
                 if (shade) {
                     if (obj.containsKey("remoteAddress")) {
                         if (link) {
@@ -536,15 +520,14 @@ void WebShades::remoteLinkOp(WebServer &server, bool link)
                             shade->unlinkRemote(obj["remoteAddress"]);
                         }
                     } else {
-                        server.send(500, ENCODING_JSON,
-                                    F("{\"status\":\"ERROR\",\"desc\":\"Remote address not provided.\"}"));
+                        json.respondJson().error("Remote address not provided.");
                     }
-                    sendShadeJSON(server, shade);
+                    sendShadeJSON(json, shade);
                 }
             } else
-                server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No shade id was supplied.\"}"));
+                json.respondJson().error("No shade id was supplied.");
         } else
-            server.send(500, ENCODING_JSON, F("{\"status\":\"ERROR\",\"desc\":\"No remote object supplied.\"}"));
+            json.respondJson().error("No remote object supplied.");
     }
 }
 

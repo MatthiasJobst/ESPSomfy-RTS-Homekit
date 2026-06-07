@@ -7,8 +7,8 @@
 #include "WebHomeKit.h"
 
 #include <WebServer.h>
-#include "WResp.h"
 #include "Web.h"
+#include "WebJsonResponder.h"
 #include "HomeKit.h"
 
 extern HomeKitClass homekit;
@@ -30,22 +30,21 @@ void WebHomeKit::end()
 
 void WebHomeKit::handleHomeKit(WebServer &server)
 {
+    WebJsonResponder json(server);
     if (server.method() == HTTP_GET) {
-        JsonResponse resp;
-        resp.beginResponse(&server, content, sizeof(content));
-        resp.beginObject();
-        homekit.toJSON(resp);
-        resp.endObject();
-        resp.endResponse();
+        auto objJson = json.respondJson().object();
+        homekit.toJSON(objJson);
     } else
-        server.send(404, ENCODING_TEXT, RESPONSE_404);
+        json.respondJson().notFound();
 }
 
 void WebHomeKit::handleHomeKitResetPairings(WebServer &server)
 {
+    WebJsonResponder json(server);
     if (server.method() == HTTP_POST) {
         homekit.resetPairings();
+        // Bare {"status":"OK"} (no desc) — not the facade's status shape.
         server.send(200, ENCODING_JSON, F("{\"status\":\"OK\"}"));
     } else
-        server.send(404, ENCODING_TEXT, RESPONSE_404);
+        json.respondJson().notFound();
 }
