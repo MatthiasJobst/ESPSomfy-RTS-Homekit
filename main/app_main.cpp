@@ -19,6 +19,7 @@
 #include "GitOTA.h"
 #include "HomeKit.h"
 #include "MQTT.h"
+#include "OtaService.h"
 #include "Sockets.h"
 #include "SomfyShadeController.h"
 #include "Utils.h"
@@ -35,6 +36,7 @@ SomfyShadeController somfy;
 MQTTClass mqtt;
 GitUpdater git;
 HomeKitClass homekit;
+OtaService ota;
 
 static const char *s_TAG = "Main";
 

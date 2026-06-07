@@ -10,14 +10,13 @@
 #include "WebOTA.h"
 
 #include <esp_log.h>
-#include <esp_task_wdt.h>
 #include <LittleFS.h>
 #include <Update.h>
 #include <WebServer.h>
 #include <WiFi.h>
 #include "ConfigSettings.h"
 #include "GitOTA.h"
-#include "MQTT.h"
+#include "OtaService.h"
 #include "ShadeConfigFile.h"
 #include "SomfyShadeController.h"
 #include "Utils.h"
@@ -27,7 +26,7 @@
 extern SomfyShadeController somfy;
 extern GitUpdater git;
 extern rebootDelay_t rebootDelay;
-extern MQTTClass mqtt;
+extern OtaService ota;
 
 static const char *s_TAG = "WebOTA";
 
@@ -115,7 +114,7 @@ void WebOTA::handleRestoreUpload(WebServer &server)
 void WebOTA::handleUpdateFirmware(WebServer &server)
 {
     WebJsonResponder json(server);
-    if (Update.hasError())
+    if (!ota.lastImageUploadOk())
         json.respondJson().error("Error updating firmware: ");
     else
         json.respondJson().success("Successfully updated firmware");
@@ -123,35 +122,7 @@ void WebOTA::handleUpdateFirmware(WebServer &server)
 }
 void WebOTA::handleUpdateFirmwareUpload(WebServer &server)
 {
-    HTTPUpload &upload = server.upload();
-    if (upload.status == UPLOAD_FILE_START) {
-        uploadSuccess = false;
-        ESP_LOGI(s_TAG, "Update: %s - %d", upload.filename.c_str(), upload.totalSize);
-        if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
-            Update.printError(Serial);
-        } else {
-            somfy.transceiver.end();
-            mqtt.end();
-        }
-    } else if (upload.status == UPLOAD_FILE_ABORTED) {
-        ESP_LOGE(s_TAG, "Upload of %s aborted", upload.filename.c_str());
-        Update.abort();
-    } else if (upload.status == UPLOAD_FILE_WRITE) {
-        esp_task_wdt_reset();
-        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-            Update.printError(Serial);
-            ESP_LOGE(s_TAG, "Upload of %s aborted invalid size %d", upload.filename.c_str(), upload.currentSize);
-            Update.abort();
-        }
-    } else if (upload.status == UPLOAD_FILE_END) {
-        if (Update.end(true)) {
-            ESP_LOGI(s_TAG, "Update Success: %u\nRebooting...\n", upload.totalSize);
-            uploadSuccess = true;
-        } else {
-            Update.printError(Serial);
-            ESP_LOGE(s_TAG, "Update failed");
-        }
-    }
+    ota.firmwareUploadChunk(server.upload());
 }
 void WebOTA::handleUpdateShadeConfig(WebServer &server)
 {
@@ -184,8 +155,8 @@ void WebOTA::handleUpdateApplication(WebServer &server)
 {
     WebJsonResponder json(server);
     server.sendHeader("Connection", "close");
-    if (Update.hasError()) {
-        json.respondJson().error(Update.errorString());
+    if (!ota.lastImageUploadOk()) {
+        json.respondJson().error(ota.lastImageError());
     } else {
         json.respondJson().success("Successfully updated application");
         rebootDelay.requestReboot(500);
@@ -193,34 +164,5 @@ void WebOTA::handleUpdateApplication(WebServer &server)
 }
 void WebOTA::handleUpdateApplicationUpload(WebServer &server)
 {
-    HTTPUpload &upload = server.upload();
-    if (upload.status == UPLOAD_FILE_START) {
-        uploadSuccess = false;
-        ESP_LOGI(s_TAG, "Update: %s %d", upload.filename.c_str(), upload.totalSize);
-        somfy.commit();
-        LittleFS.end();
-        if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASHFS)) {
-            Update.printError(Serial);
-        } else {
-            somfy.transceiver.end();
-            mqtt.end();
-        }
-    } else if (upload.status == UPLOAD_FILE_ABORTED) {
-        ESP_LOGE(s_TAG, "Upload of %s aborted", upload.filename.c_str());
-        Update.abort();
-    } else if (upload.status == UPLOAD_FILE_WRITE) {
-        esp_task_wdt_reset();
-        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-            Update.printError(Serial);
-            ESP_LOGE(s_TAG, "Upload of %s aborted invalid size %d", upload.filename.c_str(), upload.currentSize);
-            Update.abort();
-        }
-    } else if (upload.status == UPLOAD_FILE_END) {
-        if (Update.end(true)) {
-            uploadSuccess = true;
-            ESP_LOGI(s_TAG, "Update Success: %u\nRebooting...\n", upload.totalSize);
-        } else {
-            Update.printError(Serial);
-        }
-    }
+    ota.applicationUploadChunk(server.upload());
 }

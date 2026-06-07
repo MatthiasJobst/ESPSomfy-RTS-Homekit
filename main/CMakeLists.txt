@@ -8,6 +8,7 @@ idf_component_register(
         "ShadeConfigFile.cpp"
         "ConfigSettings.cpp"
         "GitOTA.cpp"
+        "OtaService.cpp"
         "HomeKit.cpp"
         "MQTT.cpp"
         "ControllerNetwork.cpp"
