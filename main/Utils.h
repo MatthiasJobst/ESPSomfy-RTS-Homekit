@@ -66,6 +66,12 @@ struct rebootDelay_t {
     bool reboot = false;
     unsigned long rebootTime = 0;
     bool closed = false;
+
+    /**
+     * @brief Schedule a reboot @p ms milliseconds from now.
+     * @param ms Delay before the main loop performs the reboot.
+     */
+    void requestReboot(uint32_t ms);
 };
 [[maybe_unused]] static bool toBoolean(const char *str, bool def)
 {

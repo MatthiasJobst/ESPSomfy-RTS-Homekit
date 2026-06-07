@@ -198,8 +198,7 @@ void WebSystem::handleReboot(WebServer &server)
     HTTPMethod method = server.method();
     if (method == HTTP_POST || method == HTTP_PUT) {
         ESP_LOGI(s_TAG, "Rebooting ESP...");
-        rebootDelay.reboot = true;
-        rebootDelay.rebootTime = millis() + 500;
+        rebootDelay.requestReboot(500);
         json.respondJson().ok("Successfully started reboot");
     } else {
         json.respondJson().error("Invalid HTTP Method: ", 403);

@@ -182,8 +182,7 @@ void WebSettings::handleSetNetwork(WebServer &server)
             }
             if (reboot) {
                 ESP_LOGI(s_TAG, "Rebooting ESP for new Network settings...");
-                rebootDelay.reboot = true;
-                rebootDelay.rebootTime = millis() + 1000;
+                rebootDelay.requestReboot(1000);
             }
             json.respondJson().ok("Successfully set Network Settings");
         } else {
@@ -231,8 +230,7 @@ void WebSettings::handleConnectWifi(WebServer &server)
             json.respondJson().ok("Successfully set server connection");
             if (reboot) {
                 ESP_LOGI(s_TAG, "Rebooting ESP for new WiFi settings...");
-                rebootDelay.reboot = true;
-                rebootDelay.rebootTime = millis() + 1000;
+                rebootDelay.requestReboot(1000);
             }
         }
     } else {

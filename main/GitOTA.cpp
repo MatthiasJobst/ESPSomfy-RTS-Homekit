@@ -481,8 +481,7 @@ bool GitUpdater::beginUpdate(const char *version)
             ESP_LOGI(s_TAG, "Committing Configuration...");
             somfy.commit();
         }
-        rebootDelay.reboot = true;
-        rebootDelay.rebootTime = millis() + 500;
+        rebootDelay.requestReboot(500);
     }
     this->status = GIT_UPDATE_COMPLETE;
     this->emitUpdateCheck();
@@ -506,8 +505,7 @@ bool GitUpdater::recoverFilesystem()
         somfy.commit();
     }
     this->status = GIT_UPDATE_COMPLETE;
-    rebootDelay.reboot = true;
-    rebootDelay.rebootTime = millis() + 500;
+    rebootDelay.requestReboot(500);
     return true;
 }
 bool GitUpdater::endUpdate()

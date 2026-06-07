@@ -24,7 +24,6 @@
 #include "Web.h"
 #include "WebJsonResponder.h"
 
-extern ConfigSettings settings;
 extern SomfyShadeController somfy;
 extern GitUpdater git;
 extern rebootDelay_t rebootDelay;
@@ -94,8 +93,7 @@ void WebOTA::handleRestore(WebServer &server)
         }
         ShadeConfigFile::restore(&somfy, "/shades.tmp", opts);
         ESP_LOGI(s_TAG, "Rebooting ESP for restored settings...");
-        rebootDelay.reboot = true;
-        rebootDelay.rebootTime = millis() + 1000;
+        rebootDelay.requestReboot(1000);
     }
 }
 void WebOTA::handleRestoreUpload(WebServer &server)
@@ -121,8 +119,7 @@ void WebOTA::handleUpdateFirmware(WebServer &server)
         json.respondJson().error("Error updating firmware: ");
     else
         json.respondJson().success("Successfully updated firmware");
-    rebootDelay.reboot = true;
-    rebootDelay.rebootTime = millis() + 500;
+    rebootDelay.requestReboot(500);
 }
 void WebOTA::handleUpdateFirmwareUpload(WebServer &server)
 {
@@ -191,8 +188,7 @@ void WebOTA::handleUpdateApplication(WebServer &server)
         json.respondJson().error(Update.errorString());
     } else {
         json.respondJson().success("Successfully updated application");
-        rebootDelay.reboot = true;
-        rebootDelay.rebootTime = millis() + 500;
+        rebootDelay.requestReboot(500);
     }
 }
 void WebOTA::handleUpdateApplicationUpload(WebServer &server)

@@ -13,6 +13,12 @@ const char *getBuildVersion()
     return desc ? desc->version : "";
 }
 
+void rebootDelay_t::requestReboot(uint32_t ms)
+{
+    this->reboot = true;
+    this->rebootTime = millis() + ms;
+}
+
 /*********************************************************************
  * Timestamp class members
  ********************************************************************/
