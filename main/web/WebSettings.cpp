@@ -18,7 +18,6 @@
 #include "WebSettings.h"
 
 #include <esp_log.h>
-#include <WiFi.h>
 #include <WebServer.h>
 #include "ConfigSettings.h"
 #include "OtaService.h"
@@ -129,36 +128,7 @@ void WebSettings::handleSetNetwork(WebServer &server)
         JsonObject obj = doc.as<JsonObject>();
         HTTPMethod method = server.method();
         if (method == HTTP_POST || method == HTTP_PUT) {
-            bool reboot = false;
-            if (obj.containsKey("connType") &&
-                obj["connType"].as<uint8_t>() != static_cast<uint8_t>(settings.connType)) {
-                settings.connType = static_cast<conn_types_t>(obj["connType"].as<uint8_t>());
-                settings.save();
-                reboot = true;
-            }
-            if (obj.containsKey("wifi")) {
-                JsonObject objWifi = obj["wifi"];
-                if (settings.connType == conn_types_t::wifi) {
-                    if (objWifi.containsKey("ssid") &&
-                        objWifi["ssid"].as<String>().compareTo(settings.WIFI.ssid) != 0) {
-                        if (WiFi.softAPgetStationNum() == 0) reboot = true;
-                    }
-                    if (objWifi.containsKey("passphrase") &&
-                        objWifi["passphrase"].as<String>().compareTo(settings.WIFI.passphrase) != 0) {
-                        if (WiFi.softAPgetStationNum() == 0) reboot = true;
-                    }
-                }
-                settings.WIFI.fromJSON(objWifi);
-                settings.WIFI.save();
-            }
-            if (obj.containsKey("ethernet")) {
-                JsonObject objEth = obj["ethernet"];
-                if (settings.connType == conn_types_t::ethernet || settings.connType == conn_types_t::ethernetpref)
-                    reboot = true;
-                settings.Ethernet.fromJSON(objEth);
-                settings.Ethernet.save();
-            }
-            if (reboot) {
+            if (net.applyNetworkConfig(obj)) {
                 ESP_LOGI(s_TAG, "Rebooting ESP for new Network settings...");
                 rebootDelay.requestReboot(1000);
             }
@@ -198,15 +168,10 @@ void WebSettings::handleConnectWifi(WebServer &server)
         if (obj.containsKey("ssid")) ssid = obj["ssid"].as<String>();
         if (obj.containsKey("passphrase")) passphrase = obj["passphrase"].as<String>();
         bool reboot = false;
-        if (ssid.compareTo(settings.WIFI.ssid) != 0) reboot = true;
-        if (passphrase.compareTo(settings.WIFI.passphrase) != 0) reboot = true;
-        if (!settings.WIFI.ssidExists(ssid.c_str()) && ssid.length() > 0) {
+        if (net.applyWifiCredentials(ssid.c_str(), passphrase.c_str(), reboot) ==
+            ControllerNetwork::WifiApply::NotFound) {
             json.respondJson().error("WiFi Network Does not exist", 400);
         } else {
-            SETCHARPROP(settings.WIFI.ssid, ssid.c_str(), sizeof(settings.WIFI.ssid));
-            SETCHARPROP(settings.WIFI.passphrase, passphrase.c_str(), sizeof(settings.WIFI.passphrase));
-            settings.WIFI.save();
-            settings.WIFI.print();
             json.respondJson().ok("Successfully set server connection");
             if (reboot) {
                 ESP_LOGI(s_TAG, "Rebooting ESP for new WiFi settings...");

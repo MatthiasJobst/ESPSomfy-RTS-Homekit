@@ -53,6 +53,32 @@ class ControllerNetwork {
     bool getStrongestAP(const char *ssid, uint8_t *bssid, int32_t *channel);
     bool changeAP(const uint8_t *bssid, const int32_t channel);
     void updateHostname();
+
+    /**
+     * @brief Apply posted network settings (connType / wifi / ethernet) and save.
+     *
+     * Encapsulates the reboot policy: a connType change always needs a reboot; a
+     * wifi ssid/passphrase change needs one only when no SoftAP client is
+     * connected; an ethernet change needs one when ethernet is the active type.
+     *
+     * @param obj The posted network settings object.
+     * @return true if the change requires a reboot to take effect.
+     */
+    bool applyNetworkConfig(JsonObject &obj);
+
+    /** @brief Result of applyWifiCredentials(). */
+    enum class WifiApply { NotFound, Applied };
+
+    /**
+     * @brief Validate and apply a Wi-Fi SSID/passphrase.
+     *
+     * @param ssid The SSID to connect to.
+     * @param passphrase The passphrase.
+     * @param needsReboot Set to true if the credentials changed (reboot to apply).
+     * @return Applied, or NotFound if the SSID is non-empty and not in range.
+     */
+    WifiApply applyWifiCredentials(const char *ssid, const char *passphrase, bool &needsReboot);
+
     bool setup();
     void loop();
     void end();

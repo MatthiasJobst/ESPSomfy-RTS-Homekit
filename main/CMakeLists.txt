@@ -9,6 +9,7 @@ idf_component_register(
         "ConfigSettings.cpp"
         "GitOTA.cpp"
         "OtaService.cpp"
+        "AuthService.cpp"
         "HomeKit.cpp"
         "MQTT.cpp"
         "ControllerNetwork.cpp"

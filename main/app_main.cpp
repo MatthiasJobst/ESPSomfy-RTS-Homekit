@@ -18,6 +18,7 @@
 #include "ControllerNetwork.h"
 #include "GitOTA.h"
 #include "HomeKit.h"
+#include "AuthService.h"
 #include "MQTT.h"
 #include "OtaService.h"
 #include "Sockets.h"
@@ -37,6 +38,7 @@ MQTTClass mqtt;
 GitUpdater git;
 HomeKitClass homekit;
 OtaService ota;
+AuthService auth;
 
 static const char *s_TAG = "Main";
 

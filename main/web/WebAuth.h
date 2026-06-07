@@ -1,10 +1,11 @@
 #pragma once
 // WebAuth.h — HTTP handler module for authentication and security settings.
 //
-// Concrete WebHandler owning the login and security-config endpoints, plus the
-// private API-token (HMAC-SHA256) helpers they depend on. /login is served on
-// both the public and API servers; the rest are public only. begin() registers
-// the routes; end() is a no-op (WebServer has no per-route removal).
+// Concrete WebHandler owning the login and security-config endpoints. Token
+// generation and credential validation live in AuthService; these handlers just
+// parse the request and serialize the response. /login is served on both the
+// public and API servers; the rest are public only. begin() registers the
+// routes; end() is a no-op (WebServer has no per-route removal).
 
 #include <WebServer.h>
 #include "WebHandler.h"
@@ -43,39 +44,4 @@ class WebAuth : public WebHandler {
      * @param server The server the request arrived on.
      */
     void handleGetSecurity(WebServer &server);
-
-    /**
-     * @brief Build the API token for a client from the active security type.
-     * @param ipAddress The client's IP address.
-     * @param token Output buffer (>= 65 bytes) for the hex token.
-     * @return true always.
-     */
-    bool createAPIToken(const IPAddress &ipAddress, char *token);
-
-    /**
-     * @brief Compute the HMAC-SHA256 token of a payload, keyed by serverId.
-     * @param payload The string to sign.
-     * @param token Output buffer (>= 65 bytes) for the hex token.
-     * @return true always.
-     */
-    bool createAPIToken(const char *payload, char *token);
-
-    /**
-     * @brief Build a pin-based token payload and sign it.
-     * @param ipAddress The client's IP address.
-     * @param pin The configured pin.
-     * @param token Output buffer (>= 65 bytes) for the hex token.
-     * @return true always.
-     */
-    bool createAPIPinToken(const IPAddress &ipAddress, const char *pin, char *token);
-
-    /**
-     * @brief Build a username/password token payload and sign it.
-     * @param ipAddress The client's IP address.
-     * @param username The configured username.
-     * @param password The configured password.
-     * @param token Output buffer (>= 65 bytes) for the hex token.
-     * @return true always.
-     */
-    bool createAPIPasswordToken(const IPAddress &ipAddress, const char *username, const char *password, char *token);
 };

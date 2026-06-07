@@ -67,6 +67,8 @@ class SomfyShade : public SomfyRemote {
     void sendTiltCommand(somfy_commands cmd);
     void sendCommand(somfy_commands cmd) override;
     void sendCommand(somfy_commands cmd, uint8_t repeat, uint8_t stepSize = 0) override;
+    /** @brief sendOrRepeat with the garage-door Prog→Toggle remap applied. */
+    void sendOrRepeat(somfy_commands cmd, int16_t repeat = -1, uint8_t stepSize = 0) override;
     bool linkRemote(uint32_t remoteAddress, uint16_t rollingCode = 0);
     bool unlinkRemote(uint32_t remoteAddress);
     virtual void emitState(const char *evt = "shadeState");

@@ -73,14 +73,7 @@ void WebShadesGroupsCommands::handleRepeatCommand(WebServer &server)
                 json.respondJson().error("Shade reference could not be found.");
                 return;
             }
-            if (shade->shadeType == shade_types::garage1 && command == somfy_commands::Prog)
-                command = somfy_commands::Toggle;
-            if (!shade->isLastCommand(command)) {
-                // We are going to send this as a new command.
-                shade->sendCommand(command, repeat >= 0 ? repeat : shade->repeats, stepSize);
-            } else {
-                shade->repeatFrame(repeat >= 0 ? repeat : shade->repeats);
-            }
+            shade->sendOrRepeat(command, repeat, stepSize);
             auto arrJson = json.respondJson().array();
             shade->toJSONRef(arrJson);
         } else if (groupId != 255) {
@@ -89,11 +82,7 @@ void WebShadesGroupsCommands::handleRepeatCommand(WebServer &server)
                 json.respondJson().error("Group reference could not be found.");
                 return;
             }
-            if (!group->isLastCommand(command)) {
-                // We are going to send this as a new command.
-                group->sendCommand(command, repeat >= 0 ? repeat : group->repeats, stepSize);
-            } else
-                group->repeatFrame(repeat >= 0 ? repeat : group->repeats);
+            group->sendOrRepeat(command, repeat, stepSize);
             auto objJson = json.respondJson().object();
             group->toJSONRef(objJson);
         }

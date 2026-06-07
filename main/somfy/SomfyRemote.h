@@ -44,6 +44,18 @@ class SomfyRemote {
     virtual void sendCommand(somfy_commands cmd, uint8_t repeat, uint8_t stepSize = 0);
     void sendSensorCommand(int8_t isWindy, int8_t isSunny, uint8_t repeat);
     void repeatFrame(uint8_t repeat);
+
+    /**
+     * @brief Send @p cmd as a fresh command, or repeat the last frame if it
+     *        matches the last command sent.
+     *
+     * Folds the web-handler "new vs repeat" dispatch into the domain.
+     *
+     * @param cmd The command to send.
+     * @param repeat Number of repeats; < 0 uses this remote's default `repeats`.
+     * @param stepSize Optional step size for stepped commands.
+     */
+    virtual void sendOrRepeat(somfy_commands cmd, int16_t repeat = -1, uint8_t stepSize = 0);
     virtual uint16_t p_lastRollingCode(uint16_t code);
     somfy_commands transformCommand(somfy_commands cmd);
     virtual void triggerGPIOs(somfy_frame_t &frame);

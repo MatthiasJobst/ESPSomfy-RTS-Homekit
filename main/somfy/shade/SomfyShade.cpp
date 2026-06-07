@@ -522,6 +522,13 @@ void SomfyShade::sendCommand(somfy_commands cmd, uint8_t repeat, uint8_t stepSiz
     commandTransmitter.sendCommand(cmd, repeat, stepSize);
 }
 
+void SomfyShade::sendOrRepeat(somfy_commands cmd, int16_t repeat, uint8_t stepSize)
+{
+    // A garage door has a single toggle command; a "Prog" press acts as Toggle.
+    if (this->shadeType == shade_types::garage1 && cmd == somfy_commands::Prog) cmd = somfy_commands::Toggle;
+    SomfyRemote::sendOrRepeat(cmd, repeat, stepSize);
+}
+
 void SomfyShade::sendTiltCommand(somfy_commands cmd)
 {
     commandTransmitter.sendTiltCommand(cmd);

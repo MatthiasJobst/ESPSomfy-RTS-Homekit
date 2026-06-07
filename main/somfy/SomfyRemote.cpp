@@ -185,6 +185,15 @@ void SomfyRemote::repeatFrame(uint8_t repeat)
     // endTransmit() deferred — Transceiver::loop() handles it when txBusy() clears.
 }
 
+void SomfyRemote::sendOrRepeat(somfy_commands cmd, int16_t repeat, uint8_t stepSize)
+{
+    uint8_t r = repeat >= 0 ? static_cast<uint8_t>(repeat) : this->repeats;
+    if (!this->isLastCommand(cmd))
+        this->sendCommand(cmd, r, stepSize);
+    else
+        this->repeatFrame(r);
+}
+
 uint16_t SomfyRemote::getNextRollingCode()
 {
     pref.begin("ShadeCodes");

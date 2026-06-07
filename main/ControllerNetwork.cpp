@@ -395,6 +395,50 @@ void ControllerNetwork::updateHostname()
     }
 }
 
+bool ControllerNetwork::applyNetworkConfig(JsonObject &obj)
+{
+    bool reboot = false;
+    if (obj.containsKey("connType") && obj["connType"].as<uint8_t>() != static_cast<uint8_t>(settings.connType)) {
+        settings.connType = static_cast<conn_types_t>(obj["connType"].as<uint8_t>());
+        settings.save();
+        reboot = true;
+    }
+    if (obj.containsKey("wifi")) {
+        JsonObject objWifi = obj["wifi"];
+        if (settings.connType == conn_types_t::wifi) {
+            if (objWifi.containsKey("ssid") && objWifi["ssid"].as<String>().compareTo(settings.WIFI.ssid) != 0) {
+                if (WiFi.softAPgetStationNum() == 0) reboot = true;
+            }
+            if (objWifi.containsKey("passphrase") &&
+                objWifi["passphrase"].as<String>().compareTo(settings.WIFI.passphrase) != 0) {
+                if (WiFi.softAPgetStationNum() == 0) reboot = true;
+            }
+        }
+        settings.WIFI.fromJSON(objWifi);
+        settings.WIFI.save();
+    }
+    if (obj.containsKey("ethernet")) {
+        JsonObject objEth = obj["ethernet"];
+        if (settings.connType == conn_types_t::ethernet || settings.connType == conn_types_t::ethernetpref)
+            reboot = true;
+        settings.Ethernet.fromJSON(objEth);
+        settings.Ethernet.save();
+    }
+    return reboot;
+}
+
+ControllerNetwork::WifiApply ControllerNetwork::applyWifiCredentials(const char *ssid, const char *passphrase,
+                                                                    bool &needsReboot)
+{
+    needsReboot = strcmp(ssid, settings.WIFI.ssid) != 0 || strcmp(passphrase, settings.WIFI.passphrase) != 0;
+    if (!settings.WIFI.ssidExists(ssid) && strlen(ssid) > 0) return WifiApply::NotFound;
+    SETCHARPROP(settings.WIFI.ssid, ssid, sizeof(settings.WIFI.ssid));
+    SETCHARPROP(settings.WIFI.passphrase, passphrase, sizeof(settings.WIFI.passphrase));
+    settings.WIFI.save();
+    settings.WIFI.print();
+    return WifiApply::Applied;
+}
+
 bool ControllerNetwork::connectWiFi(const uint8_t *bssid, const int32_t channel)
 {
     if (this->softAPOpened && WiFi.softAPgetStationNum() > 0) {
