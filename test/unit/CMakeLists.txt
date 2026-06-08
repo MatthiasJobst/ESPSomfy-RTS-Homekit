@@ -28,6 +28,7 @@ set(PRODUCTION_SOURCES
     ../../main/somfy/shade/SomfyGPIOControl.cpp
     ../../main/somfy/shade/SomfyMQTTPublisher.cpp
     ../../main/somfy/shade/SomfyCommandTransmitter.cpp
+    ../../main/somfy/shade/SomfyLinkedRemotes.cpp
     ../../main/somfy/shade/SomfyTargetSequencer.cpp
     ../../main/somfy/shade/SomfyCommandProcessor.cpp
     ../../main/somfy/shade/SomfyMovementTracker.cpp
@@ -47,6 +48,7 @@ add_executable(shade_tests
     test_gpioControl.cpp
     test_mqttPublisher.cpp
     test_commandTransmitter.cpp
+    test_linkedRemotes.cpp
     test_jsonSerializer.cpp
     test_somfyShade.cpp
     test_somfyFrame.cpp

@@ -3,12 +3,10 @@
 #include "SomfyShadeController.h"
 #include "SomfyCommandTransmitter.h"
 #include "SomfyTransceiver.h"
-#include "compat/preferences.h"
 #include "esp_log.h"
 #include <cstring>
 
 extern SomfyShadeController somfy;
-extern Preferences pref;
 
 // ── sendCommand ───────────────────────────────────────────────────────────────
 
@@ -86,37 +84,4 @@ void SomfyCommandTransmitter::sendTiltCommand(somfy_commands cmd)
         shade->SomfyRemote::sendCommand(cmd, rpt);
         shade->p_tiltTarget(shade->currentTiltPos);
     }
-}
-
-// ── linkRemote / unlinkRemote ────────────────────────────────────────────────
-
-bool SomfyCommandTransmitter::linkRemote(uint32_t address, uint16_t rollingCode)
-{
-    for (uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++) {
-        if (linkedRemotes[i].getRemoteAddress() == address) {
-            linkedRemotes[i].setRollingCode(rollingCode);
-            return true;
-        }
-    }
-    for (uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++) {
-        if (linkedRemotes[i].getRemoteAddress() == 0) {
-            linkedRemotes[i].setRemoteAddress(address);
-            linkedRemotes[i].setRollingCode(rollingCode);
-            shade->commit();
-            return true;
-        }
-    }
-    return false;
-}
-
-bool SomfyCommandTransmitter::unlinkRemote(uint32_t address)
-{
-    for (uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++) {
-        if (linkedRemotes[i].getRemoteAddress() == address) {
-            linkedRemotes[i].setRemoteAddress(0);
-            shade->commit();
-            return true;
-        }
-    }
-    return false;
 }

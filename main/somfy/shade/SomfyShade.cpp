@@ -43,8 +43,7 @@ void SomfyShade::clear()
     targetSequencer.myTiltPos = -1.0f;
     this->bitLength = somfy.transceiver.config.type;
     this->proto = somfy.transceiver.config.proto;
-    for (uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++)
-        commandTransmitter.linkedRemotes[i].setRemoteAddress(0);
+    linkedRemotes.clear();
     this->paired = false;
     this->name[0] = 0x00;
     commandProcessor.upTime = 10000;
@@ -57,32 +56,36 @@ void SomfyShade::clear()
 
 bool SomfyShade::linkRemote(uint32_t address, uint16_t rollingCode)
 {
-    return commandTransmitter.linkRemote(address, rollingCode);
+    bool ok = linkedRemotes.linkRemote(address, rollingCode);
+    if (ok) markShadeDataDirty();
+    return ok;
 }
 
-void SomfyShade::commit()
+void SomfyShade::markShadeDataDirty()
 {
-    somfy.commit();
+    somfy.isDirty = true;
 }
 
 void SomfyShade::commitShadePosition()
 {
-    somfy.isDirty = true;
+    markShadeDataDirty();
 }
 
 void SomfyShade::commitMyPosition()
 {
-    somfy.isDirty = true;
+    markShadeDataDirty();
 }
 
 void SomfyShade::commitTiltPosition()
 {
-    somfy.isDirty = true;
+    markShadeDataDirty();
 }
 
 bool SomfyShade::unlinkRemote(uint32_t address)
 {
-    return commandTransmitter.unlinkRemote(address);
+    bool ok = linkedRemotes.unlinkRemote(address);
+    if (ok) markShadeDataDirty();
+    return ok;
 }
 
 bool SomfyShade::isAtTarget()
@@ -499,7 +502,7 @@ void SomfyShade::setLastMovement(int8_t v)
 
 SomfyLinkedRemote &SomfyShade::getLinkedRemote(uint8_t i)
 {
-    return commandTransmitter.linkedRemotes[i];
+    return linkedRemotes.get(i);
 }
 
 bool SomfyShade::getFlipPosition() const
@@ -551,7 +554,7 @@ void SomfyShade::moveToTargetForced(float pos, float tilt)
 
 bool SomfyShade::save()
 {
-    commit();
+    somfy.commit();
     publish();
     return true;
 }

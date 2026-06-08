@@ -7,6 +7,7 @@
 #include "SomfyGPIOControl.h"
 #include "SomfyMQTTPublisher.h"
 #include "SomfyCommandTransmitter.h"
+#include "SomfyLinkedRemotes.h"
 #include "SomfyJSONSerializer.h"
 #include "SomfyMotionState.h"
 #include "SomfyTargetSequencer.h"
@@ -121,7 +122,6 @@ class SomfyShade : public SomfyRemote {
     static void unpublish(uint8_t id);
     static void unpublish(uint8_t id, const char *topic);
     void publishState();
-    void commit();
     void commitShadePosition();
     void commitTiltPosition();
     void commitMyPosition();
@@ -158,12 +158,14 @@ class SomfyShade : public SomfyRemote {
     SomfyGPIOControl gpioControl;
     SomfyMQTTPublisher mqttPublisher;
     SomfyCommandTransmitter commandTransmitter;
+    SomfyLinkedRemotes linkedRemotes;
     SomfyJSONSerializer jsonSerializer;
     SomfyCommandProcessor commandProcessor;
     SomfyMovementTracker movementTracker;
 
   private:
     uint8_t shadeId = 255;
+    void markShadeDataDirty();
 
     friend class SomfyCommandProcessor;
     friend class SomfyMovementTracker;

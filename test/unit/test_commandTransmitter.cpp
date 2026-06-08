@@ -4,9 +4,9 @@
 //                    integrated), My (toggle/drycontact/drycontact2/idle/moving),
 //                    Toggle (non-80-bit / 80-bit), Prog (toggle shade), fallthrough
 //   sendTiltCommand() — Up / Down / My
-//   linkRemote()   — already linked (updates rolling code), new slot, NVS write,
-//                    all slots full (returns false)
-//   unlinkRemote() — found (NVS write), not found (returns false)
+//
+// Linked-remote management (linkRemote/unlinkRemote) lives in SomfyLinkedRemotes
+// and is covered by test_linkedRemotes.cpp.
 //
 // SomfyRemote::sendCommand() is the real implementation; it writes lastFrame
 // which is observable via shade.getLastFrame().
@@ -241,46 +241,5 @@ TEST_F(CommandTransmitterTest, SendTiltCommand_TiltMotor_AllCmdsUseTiltRepeats) 
         shade.sendTiltCommand(cmd);
         EXPECT_EQ(shade.getLastFrame().repeats, TILT_REPEATS) << "cmd=" << (int)cmd;
     }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// G. linkRemote()
-// ══════════════════════════════════════════════════════════════════════════════
-
-TEST_F(CommandTransmitterTest, LinkRemote_NewSlot_ReturnsTrueAndStoresAddress) {
-    bool result = shade.linkRemote(0xABCD01, 10);
-    EXPECT_TRUE(result);
-    EXPECT_EQ(shade.getLinkedRemote(0).getRemoteAddress(), 0xABCD01u);
-}
-
-TEST_F(CommandTransmitterTest, LinkRemote_AlreadyLinked_UpdatesRollingCodeAndReturnsTrue) {
-    shade.linkRemote(0xABCD01, 5);
-    bool result = shade.linkRemote(0xABCD01, 99);
-    EXPECT_TRUE(result);
-    // Rolling code is stored inside the remote — just confirm it didn't claim a second slot
-    EXPECT_EQ(shade.getLinkedRemote(1).getRemoteAddress(), 0u);
-}
-
-TEST_F(CommandTransmitterTest, LinkRemote_AllSlotsFull_ReturnsFalse) {
-    for(uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++)
-        shade.getLinkedRemote(i).setRemoteAddress(0x100000 + i);
-    bool result = shade.linkRemote(0xDEADBE, 0);
-    EXPECT_FALSE(result);
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// H. unlinkRemote()
-// ══════════════════════════════════════════════════════════════════════════════
-
-TEST_F(CommandTransmitterTest, UnlinkRemote_NotFound_ReturnsFalse) {
-    bool result = shade.unlinkRemote(0xDEAD00);
-    EXPECT_FALSE(result);
-}
-
-TEST_F(CommandTransmitterTest, UnlinkRemote_Found_ClearsSlotAndReturnsTrue) {
-    shade.getLinkedRemote(0).setRemoteAddress(0xBEEF01);
-    bool result = shade.unlinkRemote(0xBEEF01);
-    EXPECT_TRUE(result);
-    EXPECT_EQ(shade.getLinkedRemote(0).getRemoteAddress(), 0u);
 }
 
