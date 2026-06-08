@@ -45,6 +45,7 @@ public:
     String(float f) : _s(std::to_string(f)) {}
     const char *c_str() const { return _s.c_str(); }
     size_t length() const { return _s.length(); }
+    void reserve(size_t) {}
     bool isEmpty() const { return _s.empty(); }
     bool equals(const char *o) const { return _s == o; }
     String operator+(const String &o) const { return String((_s + o._s).c_str()); }
@@ -53,6 +54,7 @@ public:
     String &operator+=(const char *s) { _s += s; return *this; }
     bool operator==(const String &o) const { return _s == o._s; }
     bool operator==(const char *s) const { return _s == s; }
+    bool operator!=(const String &o) const { return _s != o._s; }
     bool operator!=(const char *s) const { return _s != s; }
     char operator[](size_t i) const { return _s[i]; }
     int indexOf(char c) const { auto p = _s.find(c); return p == std::string::npos ? -1 : (int)p; }
@@ -80,4 +82,21 @@ public:
     bool endsWith(const String &suffix) const { return endsWith(suffix._s.c_str()); }
     String &replace(char from, char to) { for (auto &c : _s) if (c == from) c = to; return *this; }
     void trim() { size_t s = _s.find_first_not_of(" \t\r\n"); size_t e = _s.find_last_not_of(" \t\r\n"); _s = (s == std::string::npos) ? "" : _s.substr(s, e - s + 1); }
+};
+
+// IPAddress lives here so it is available wherever <Arduino.h> is included
+// (matching arduino-esp32, where Arduino.h pulls in IPAddress). ETH.h re-exports it.
+class IPAddress {
+    uint8_t _addr[4] = {};
+public:
+    IPAddress() = default;
+    IPAddress(uint8_t a, uint8_t b, uint8_t c, uint8_t d) { _addr[0]=a; _addr[1]=b; _addr[2]=c; _addr[3]=d; }
+    uint8_t operator[](int i) const { return _addr[i]; }
+    bool operator==(const IPAddress &o) const { return memcmp(_addr, o._addr, 4) == 0; }
+    bool operator!=(const IPAddress &o) const { return !(*this == o); }
+    String toString() const {
+        char buf[16];
+        snprintf(buf, sizeof(buf), "%u.%u.%u.%u", _addr[0], _addr[1], _addr[2], _addr[3]);
+        return String(buf);
+    }
 };

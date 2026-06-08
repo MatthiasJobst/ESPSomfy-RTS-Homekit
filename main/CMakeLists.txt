@@ -8,8 +8,8 @@ idf_component_register(
         "ShadeConfigFile.cpp"
         "ConfigSettings.cpp"
         "GitOTA.cpp"
-        "OtaService.cpp"
-        "AuthService.cpp"
+        "services/OtaService.cpp"
+        "services/AuthService.cpp"
         "HomeKit.cpp"
         "MQTT.cpp"
         "ControllerNetwork.cpp"
@@ -47,6 +47,7 @@ idf_component_register(
         "web/WebSystem.cpp"
     INCLUDE_DIRS
         "."
+        "services"
         "somfy"
         "somfy/shade"
         "web"

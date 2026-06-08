@@ -80,9 +80,14 @@ void SomfyTransceiver::endFrequencyScan()    {}
 void SomfyTransceiver::processFrequencyScan(bool) {}
 void SomfyTransceiver::emitFrequencyScan(uint8_t) {}
 bool transceiver_stub_uses_pin = false;
-void SomfyTransceiver::beginFrameTx(somfy_frame_t &, uint8_t) {}
+// Test-controllable TX state: tests toggle transceiver_stub_tx_busy to exercise
+// the "TX busy → skip" branches, and inspect transceiver_stub_begin_tx_count to
+// confirm whether a frame transmission was actually started.
+bool transceiver_stub_tx_busy = false;
+int  transceiver_stub_begin_tx_count = 0;
+void SomfyTransceiver::beginFrameTx(somfy_frame_t &, uint8_t) { transceiver_stub_begin_tx_count++; }
 void SomfyTransceiver::beginRawFrameTx(byte *, uint8_t, uint8_t) {}
-bool SomfyTransceiver::txBusy() { return false; }
+bool SomfyTransceiver::txBusy() { return transceiver_stub_tx_busy; }
 bool SomfyTransceiver::usesPin(uint8_t) { return transceiver_stub_uses_pin; }
 bool SomfyTransceiver::save()           { return false; }
 bool SomfyTransceiver::fromJSON(JsonObject &) { return false; }

@@ -19,6 +19,9 @@ class JsonSockEvent;
 enum class conn_types_t : uint8_t { unset=0, wifi=1, ethernet=2, ethernetpref=3, ap=4 };
 enum DeviceStatus { DS_OK=0, DS_ERROR=1, DS_FWUPDATE=2 };
 
+// Mirror of main/ConfigSettings.h security model (only the fields AuthService reads).
+enum class security_types : byte { None = 0x00, PinEntry = 0x01, Password = 0x02 };
+
 struct restore_options_t {
     bool settings=false, shades=false, network=false, transceiver=false, repeaters=false, mqtt=false;
     void fromJSON(JsonObject &) {}
@@ -54,6 +57,15 @@ public:
     bool enabled        = false;
     bool pubDisco       = false;
 };
+// Security model fields read by AuthService.
+class SecuritySettings : public BaseSettings {
+public:
+    security_types type = security_types::None;
+    char username[33] = "";
+    char password[33] = "";
+    char pin[5]       = "";
+    uint8_t permissions = 0;
+};
 class NTPSettings    : public BaseSettings {};
 class NetworkSettings: public BaseSettings {};
 class EthernetSettings : public BaseSettings {
@@ -72,6 +84,7 @@ public:
     NTPSettings      ntp;
     NetworkSettings  network;
     EthernetSettings Ethernet;
+    SecuritySettings Security;
 
     const char *getTopicPrefix() const { return MQTT.rootTopic; }
     const char *getHostname()    const { return hostname; }

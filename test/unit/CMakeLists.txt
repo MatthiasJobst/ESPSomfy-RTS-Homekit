@@ -54,6 +54,8 @@ add_executable(shade_tests
     test_somfyShadeController.cpp
     test_somfyGroup.cpp
     test_somfyRoom.cpp
+    test_authService.cpp
+    ../../main/services/AuthService.cpp
     stubs/globals_stub.cpp
     ${PRODUCTION_SOURCES}
 )
@@ -61,12 +63,14 @@ add_executable(shade_tests
 # ── Include path order is critical ─────────────────────────────────────────
 # 1. stubs/        — intercepts Arduino/ESP-IDF/heavy project headers
 # 2. main/         — real project headers not in main/somfy/
-# 3. main/somfy/   — core Somfy headers (SomfyShadeController.h etc.)
-# 4. main/somfy/shade/ — shade-specific headers (SomfyShade.h etc.)
-# 5. ArduinoJson   — real library (header-only, works on Linux)
+# 3. main/services/ — service-layer helpers (AuthService.h, OtaService.h)
+# 4. main/somfy/   — core Somfy headers (SomfyShadeController.h etc.)
+# 5. main/somfy/shade/ — shade-specific headers (SomfyShade.h etc.)
+# 6. ArduinoJson   — real library (header-only, works on Linux)
 target_include_directories(shade_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/stubs
     ${CMAKE_CURRENT_SOURCE_DIR}/../../main
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../main/services
     ${CMAKE_CURRENT_SOURCE_DIR}/../../main/somfy
     ${CMAKE_CURRENT_SOURCE_DIR}/../../main/somfy/shade
     ${arduinojson_SOURCE_DIR}/src

@@ -19,6 +19,10 @@
 
 extern uint64_t test_clock_ms;
 
+// Test-controllable transceiver TX state (defined in stubs/globals_stub.cpp).
+extern bool transceiver_stub_tx_busy;
+extern int  transceiver_stub_begin_tx_count;
+
 class SomfyRemoteTest : public ::testing::Test {
 protected:
     SomfyLinkedRemote remote;
@@ -30,10 +34,14 @@ protected:
         remote.flipCommands = false;
         remote.proto        = radio_proto::RTS;
         remote.flags        = SomfyFlag();
+        transceiver_stub_tx_busy        = false;
+        transceiver_stub_begin_tx_count = 0;
         nvs_stub_reset_all();
     }
 
     void TearDown() override {
+        transceiver_stub_tx_busy        = false;
+        transceiver_stub_begin_tx_count = 0;
         nvs_stub_reset_all();
     }
 };
@@ -180,6 +188,49 @@ TEST_F(SomfyRemoteTest, RepeatFrame_RTS_80Bit_Calls80BitEncode) {
     remote.lastFrame.encKey        = 0xA1;
     remote.lastFrame.cmd           = somfy_commands::Up;
     remote.repeatFrame(1);
+}
+
+TEST_F(SomfyRemoteTest, RepeatFrame_TxFree_StartsTransmission) {
+    transceiver_stub_tx_busy = false;
+    remote.lastFrame.cmd = somfy_commands::Up;
+    remote.repeatFrame(1);
+    EXPECT_EQ(transceiver_stub_begin_tx_count, 1);
+}
+
+TEST_F(SomfyRemoteTest, RepeatFrame_TxBusy_SkipsTransmissionToAvoidBlocking) {
+    transceiver_stub_tx_busy = true;
+    remote.lastFrame.cmd = somfy_commands::Up;
+    remote.repeatFrame(1);
+    EXPECT_EQ(transceiver_stub_begin_tx_count, 0);
+}
+
+// ── sendOrRepeat ─────────────────────────────────────────────────────────────
+
+TEST_F(SomfyRemoteTest, SendOrRepeat_NotLastCommand_SendsFreshCommand) {
+    // Fresh remote: Up is not the last command, so a new frame is sent and the
+    // rolling code advances.
+    remote.sendOrRepeat(somfy_commands::Up, 2);
+    EXPECT_EQ(remote.lastFrame.cmd, somfy_commands::Up);
+    EXPECT_EQ(remote.lastFrame.repeats, 2u);
+    EXPECT_EQ(remote.lastFrame.rollingCode, 1u);
+}
+
+TEST_F(SomfyRemoteTest, SendOrRepeat_SameCommandAgain_RepeatsWithoutAdvancingRollingCode) {
+    remote.sendCommand(somfy_commands::Up, 1);
+    uint16_t rcAfterSend = remote.lastFrame.rollingCode;
+    transceiver_stub_begin_tx_count = 0;
+
+    // Up is now the last command → repeatFrame, no rolling-code change.
+    remote.sendOrRepeat(somfy_commands::Up, 1);
+    EXPECT_EQ(remote.lastFrame.rollingCode, rcAfterSend);
+    EXPECT_EQ(transceiver_stub_begin_tx_count, 1);
+}
+
+TEST_F(SomfyRemoteTest, SendOrRepeat_NegativeRepeat_UsesRemoteRepeats) {
+    remote.repeats = 4;
+    remote.sendOrRepeat(somfy_commands::Down, -1);
+    EXPECT_EQ(remote.lastFrame.cmd, somfy_commands::Down);
+    EXPECT_EQ(remote.lastFrame.repeats, 4u);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

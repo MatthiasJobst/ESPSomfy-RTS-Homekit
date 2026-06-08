@@ -944,6 +944,27 @@ TEST_F(SendCmdTest, SendTiltCommand_NoCrash) {
     shade.sendTiltCommand(somfy_commands::Down);
 }
 
+// ── sendOrRepeat: garage door maps Prog → Toggle ─────────────────────────────
+
+TEST_F(SendCmdTest, SendOrRepeat_Garage1_Prog_MappedToToggle) {
+    shade.shadeType = shade_types::garage1;
+    shade.bitLength = 80;  // 80-bit so the transmitter passes Toggle through unchanged
+    shade.sendOrRepeat(somfy_commands::Prog, 1);
+    EXPECT_EQ(shade.getLastFrame().cmd, somfy_commands::Toggle);
+}
+
+TEST_F(SendCmdTest, SendOrRepeat_Garage1_NonProgCommand_PassesThrough) {
+    shade.shadeType = shade_types::garage1;
+    shade.sendOrRepeat(somfy_commands::Up, 1);
+    EXPECT_EQ(shade.getLastFrame().cmd, somfy_commands::Up);
+}
+
+TEST_F(SendCmdTest, SendOrRepeat_NonGarage_ProgNotRemapped) {
+    shade.shadeType = shade_types::roller;
+    shade.sendOrRepeat(somfy_commands::Prog, 1);
+    EXPECT_EQ(shade.getLastFrame().cmd, somfy_commands::Prog);
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // I  SomfyShade delegation stubs for process* helpers
 //    These thin wrappers route to commandProcessor; calling them directly
