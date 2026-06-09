@@ -38,18 +38,20 @@ void SomfyMovementTracker::tickFlagTimers(uint64_t curTime)
     }
 }
 
-float SomfyMovementTracker::calcInterpolatedPos(float startPct, uint64_t elapsed, int32_t totalTime, int8_t dir)
+float SomfyMovementTracker::calcInterpolatedPos(const MoveAxis &axis, uint64_t now, TravelSpec travel)
 {
-    // msFromStart: distance already travelled in ms, clamped to [0, totalTime]
-    int32_t msFromStart = (int32_t)floorf((startPct / 100.0f) * static_cast<float>(totalTime));
-    if (dir < 0) msFromStart = totalTime - msFromStart; // up: invert so 0 = "just started from 100"
-    msFromStart = min(totalTime, msFromStart + (int32_t)elapsed);
-    float ratio = min(max(0.0f, (float)msFromStart / (float)totalTime), 1.0f);
-    return dir > 0 ? ratio * 100.0f : (1.0f - ratio) * 100.0f;
+    // msFromStart: distance already travelled in ms, clamped to [0, totalMs]
+    int32_t msFromStart = (int32_t)floorf((axis.startPct / 100.0f) * static_cast<float>(travel.totalMs));
+    if (travel.dir < 0) msFromStart = travel.totalMs - msFromStart; // up: invert so 0 = "just started from 100"
+    msFromStart = min(travel.totalMs, msFromStart + (int32_t)(now - axis.startMs));
+    float ratio = min(max(0.0f, (float)msFromStart / (float)travel.totalMs), 1.0f);
+    return travel.dir > 0 ? ratio * 100.0f : (1.0f - ratio) * 100.0f;
 }
 
-void SomfyMovementTracker::handlePosTargetReached(float endpoint, uint64_t curTime)
+void SomfyMovementTracker::handlePosTargetReached(uint64_t curTime)
 {
+    // Full-travel endpoint for the current direction: down → 100%, up → 0%.
+    const float endpoint = shade->direction > 0 ? 100.0f : 0.0f;
     shade->p_currentPos(shade->target);
     if (motionState.settingPos) {
         // Boosted moves (e.g. HomeKit's moveToTargetForced) need their auto-stop
@@ -67,13 +69,15 @@ void SomfyMovementTracker::handlePosTargetReached(float endpoint, uint64_t curTi
         motionState.boostedStop = false;
     }
     shade->p_direction(0);
-    tiltStart = curTime;
-    startTiltPos = shade->currentTiltPos;
+    tiltAxis.startMs = curTime;
+    tiltAxis.startPct = shade->currentTiltPos;
     if (shade->isAtTarget()) shade->commitShadePosition();
 }
 
-void SomfyMovementTracker::handleTiltTargetReached(float endpoint)
+void SomfyMovementTracker::handleTiltTargetReached()
 {
+    // Full-travel endpoint for the current tilt direction: down → 100%, up → 0%.
+    const float endpoint = shade->tiltDirection > 0 ? 100.0f : 0.0f;
     shade->p_currentTiltPos(shade->tiltTarget);
     if (motionState.settingTiltPos) {
         if (shade->tiltType == tilt_types::integrated) {
@@ -116,50 +120,50 @@ void SomfyMovementTracker::checkMovement()
     // ── Shade position interpolation ──────────────────────────────────────────
     // Skipped entirely when tilt_first: the integrated tilt must reach its
     // endpoint before the shade starts moving. While tilt_first is active the
-    // tilt block below continuously resets moveStart so shade starts from t=0.
+    // tilt block below continuously resets shadeAxis so shade starts from t=0.
     if (!tilt_first && shade->direction > 0) {
-        shade->p_currentPos(downTime == 0 ? 100.0f : calcInterpolatedPos(startPos, curTime - moveStart, downTime, 1));
-        if (shade->currentPos >= shade->target) handlePosTargetReached(100.0f, curTime);
+        shade->p_currentPos(downTime == 0 ? 100.0f : calcInterpolatedPos(shadeAxis, curTime, {downTime, 1}));
+        if (shade->currentPos >= shade->target) handlePosTargetReached(curTime);
     } else if (!tilt_first && shade->direction < 0) {
-        shade->p_currentPos(upTime == 0 ? 0.0f : calcInterpolatedPos(startPos, curTime - moveStart, upTime, -1));
-        if (shade->currentPos <= shade->target) handlePosTargetReached(0.0f, curTime);
+        shade->p_currentPos(upTime == 0 ? 0.0f : calcInterpolatedPos(shadeAxis, curTime, {upTime, -1}));
+        if (shade->currentPos <= shade->target) handlePosTargetReached(curTime);
     }
 
     // ── Tilt position interpolation ───────────────────────────────────────────
-    // Runs regardless of tilt_first. When tilt_first is active, moveStart is
+    // Runs regardless of tilt_first. When tilt_first is active, shadeAxis is
     // reset each tick so that once tilt completes the shade clock starts fresh.
     if (shade->tiltDirection > 0) {
-        if (tilt_first) moveStart = curTime;
+        if (tilt_first) shadeAxis.startMs = curTime;
         if (tiltTime == 0) {
             shade->p_currentTiltPos(100.0f);
         } else {
-            shade->p_currentTiltPos(calcInterpolatedPos(startTiltPos, curTime - tiltStart, tiltTime, 1));
+            shade->p_currentTiltPos(calcInterpolatedPos(tiltAxis, curTime, {tiltTime, 1}));
         }
         if (tilt_first) {
             if (shade->currentTiltPos >= 100.0f) {
                 shade->p_currentTiltPos(100.0f);
-                moveStart = curTime;
-                startPos = shade->currentPos;
+                shadeAxis.startMs = curTime;
+                shadeAxis.startPct = shade->currentPos;
             }
         } else if (shade->currentTiltPos >= shade->tiltTarget) {
-            handleTiltTargetReached(100.0f);
+            handleTiltTargetReached();
         }
     } else if (shade->tiltDirection < 0) {
-        if (tilt_first) moveStart = curTime;
+        if (tilt_first) shadeAxis.startMs = curTime;
         if (tiltTime == 0) {
             shade->p_tiltDirection(0);
             shade->p_currentTiltPos(0.0f);
         } else {
-            shade->p_currentTiltPos(calcInterpolatedPos(startTiltPos, curTime - tiltStart, tiltTime, -1));
+            shade->p_currentTiltPos(calcInterpolatedPos(tiltAxis, curTime, {tiltTime, -1}));
         }
         if (tilt_first) {
             if (shade->currentTiltPos <= 0.0f) {
                 shade->p_currentTiltPos(0.0f);
-                moveStart = curTime;
-                startPos = shade->currentPos;
+                shadeAxis.startMs = curTime;
+                shadeAxis.startPct = shade->currentPos;
             }
         } else if (shade->currentTiltPos <= shade->tiltTarget) {
-            handleTiltTargetReached(0.0f);
+            handleTiltTargetReached();
         }
     }
     // tiltDirection == 0: not tilting, nothing to interpolate.
@@ -195,20 +199,35 @@ void SomfyMovementTracker::setTiltMovement(int8_t dir)
 {
     int8_t currDir = shade->tiltDirection;
     if (dir == 0) {
-        startTiltPos = shade->currentTiltPos;
-        tiltStart = 0;
+        tiltAxis.startPct = shade->currentTiltPos;
+        tiltAxis.startMs = 0;
         shade->p_tiltDirection(dir);
         if (currDir != dir) {
             shade->commitTiltPosition();
         }
     } else if (shade->tiltDirection != dir) {
-        tiltStart = millis();
-        startTiltPos = shade->currentTiltPos;
+        tiltAxis.startMs = millis();
+        tiltAxis.startPct = shade->currentTiltPos;
         shade->p_tiltDirection(dir);
     }
     if (shade->tiltDirection != currDir) {
         shade->emitState();
     }
+}
+
+void SomfyMovementTracker::reset()
+{
+    shadeAxis = {};
+    tiltAxis = {};
+    motionState = MotionState{};
+    lastMovement = 0;
+}
+
+void SomfyMovementTracker::resetMovement(uint64_t t)
+{
+    shadeAxis.startMs = tiltAxis.startMs = t;
+    shadeAxis.startPct = shade->currentPos;
+    tiltAxis.startPct = shade->currentTiltPos;
 }
 
 void SomfyMovementTracker::setMovement(int8_t dir)
@@ -218,8 +237,8 @@ void SomfyMovementTracker::setMovement(int8_t dir)
     if (dir == 0) {
         if (currDir != dir || currTiltDir != dir) shade->commitShadePosition();
     } else {
-        tiltStart = moveStart = millis();
-        startPos = shade->currentPos;
-        startTiltPos = shade->currentTiltPos;
+        tiltAxis.startMs = shadeAxis.startMs = millis();
+        shadeAxis.startPct = shade->currentPos;
+        tiltAxis.startPct = shade->currentTiltPos;
     }
 }

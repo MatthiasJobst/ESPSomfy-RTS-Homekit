@@ -25,7 +25,7 @@ extern int  transceiver_stub_begin_tx_count;
 
 class SomfyRemoteTest : public ::testing::Test {
 protected:
-    SomfyLinkedRemote remote;
+    SomfyRemote remote;
 
     void SetUp() override {
         remote.setRemoteAddress(0x112233);
@@ -262,7 +262,7 @@ TEST_F(SomfyRemoteTest, GetNextRollingCode_PersistsAcrossInstances) {
     remote.getNextRollingCode();
 
     // A fresh remote with the same address picks up where the old one left off.
-    SomfyLinkedRemote remote2;
+    SomfyRemote remote2;
     remote2.setRemoteAddress(0x112233);
     EXPECT_EQ(remote2.getNextRollingCode(), 4u);
 }
@@ -272,7 +272,7 @@ TEST_F(SomfyRemoteTest, SetRollingCode_DifferentValue_UpdatesLastRollingCodeAndN
     EXPECT_EQ(remote.lastRollingCode, 100u);
 
     // A fresh remote with the same address reads the stored code + 1.
-    SomfyLinkedRemote remote2;
+    SomfyRemote remote2;
     remote2.setRemoteAddress(0x112233);
     EXPECT_EQ(remote2.getNextRollingCode(), 101u);
 }
@@ -283,7 +283,7 @@ TEST_F(SomfyRemoteTest, SetRollingCode_SameValue_IsIdempotent) {
     EXPECT_EQ(remote.lastRollingCode, 50u);
 
     // NVS was written only once; next increment from a fresh instance is 51.
-    SomfyLinkedRemote remote2;
+    SomfyRemote remote2;
     remote2.setRemoteAddress(0x112233);
     EXPECT_EQ(remote2.getNextRollingCode(), 51u);
 }

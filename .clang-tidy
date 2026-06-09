@@ -9,4 +9,6 @@ CheckOptions:
   # https://github.com/llvm/llvm-project — fixed upstream; revisit once we move to a newer toolchain.
   bugprone-signed-char-misuse.CharTypdefsToIgnore: 'int8_t'
 
-Checks: 'clang-diagnostic-*,clang-analyzer-*,bugprone-*,performance-*,-bugprone-easily-swappable-parameters,-bugprone-macro-parentheses,-clang-diagnostic-unused-command-line-argument,-modernize-*,-readability-avoid-const-params-in-decls,-readability-braces-around-statements,-readability-convert-member-functions-to-static,-readability-else-after-return,-readability-function-cognitive-complexity,-readability-identifier-length,-readability-implicit-bool-conversion,-readability-isolate-declaration,-readability-magic-numbers,-readability-make-member-function-const,-readability-misplaced-array-index,-readability-redundant-casting,-readability-static-accessed-through-instance,-readability-uppercase-literal-suffix'
+# bugprone-easily-swappable-parameters is disabled for now: it has many findings
+# across the codebase and we're prioritising other work. Revisit later.
+Checks: 'clang-diagnostic-*,clang-analyzer-*,bugprone-*,performance-*,-modernize-*,-readability-*,-cppcoreguidelines-*,-bugprone-easily-swappable-parameters'

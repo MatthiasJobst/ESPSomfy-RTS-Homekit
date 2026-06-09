@@ -20,17 +20,18 @@ static const char *s_TAG = "Web";
 
 WebServer apiServer(APP_API_PORT);
 WebServer server(APP_HTTP_PORT);
-WebFiles webFiles(server, apiServer);
-WebGroups webGroups(server, apiServer);
-WebRooms webRooms(server, apiServer);
-WebShades webShades(server, apiServer);
-WebSettings webSettings(server, apiServer);
-WebOTA webOTA(server, apiServer);
-WebUtils webUtils(server, apiServer);
-WebHomeKit webHomeKit(server, apiServer);
-WebShadesGroupsCommands webShadesGroupsCommands(server, apiServer);
-WebAuth webAuth(server, apiServer);
-WebSystem webSystem(server, apiServer);
+WebServers webServers{server, apiServer};
+WebFiles webFiles(webServers);
+WebGroups webGroups(webServers);
+WebRooms webRooms(webServers);
+WebShades webShades(webServers);
+WebSettings webSettings(webServers);
+WebOTA webOTA(webServers);
+WebUtils webUtils(webServers);
+WebHomeKit webHomeKit(webServers);
+WebShadesGroupsCommands webShadesGroupsCommands(webServers);
+WebAuth webAuth(webServers);
+WebSystem webSystem(webServers);
 
 // The web layer owns the set of handler modules; begin()/end() drive them as a
 // group, in this order.

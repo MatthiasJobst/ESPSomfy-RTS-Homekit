@@ -22,12 +22,8 @@ void SomfyShade::clear()
     this->setRemoteAddress(0);
     this->sortOrder = 0;
     this->roomId = 0;
-    movementTracker.moveStart = 0;
-    movementTracker.tiltStart = 0;
+    movementTracker.reset();
     this->flagManager = SomfyFlagManager{};
-    movementTracker.startPos = 0.0f;
-    movementTracker.startTiltPos = 0.0f;
-    movementTracker.motionState = MotionState{};
     mqttPublisher.flipPosition = false;
     this->flipCommands = false;
     this->lastRollingCode = 0;
@@ -50,7 +46,6 @@ void SomfyShade::clear()
     commandProcessor.downTime = 10000;
     commandProcessor.tiltTime = 7000;
     commandProcessor.stepSize = 100;
-    movementTracker.lastMovement = 0;
     this->repeats = 1;
 }
 
@@ -445,9 +440,7 @@ void SomfyShade::clearMotionState()
 
 void SomfyShade::resetMovement(uint64_t t)
 {
-    movementTracker.moveStart = movementTracker.tiltStart = t;
-    movementTracker.startPos = currentPos;
-    movementTracker.startTiltPos = currentTiltPos;
+    movementTracker.resetMovement(t);
 }
 
 uint32_t SomfyShade::getUpTime() const

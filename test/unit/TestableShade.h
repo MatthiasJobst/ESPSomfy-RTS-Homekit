@@ -61,16 +61,16 @@ public:
     void setNoSunStart(uint64_t t)  { flagManager.noSunStart = t; }
     void setWindStart(uint64_t t)   { flagManager.windStart = t; }
     void setNoWindStart(uint64_t t) { flagManager.noWindStart = t; }
-    void setMoveStart(uint64_t t)   { movementTracker.moveStart = t; }
-    void setTiltStart(uint64_t t)   { movementTracker.tiltStart = t; }
-    void setStartPos(float v)       { movementTracker.startPos = v; }
-    void setStartTiltPos(float v)   { movementTracker.startTiltPos = v; }
+    void setMoveStart(uint64_t t)   { movementTracker.shadeAxis.startMs = t; }
+    void setTiltStart(uint64_t t)   { movementTracker.tiltAxis.startMs = t; }
+    void setStartPos(float v)       { movementTracker.shadeAxis.startPct = v; }
+    void setStartTiltPos(float v)   { movementTracker.tiltAxis.startPct = v; }
 
     // ── Additional state reads ───────────────────────────────────────────────
     // getLastMovement() is now inherited from SomfyShade
     int8_t   getDirection()     const { return direction; }
     int8_t   getTiltDirection() const { return tiltDirection; }
-    uint64_t getMoveStart()     const { return movementTracker.moveStart; }
+    uint64_t getMoveStart()     const { return movementTracker.shadeAxis.startMs; }
     bool     getSettingPos()    const { return movementTracker.motionState.settingPos; }
     bool     getSettingTiltPos()const { return movementTracker.motionState.settingTiltPos; }
     bool     getSettingMyPos()  const { return movementTracker.motionState.settingMyPos; }

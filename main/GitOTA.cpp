@@ -85,7 +85,6 @@ void GitRelease::toJSON(JsonResponse &json)
     this->version.toJSON(json);
     json.endObject();
 }
-#define ERR_CLIENT_OFFSET -50
 
 int16_t GitRepo::getReleases(uint8_t num)
 {
@@ -241,9 +240,6 @@ void GitRepo::toJSON(JsonResponse &json)
     json.endArray();
 }
 #define UPDATE_ERR_OFFSET 20
-#define ERR_DOWNLOAD_HTTP -40
-#define ERR_DOWNLOAD_BUFFER -41
-#define ERR_DOWNLOAD_CONNECTION -42
 
 // Background task: runs the blocking HTTPS fetch so the main loop (WebSocket,
 // HTTP server) is never stalled. Only network/field updates run here; the

@@ -12,6 +12,17 @@
 #include <functional>
 #include <WebServer.h>
 
+/**
+ * @brief The pair of servers a WebHandler binds to.
+ *
+ * Named fields keep the public HTTP and REST API servers distinct at the call
+ * site so they can't be positionally swapped.
+ */
+struct WebServers {
+    WebServer &http; /**< Public HTTP server (port 80). */
+    WebServer &api;  /**< REST API server (port 8081). */
+};
+
 class WebHandler {
   public:
     /** @brief Route callback type, matching WebServer::THandlerFunction. */
@@ -20,10 +31,9 @@ class WebHandler {
     /**
      * @brief Bind the handler to the public and API servers.
      *
-     * @param server The public HTTP server (port 80).
-     * @param apiServer The REST API server (port 8081).
+     * @param servers The public HTTP and REST API servers.
      */
-    WebHandler(WebServer &server, WebServer &apiServer) : server(server), apiServer(apiServer) {}
+    explicit WebHandler(WebServers servers) : server(servers.http), apiServer(servers.api) {}
     virtual ~WebHandler() = default;
 
     /**
