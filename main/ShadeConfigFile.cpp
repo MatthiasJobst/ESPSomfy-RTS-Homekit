@@ -523,7 +523,7 @@ bool ShadeConfigFile::readShadeRecord(SomfyShade *shade)
     shade->setTiltTime(this->readUInt32(shade->getTiltTime()));
     if (this->header.version > 5) shade->setStepSize(this->readUInt16(100));
     for (uint8_t j = 0; j < SOMFY_MAX_LINKED_REMOTES; j++) {
-        SomfyLinkedRemote *rem = &shade->getLinkedRemote(j);
+        SomfyRemote *rem = &shade->getLinkedRemote(j);
         rem->setRemoteAddress(this->readUInt32(0));
         if (rem->getRemoteAddress() != 0) rem->lastRollingCode = pref.getUShort(rem->getRemotePrefId(), 0);
         if (this->header.version < 5 && j == 4) break; // Prior to version 5 we only supported 5 linked remotes.
@@ -700,7 +700,7 @@ bool ShadeConfigFile::writeShadeRecord(SomfyShade *shade)
     this->writeUInt32(shade->getTiltTime());
     this->writeUInt16(shade->getStepSize());
     for (uint8_t j = 0; j < SOMFY_MAX_LINKED_REMOTES; j++) {
-        SomfyLinkedRemote *rem = &shade->getLinkedRemote(j);
+        SomfyRemote *rem = &shade->getLinkedRemote(j);
         this->writeUInt32(rem->getRemoteAddress());
     }
     this->writeUInt16(shade->lastRollingCode);

@@ -136,7 +136,7 @@ void WebGroups::handleGroupCommand(WebServer &server)
         SomfyGroup *group = somfy.getGroupById(groupId);
         if (group) {
             ESP_LOGI(s_TAG, "Received: %s", server.arg("plain").c_str());
-            somfy.enqueueGroupCommand(groupId, command, repeat >= 0 ? (uint8_t)repeat : group->repeats);
+            somfy.enqueueGroupCommand(group, command, repeat >= 0 ? (uint8_t)repeat : group->repeats);
             auto objJson = json.respondJson().object();
             group->toJSONRef(objJson);
         } else {

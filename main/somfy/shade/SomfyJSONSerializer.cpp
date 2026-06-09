@@ -242,7 +242,7 @@ void SomfyJSONSerializer::toJSON(JsonResponse &json)
     json.addElem("simMy", shade->simMy());
     json.beginArray("linkedRemotes");
     for (uint8_t i = 0; i < SOMFY_MAX_LINKED_REMOTES; i++) {
-        SomfyLinkedRemote &lremote = shade->getLinkedRemote(i);
+        SomfyRemote &lremote = shade->getLinkedRemote(i);
         if (lremote.getRemoteAddress() != 0) {
             json.beginObject();
             lremote.toJSON(json);

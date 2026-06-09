@@ -7,9 +7,9 @@
 
 class SomfyLinkedRemotes {
   public:
-    SomfyLinkedRemote linkedRemotes[SOMFY_MAX_LINKED_REMOTES];
+    SomfyRemote linkedRemotes[SOMFY_MAX_LINKED_REMOTES];
 
-    SomfyLinkedRemote &get(uint8_t i) { return linkedRemotes[i]; }
+    SomfyRemote &get(uint8_t i) { return linkedRemotes[i]; }
 
     // Returns true when the address is linked: either already present (rolling
     // code updated) or newly stored. False when all slots are full.

@@ -499,25 +499,25 @@ TEST_F(ControllerTest, Loop_NotDirty_NeverCommits) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 TEST_F(CommandQueueTest, EnqueueShadeCommand_ValidShade_ReturnsTrue) {
-    EXPECT_TRUE(somfy.enqueueShadeCommand(1, somfy_commands::Up, 1));
+    EXPECT_TRUE(somfy.enqueueShadeCommand(somfy.getShadeById(1), somfy_commands::Up, 1));
     EXPECT_EQ(somfy.cmdQueue.count, 1);
 }
 
 TEST_F(CommandQueueTest, EnqueueShadeCommand_QueueFull_ReturnsFalse) {
     for (int i = 0; i < CMD_QUEUE_SIZE; i++)
-        somfy.enqueueShadeCommand(1, somfy_commands::Up, 1);
-    EXPECT_FALSE(somfy.enqueueShadeCommand(1, somfy_commands::Up, 1));
+        somfy.enqueueShadeCommand(somfy.getShadeById(1), somfy_commands::Up, 1);
+    EXPECT_FALSE(somfy.enqueueShadeCommand(somfy.getShadeById(1), somfy_commands::Up, 1));
     EXPECT_EQ(somfy.cmdQueue.count, CMD_QUEUE_SIZE);
 }
 
 TEST_F(CommandQueueTest, EnqueueShadeTarget_SetsTargetField) {
-    somfy.enqueueShadeTarget(1, 0.75f);
+    somfy.enqueueShadeTarget(somfy.getShadeById(1), 0.75f);
     EXPECT_EQ(somfy.cmdQueue.count, 1);
     EXPECT_FLOAT_EQ(somfy.cmdQueue.entries[0].target, 0.75f);
 }
 
 TEST_F(CommandQueueTest, EnqueueGroupCommand_GroupExists_ReturnsTrue) {
-    EXPECT_TRUE(somfy.enqueueGroupCommand(1, somfy_commands::Down, 1));
+    EXPECT_TRUE(somfy.enqueueGroupCommand(somfy.getGroupById(1), somfy_commands::Down, 1));
     EXPECT_EQ(somfy.cmdQueue.count, 1);
 }
 
@@ -531,7 +531,7 @@ TEST_F(CommandQueueTest, Loop_EmptyQueue_DoesNotCrash) {
 
 TEST_F(CommandQueueTest, Loop_QueueNotReady_DoesNotDrain) {
     // Push one entry, but lastDrain = millis() so queue is not ready yet
-    somfy.enqueueShadeCommand(1, somfy_commands::Up, 1);
+    somfy.enqueueShadeCommand(somfy.getShadeById(1), somfy_commands::Up, 1);
     test_clock_ms = CMD_QUEUE_DRAIN_MS + 1;
     somfy.cmdQueue.lastDrain = test_clock_ms;  // just drained
     somfy.loop();
@@ -539,7 +539,7 @@ TEST_F(CommandQueueTest, Loop_QueueNotReady_DoesNotDrain) {
 }
 
 TEST_F(CommandQueueTest, Loop_QueueReady_PopsOneEntry) {
-    somfy.enqueueShadeCommand(1, somfy_commands::Up, 1);
+    somfy.enqueueShadeCommand(somfy.getShadeById(1), somfy_commands::Up, 1);
     test_clock_ms = CMD_QUEUE_DRAIN_MS + 1;
     somfy.cmdQueue.lastDrain = 0;
     somfy.loop();
@@ -547,11 +547,43 @@ TEST_F(CommandQueueTest, Loop_QueueReady_PopsOneEntry) {
 }
 
 TEST_F(CommandQueueTest, Loop_ShadeNotFound_NoCrash) {
-    somfy.enqueueShadeCommand(99, somfy_commands::Up, 1);  // id 99 not in array
+    somfy.enqueueShadeCommand(somfy.getShadeById(99), somfy_commands::Up, 1);  // id 99 not in array
     test_clock_ms = CMD_QUEUE_DRAIN_MS + 1;
     somfy.cmdQueue.lastDrain = 0;
     somfy.loop();
     EXPECT_EQ(somfy.cmdQueue.count, 0);  // entry drained gracefully
+}
+
+// ── queue reset on shade/group mutation ─────────────────────────────────────────
+// Entries hold a pointer to their target, so the queue is flushed whenever a
+// shade or group is added or removed to avoid acting on a stale slot.
+
+TEST_F(CommandQueueTest, DeleteShade_ResetsQueue) {
+    somfy.enqueueShadeCommand(somfy.getShadeById(1), somfy_commands::Up, 1);
+    EXPECT_EQ(somfy.cmdQueue.count, 1);
+    somfy.deleteShade(1);
+    EXPECT_EQ(somfy.cmdQueue.count, 0);
+}
+
+TEST_F(CommandQueueTest, DeleteGroup_ResetsQueue) {
+    somfy.enqueueGroupCommand(somfy.getGroupById(1), somfy_commands::Down, 1);
+    EXPECT_EQ(somfy.cmdQueue.count, 1);
+    somfy.deleteGroup(1);
+    EXPECT_EQ(somfy.cmdQueue.count, 0);
+}
+
+TEST_F(CommandQueueTest, AddShade_ResetsQueue) {
+    somfy.enqueueShadeCommand(somfy.getShadeById(1), somfy_commands::Up, 1);
+    EXPECT_EQ(somfy.cmdQueue.count, 1);
+    somfy.addShade();
+    EXPECT_EQ(somfy.cmdQueue.count, 0);
+}
+
+TEST_F(CommandQueueTest, AddGroup_ResetsQueue) {
+    somfy.enqueueGroupCommand(somfy.getGroupById(1), somfy_commands::Down, 1);
+    EXPECT_EQ(somfy.cmdQueue.count, 1);
+    somfy.addGroup();
+    EXPECT_EQ(somfy.cmdQueue.count, 0);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -734,20 +766,20 @@ TEST_F(ControllerTest, ToJSONRepeaters_Empty_DoesNotCrash) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 TEST_F(CommandQueueTest, EnqueueShadeTiltTarget_SetsFields) {
-    EXPECT_TRUE(somfy.enqueueShadeTiltTarget(1, 0.5f));
+    EXPECT_TRUE(somfy.enqueueShadeTiltTarget(somfy.getShadeById(1), 0.5f));
     EXPECT_EQ(somfy.cmdQueue.count, 1);
     EXPECT_EQ(somfy.cmdQueue.entries[0].type, cmd_queue_type_t::ShadeTiltTarget);
     EXPECT_FLOAT_EQ(somfy.cmdQueue.entries[0].target, 0.5f);
 }
 
 TEST_F(CommandQueueTest, EnqueueShadeTiltCommand_SetsFields) {
-    EXPECT_TRUE(somfy.enqueueShadeTiltCommand(1, somfy_commands::Up));
+    EXPECT_TRUE(somfy.enqueueShadeTiltCommand(somfy.getShadeById(1), somfy_commands::Up));
     EXPECT_EQ(somfy.cmdQueue.count, 1);
     EXPECT_EQ(somfy.cmdQueue.entries[0].type, cmd_queue_type_t::ShadeTiltCommand);
 }
 
 TEST_F(CommandQueueTest, EnqueueShadeSensor_SetsFields) {
-    EXPECT_TRUE(somfy.enqueueShadeSensor(1, 1, 0, 2));
+    EXPECT_TRUE(somfy.enqueueShadeSensor(somfy.getShadeById(1), 1, 0, 2));
     EXPECT_EQ(somfy.cmdQueue.count, 1);
     EXPECT_EQ(somfy.cmdQueue.entries[0].type, cmd_queue_type_t::ShadeSensor);
     EXPECT_EQ(somfy.cmdQueue.entries[0].isWindy, 1);
@@ -755,7 +787,7 @@ TEST_F(CommandQueueTest, EnqueueShadeSensor_SetsFields) {
 }
 
 TEST_F(CommandQueueTest, EnqueueGroupSensor_SetsFields) {
-    EXPECT_TRUE(somfy.enqueueGroupSensor(1, 0, 1, 1));
+    EXPECT_TRUE(somfy.enqueueGroupSensor(somfy.getGroupById(1), 0, 1, 1));
     EXPECT_EQ(somfy.cmdQueue.count, 1);
     EXPECT_EQ(somfy.cmdQueue.entries[0].type, cmd_queue_type_t::GroupSensor);
     EXPECT_EQ(somfy.cmdQueue.entries[0].isSunny, 1);
@@ -766,7 +798,7 @@ TEST_F(CommandQueueTest, EnqueueGroupSensor_SetsFields) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 TEST_F(CommandQueueTest, Drain_ShadeTarget_DoesNotCrash) {
-    somfy.enqueueShadeTarget(1, 0.8f);
+    somfy.enqueueShadeTarget(somfy.getShadeById(1), 0.8f);
     test_clock_ms = CMD_QUEUE_DRAIN_MS + 1;
     somfy.cmdQueue.lastDrain = 0;
     somfy.loop();
@@ -774,7 +806,7 @@ TEST_F(CommandQueueTest, Drain_ShadeTarget_DoesNotCrash) {
 }
 
 TEST_F(CommandQueueTest, Drain_ShadeTiltTarget_DoesNotCrash) {
-    somfy.enqueueShadeTiltTarget(1, 0.3f);
+    somfy.enqueueShadeTiltTarget(somfy.getShadeById(1), 0.3f);
     test_clock_ms = CMD_QUEUE_DRAIN_MS + 1;
     somfy.cmdQueue.lastDrain = 0;
     somfy.loop();
@@ -782,7 +814,7 @@ TEST_F(CommandQueueTest, Drain_ShadeTiltTarget_DoesNotCrash) {
 }
 
 TEST_F(CommandQueueTest, Drain_ShadeTiltCommand_DoesNotCrash) {
-    somfy.enqueueShadeTiltCommand(1, somfy_commands::My);
+    somfy.enqueueShadeTiltCommand(somfy.getShadeById(1), somfy_commands::My);
     test_clock_ms = CMD_QUEUE_DRAIN_MS + 1;
     somfy.cmdQueue.lastDrain = 0;
     somfy.loop();
@@ -790,7 +822,7 @@ TEST_F(CommandQueueTest, Drain_ShadeTiltCommand_DoesNotCrash) {
 }
 
 TEST_F(CommandQueueTest, Drain_ShadeSensor_DoesNotCrash) {
-    somfy.enqueueShadeSensor(1, 1, 0, 1);
+    somfy.enqueueShadeSensor(somfy.getShadeById(1), 1, 0, 1);
     test_clock_ms = CMD_QUEUE_DRAIN_MS + 1;
     somfy.cmdQueue.lastDrain = 0;
     somfy.loop();
@@ -798,7 +830,7 @@ TEST_F(CommandQueueTest, Drain_ShadeSensor_DoesNotCrash) {
 }
 
 TEST_F(CommandQueueTest, Drain_GroupCommand_DoesNotCrash) {
-    somfy.enqueueGroupCommand(1, somfy_commands::Down, 1);
+    somfy.enqueueGroupCommand(somfy.getGroupById(1), somfy_commands::Down, 1);
     test_clock_ms = CMD_QUEUE_DRAIN_MS + 1;
     somfy.cmdQueue.lastDrain = 0;
     somfy.loop();
@@ -806,7 +838,7 @@ TEST_F(CommandQueueTest, Drain_GroupCommand_DoesNotCrash) {
 }
 
 TEST_F(CommandQueueTest, Drain_GroupSensor_DoesNotCrash) {
-    somfy.enqueueGroupSensor(1, 0, 1, 1);
+    somfy.enqueueGroupSensor(somfy.getGroupById(1), 0, 1, 1);
     test_clock_ms = CMD_QUEUE_DRAIN_MS + 1;
     somfy.cmdQueue.lastDrain = 0;
     somfy.loop();
@@ -814,7 +846,7 @@ TEST_F(CommandQueueTest, Drain_GroupSensor_DoesNotCrash) {
 }
 
 TEST_F(CommandQueueTest, Drain_ShadeTargetNotFound_DoesNotCrash) {
-    somfy.enqueueShadeTarget(99, 0.5f);  // shade 99 doesn't exist
+    somfy.enqueueShadeTarget(somfy.getShadeById(99), 0.5f);  // shade 99 doesn't exist
     test_clock_ms = CMD_QUEUE_DRAIN_MS + 1;
     somfy.cmdQueue.lastDrain = 0;
     somfy.loop();
@@ -822,7 +854,7 @@ TEST_F(CommandQueueTest, Drain_ShadeTargetNotFound_DoesNotCrash) {
 }
 
 TEST_F(CommandQueueTest, Drain_GroupCommandNotFound_DoesNotCrash) {
-    somfy.enqueueGroupCommand(99, somfy_commands::Up, 1);  // group 99 doesn't exist
+    somfy.enqueueGroupCommand(somfy.getGroupById(99), somfy_commands::Up, 1);  // group 99 doesn't exist
     test_clock_ms = CMD_QUEUE_DRAIN_MS + 1;
     somfy.cmdQueue.lastDrain = 0;
     somfy.loop();

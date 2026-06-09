@@ -105,7 +105,7 @@ class SomfyShade : public SomfyRemote {
     int8_t getLastMovement() const;
     void setLastMovement(int8_t v);
     // Linked remotes (owned by SomfyCommandTransmitter)
-    SomfyLinkedRemote &getLinkedRemote(uint8_t i);
+    SomfyRemote &getLinkedRemote(uint8_t i);
     // Position display inversion (owned by SomfyMQTTPublisher)
     bool getFlipPosition() const;
     void setFlipPosition(bool v);

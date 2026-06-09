@@ -31,11 +31,7 @@ void SomfyShadeController::end()
     this->transceiver.disableReceive();
 }
 
-SomfyShadeController::SomfyShadeController()
-{
-    uint64_t mac = ESP.getEfuseMac();
-    this->startingAddress = mac & 0x0FFFFF;
-}
+SomfyShadeController::SomfyShadeController() : startingAddress(ESP.getEfuseMac() & 0x0FFFFF) {}
 
 SomfyShade *SomfyShadeController::findShadeByRemoteAddress(uint32_t address)
 {
@@ -406,6 +402,7 @@ SomfyShade *SomfyShadeController::addShade()
         shade->setShadeId(shadeId);
         ESP_LOGI(s_TAG, "Sort order set to %d", shade->sortOrder);
         this->isDirty = true;
+        this->cmdQueue.reset(); // drop commands bound to now-stale shade slots
     }
     return shade;
 }
@@ -491,6 +488,7 @@ SomfyGroup *SomfyShadeController::addGroup()
         group->sortOrder = static_cast<int8_t>(this->getMaxGroupOrder() + 1);
         group->setGroupId(groupId);
         this->isDirty = true;
+        this->cmdQueue.reset(); // drop commands bound to now-stale group slots
     }
     return group;
 }
@@ -517,6 +515,7 @@ bool SomfyShadeController::deleteShade(uint8_t shadeId)
             shades[i].unpublish();
             homekit.removeShade(&shades[i]);
             this->shades[i].clear();
+            this->cmdQueue.reset(); // drop commands bound to the removed shade
         }
     }
     this->commit();
@@ -555,6 +554,7 @@ bool SomfyShadeController::deleteGroup(uint8_t groupId)
             groups[i].emitState("groupRemoved");
             groups[i].unpublish();
             this->groups[i].clear();
+            this->cmdQueue.reset(); // drop commands bound to the removed group
         }
     }
     this->commit();
@@ -616,116 +616,102 @@ void SomfyShadeController::drainCommandQueue()
     this->cmdQueue.lastDrain = millis();
     queued_cmd_t c;
     if (!this->cmdQueue.pop(c)) return;
+    if (!c.remote) return;
+    // c.type tells us the concrete subclass behind c.remote; downcast per case.
     switch (c.type) {
-    case cmd_queue_type_t::ShadeCommand: {
-        SomfyShade *s = this->getShadeById(c.entityId);
-        if (s) s->sendCommand(c.cmd, c.repeat, c.stepSize);
+    case cmd_queue_type_t::ShadeCommand:
+        static_cast<SomfyShade *>(c.remote)->sendCommand(c.cmd, c.repeat, c.stepSize);
         break;
-    }
-    case cmd_queue_type_t::ShadeTarget: {
-        SomfyShade *s = this->getShadeById(c.entityId);
-        if (s) s->moveToTarget(c.target);
+    case cmd_queue_type_t::ShadeTarget:
+        static_cast<SomfyShade *>(c.remote)->moveToTarget(c.target);
         break;
-    }
-    case cmd_queue_type_t::ShadeTargetForced: {
-        SomfyShade *s = this->getShadeById(c.entityId);
-        if (s) s->moveToTargetForced(c.target);
+    case cmd_queue_type_t::ShadeTargetForced:
+        static_cast<SomfyShade *>(c.remote)->moveToTargetForced(c.target);
         break;
-    }
-    case cmd_queue_type_t::ShadeTiltTarget: {
-        SomfyShade *s = this->getShadeById(c.entityId);
-        if (s) s->moveToTiltTarget(c.target);
+    case cmd_queue_type_t::ShadeTiltTarget:
+        static_cast<SomfyShade *>(c.remote)->moveToTiltTarget(c.target);
         break;
-    }
-    case cmd_queue_type_t::ShadeTiltCommand: {
-        SomfyShade *s = this->getShadeById(c.entityId);
-        if (s) s->sendTiltCommand(c.cmd);
+    case cmd_queue_type_t::ShadeTiltCommand:
+        static_cast<SomfyShade *>(c.remote)->sendTiltCommand(c.cmd);
         break;
-    }
-    case cmd_queue_type_t::ShadeSensor: {
-        SomfyShade *s = this->getShadeById(c.entityId);
-        if (s) s->sendSensorCommand(c.isWindy, c.isSunny, c.repeat);
+    case cmd_queue_type_t::ShadeSensor:
+        static_cast<SomfyShade *>(c.remote)->sendSensorCommand(c.isWindy, c.isSunny, c.repeat);
         break;
-    }
-    case cmd_queue_type_t::GroupCommand: {
-        SomfyGroup *g = this->getGroupById(c.entityId);
-        if (g) g->sendCommand(c.cmd, c.repeat);
+    case cmd_queue_type_t::GroupCommand:
+        static_cast<SomfyGroup *>(c.remote)->sendCommand(c.cmd, c.repeat);
         break;
-    }
-    case cmd_queue_type_t::GroupSensor: {
-        SomfyGroup *g = this->getGroupById(c.entityId);
-        if (g) g->sendSensorCommand(c.isWindy, c.isSunny, c.repeat);
+    case cmd_queue_type_t::GroupSensor:
+        static_cast<SomfyGroup *>(c.remote)->sendSensorCommand(c.isWindy, c.isSunny, c.repeat);
         break;
-    }
     }
 }
 
-bool SomfyShadeController::enqueueShadeCommand(uint8_t shadeId, somfy_commands cmd, uint8_t repeat, uint8_t stepSize)
+bool SomfyShadeController::enqueueShadeCommand(SomfyShade *shade, somfy_commands cmd, uint8_t repeat, uint8_t stepSize)
 {
     queued_cmd_t c;
     c.type = cmd_queue_type_t::ShadeCommand;
-    c.entityId = shadeId;
+    c.remote = shade;
     c.cmd = cmd;
     c.repeat = repeat;
     c.stepSize = stepSize;
     return this->cmdQueue.push(c);
 }
-bool SomfyShadeController::enqueueShadeTarget(uint8_t shadeId, float target)
+bool SomfyShadeController::enqueueShadeTarget(SomfyShade *shade, float target)
 {
     queued_cmd_t c;
     c.type = cmd_queue_type_t::ShadeTarget;
-    c.entityId = shadeId;
+    c.remote = shade;
     c.target = target;
     return this->cmdQueue.push(c);
 }
-bool SomfyShadeController::enqueueShadeTargetForced(uint8_t shadeId, float target)
+bool SomfyShadeController::enqueueShadeTargetForced(SomfyShade *shade, float target)
 {
     queued_cmd_t c;
     c.type = cmd_queue_type_t::ShadeTargetForced;
-    c.entityId = shadeId;
+    c.remote = shade;
     c.target = target;
     return this->cmdQueue.push(c);
 }
-bool SomfyShadeController::enqueueShadeTiltTarget(uint8_t shadeId, float target)
+bool SomfyShadeController::enqueueShadeTiltTarget(SomfyShade *shade, float target)
 {
     queued_cmd_t c;
     c.type = cmd_queue_type_t::ShadeTiltTarget;
-    c.entityId = shadeId;
+    c.remote = shade;
     c.target = target;
     return this->cmdQueue.push(c);
 }
-bool SomfyShadeController::enqueueShadeTiltCommand(uint8_t shadeId, somfy_commands cmd)
+bool SomfyShadeController::enqueueShadeTiltCommand(SomfyShade *shade, somfy_commands cmd)
 {
     queued_cmd_t c;
     c.type = cmd_queue_type_t::ShadeTiltCommand;
-    c.entityId = shadeId;
+    c.remote = shade;
     c.cmd = cmd;
     return this->cmdQueue.push(c);
 }
-bool SomfyShadeController::enqueueShadeSensor(uint8_t shadeId, int8_t isWindy, int8_t isSunny, uint8_t repeat)
+bool SomfyShadeController::enqueueShadeSensor(SomfyShade *shade, int8_t isWindy, int8_t isSunny, uint8_t repeat)
 {
     queued_cmd_t c;
     c.type = cmd_queue_type_t::ShadeSensor;
-    c.entityId = shadeId;
+    c.remote = shade;
     c.isWindy = isWindy;
     c.isSunny = isSunny;
     c.repeat = repeat;
     return this->cmdQueue.push(c);
 }
-bool SomfyShadeController::enqueueGroupCommand(uint8_t groupId, somfy_commands cmd, uint8_t repeat)
+bool SomfyShadeController::enqueueGroupCommand(SomfyGroup *group, somfy_commands cmd, uint8_t repeat)
 {
     queued_cmd_t c;
     c.type = cmd_queue_type_t::GroupCommand;
-    c.entityId = groupId;
+    c.remote = group;
     c.cmd = cmd;
     c.repeat = repeat;
     return this->cmdQueue.push(c);
 }
-bool SomfyShadeController::enqueueGroupSensor(uint8_t groupId, int8_t isWindy, int8_t isSunny, uint8_t repeat)
+bool SomfyShadeController::enqueueGroupSensor(SomfyGroup *group, int8_t isWindy, int8_t isSunny, uint8_t repeat)
 {
     queued_cmd_t c;
     c.type = cmd_queue_type_t::GroupSensor;
-    c.entityId = groupId;
+    c.remote = group;
     c.isWindy = isWindy;
     c.isSunny = isSunny;
     c.repeat = repeat;

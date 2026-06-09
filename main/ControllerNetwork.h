@@ -67,7 +67,7 @@ class ControllerNetwork {
     bool applyNetworkConfig(JsonObject &obj);
 
     /** @brief Result of applyWifiCredentials(). */
-    enum class WifiApply { NotFound, Applied };
+    enum class WifiApply:std::uint8_t { NotFound, Applied };
 
     /**
      * @brief Validate and apply a Wi-Fi SSID/passphrase.

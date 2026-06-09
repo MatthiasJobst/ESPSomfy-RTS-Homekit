@@ -224,9 +224,3 @@ uint16_t SomfyRemote::setRollingCode(uint16_t code)
     }
     return code;
 }
-
-SomfyLinkedRemote::SomfyLinkedRemote() {}
-
-// Transceiver Implementation
-#define TOLERANCE_MIN 0.7
-#define TOLERANCE_MAX 1.3

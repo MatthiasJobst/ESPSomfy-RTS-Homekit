@@ -60,8 +60,3 @@ class SomfyRemote {
     somfy_commands transformCommand(somfy_commands cmd);
     virtual void triggerGPIOs(somfy_frame_t &frame);
 };
-
-class SomfyLinkedRemote : public SomfyRemote {
-  public:
-    SomfyLinkedRemote();
-};

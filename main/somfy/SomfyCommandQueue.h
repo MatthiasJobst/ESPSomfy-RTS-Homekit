@@ -2,6 +2,8 @@
 
 #include "SomfyFrame.h"
 
+class SomfyRemote;
+
 #define CMD_QUEUE_SIZE 16
 #define CMD_QUEUE_DRAIN_MS 50
 
@@ -23,8 +25,8 @@ enum class cmd_queue_type_t : uint8_t {
  * @brief A single entry in the outbound command ring buffer.
  */
 struct queued_cmd_t {
-    cmd_queue_type_t type = cmd_queue_type_t::ShadeCommand; /**< Discriminates which payload fields are in use. */
-    uint8_t entityId = 255;                                 /**< Target shade or group ID. */
+    cmd_queue_type_t type = cmd_queue_type_t::ShadeCommand; /**< Discriminates the target's concrete type and payload. */
+    SomfyRemote *remote = nullptr;                          /**< Target shade or group; downcast per `type`. */
     somfy_commands cmd = somfy_commands::My;                /**< Command to send. */
     uint8_t repeat = 1;                                     /**< Transmission repeat count. */
     uint8_t stepSize = 0;                                   /**< Step size for stepped moves. */
@@ -74,6 +76,17 @@ struct SomfyCommandQueue {
         head = (head + 1) % CMD_QUEUE_SIZE;
         count--;
         return true;
+    }
+
+    /**
+     * @brief Discard all queued commands.
+     *
+     * Called when a shade or group is added or removed so no entry can hold a
+     * pointer to a slot whose target has since changed.
+     */
+    void reset()
+    {
+        head = tail = count = 0;
     }
 
     /** @brief Return true if the queue has no entries. */

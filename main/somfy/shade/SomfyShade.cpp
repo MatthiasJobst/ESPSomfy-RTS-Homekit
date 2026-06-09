@@ -500,7 +500,7 @@ void SomfyShade::setLastMovement(int8_t v)
     movementTracker.lastMovement = v;
 }
 
-SomfyLinkedRemote &SomfyShade::getLinkedRemote(uint8_t i)
+SomfyRemote &SomfyShade::getLinkedRemote(uint8_t i)
 {
     return linkedRemotes.get(i);
 }
