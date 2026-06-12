@@ -53,6 +53,7 @@ uint64_t test_clock_us = 0;
 #include "GitOTA.h"
 #include "HomeKit.h"
 #include "../../main/somfy/SomfyShadeController.h"
+#include "../../main/somfy/SomfyStateMachine.h"
 #include "ShadeConfigFile.h"
 bool stub_shadeconfig_exists = false;
 int  stub_save_call_count    = 0;
@@ -60,6 +61,7 @@ int  stub_backup_call_count  = 0;
 
 // ── Global instances ────────────────────────────────────────────────────────
 SomfyShadeController somfy;
+SomfyStateMachine stateMachine(somfy);
 SocketEmitter        sockEmit;
 ConfigSettings       settings;
 MQTTClass            mqtt;

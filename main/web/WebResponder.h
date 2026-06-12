@@ -14,7 +14,7 @@
 //
 //   void handleGroup(WebServer &server) {
 //       WebJsonResponder json(server);
-//       SomfyGroup *g = somfy.getGroupById(id);
+//       SomfyGroup *g = somfy.groupController.getGroupById(id);
 //       if (!g) return json.respondJson().error("Group Id not found.");
 //       auto o = json.respondJson().object();  // begins object + response
 //       g->toJSON(o);                          // JsonBody -> JsonResponse&

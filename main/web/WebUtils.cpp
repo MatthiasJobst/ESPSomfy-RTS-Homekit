@@ -92,7 +92,7 @@ void WebUtils::handleSendRemoteCommand(WebServer &server)
             frame.cmd = translateSomfyCommand(scmd.c_str());
         }
         if (frame.remoteAddress > 0 && frame.rollingCode > 0) {
-            somfy.sendFrame(frame, repeats);
+            somfy.commandDispatcher.sendFrame(frame, repeats);
             json.respondJson().success("Command Sent");
         } else
             json.respondJson().error("No address or rolling code provided");

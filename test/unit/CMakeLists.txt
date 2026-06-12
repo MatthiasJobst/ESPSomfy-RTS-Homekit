@@ -39,6 +39,11 @@ set(PRODUCTION_SOURCES
     ../../main/somfy/SomfyGroup.cpp
     ../../main/somfy/SomfyFrame.cpp
     ../../main/somfy/SomfyShadeController.cpp
+    ../../main/somfy/SomfyRoomController.cpp
+    ../../main/somfy/SomfyGroupController.cpp
+    ../../main/somfy/SomfyRepeaterController.cpp
+    ../../main/somfy/SomfyCommandDispatcher.cpp
+    ../../main/somfy/SomfyStateMachine.cpp
 )
 
 add_executable(shade_tests

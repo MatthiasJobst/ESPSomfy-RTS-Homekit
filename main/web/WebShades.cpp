@@ -144,9 +144,10 @@ void WebShades::handleShadeCommand(WebServer &server)
         if (shade) {
             ESP_LOGI(s_TAG, "Received: %s", server.arg("plain").c_str());
             if (target <= 100)
-                somfy.enqueueShadeTarget(shade, shade->transformPosition(target));
+                somfy.commandDispatcher.enqueueShadeTarget(shade, shade->transformPosition(target));
             else
-                somfy.enqueueShadeCommand(shade, command, repeat > 0 ? repeat : shade->repeats, stepSize);
+                somfy.commandDispatcher.enqueueShadeCommand(shade, command, repeat > 0 ? repeat : shade->repeats,
+                                                            stepSize);
             sendShadeJSON(json, shade, true);
         }
     } else
@@ -186,9 +187,9 @@ void WebShades::handleTiltCommand(WebServer &server)
         if (shade) {
             ESP_LOGI(s_TAG, "Received: %s", server.arg("plain").c_str());
             if (target <= 100)
-                somfy.enqueueShadeTiltTarget(shade, shade->transformPosition(target));
+                somfy.commandDispatcher.enqueueShadeTiltTarget(shade, shade->transformPosition(target));
             else
-                somfy.enqueueShadeTiltCommand(shade, command);
+                somfy.commandDispatcher.enqueueShadeTiltCommand(shade, command);
             sendShadeJSON(json, shade, true);
         }
     } else
@@ -479,11 +480,11 @@ void WebShades::repeaterLinkOp(WebServer &server, bool link)
             json.respondJson().error("No repeater address was supplied.");
         else {
             if (link)
-                somfy.linkRepeater(address);
+                somfy.repeaterController.linkRepeater(address);
             else
-                somfy.unlinkRepeater(address);
+                somfy.repeaterController.unlinkRepeater(address);
             auto arrJson = json.respondJson().array();
-            somfy.toJSONRepeaters(arrJson);
+            somfy.repeaterController.toJSONRepeaters(arrJson);
         }
     }
 }

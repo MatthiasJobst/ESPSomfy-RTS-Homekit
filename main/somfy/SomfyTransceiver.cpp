@@ -1002,7 +1002,7 @@ void SomfyTransceiver::loop()
             this->processFrequencyScan(false);
     } else if (this->receive(&rx)) {
         for (uint8_t i = 0; i < SOMFY_MAX_REPEATERS; i++) {
-            if (somfy.repeaters[i] == frame.remoteAddress) {
+            if (somfy.repeaterController.repeaterSlot(i) == frame.remoteAddress) {
                 s_tx_queue.push(&rx);
                 ESP_LOGD(s_TAG, "Queued repeater frame...");
                 break;

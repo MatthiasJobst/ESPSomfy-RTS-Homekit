@@ -97,7 +97,8 @@ bool SomfyShade::isInGroup()
 {
     if (this->getShadeId() == 255) return false;
     for (uint8_t i = 0; i < SOMFY_MAX_GROUPS; i++) {
-        if (somfy.groups[i].getGroupId() != 255 && somfy.groups[i].hasShadeId(this->getShadeId())) return true;
+        SomfyGroup &group = somfy.groupController.groupSlot(i);
+        if (group.getGroupId() != 255 && group.hasShadeId(this->getShadeId())) return true;
     }
     return false;
 }

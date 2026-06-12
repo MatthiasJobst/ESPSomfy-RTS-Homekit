@@ -264,7 +264,7 @@ TEST_F(TransceiverLoopTest, Loop_RxMode3_WithReceivedFrame_CallsProcessScanTrue)
 TEST_F(TransceiverLoopTest, Loop_RepeaterMatch_QueuesAndDrainsFrame) {
     // Configure repeater[0] to match the injected frame's address.
     const uint32_t repeaterAddr = 0x123456;
-    somfy.repeaters[0] = repeaterAddr;
+    somfy.repeaterController.repeaterSlot(0) = repeaterAddr;
 
     // Inject a frame that matches the repeater address.
     injectFrame(repeaterAddr, somfy_commands::Up);
@@ -279,7 +279,7 @@ TEST_F(TransceiverLoopTest, Loop_RepeaterMatch_QueuesAndDrainsFrame) {
     test_clock_ms = 2000;
     EXPECT_NO_FATAL_FAILURE(somfy.transceiver.loop());
 
-    somfy.repeaters[0] = 0;
+    somfy.repeaterController.repeaterSlot(0) = 0;
 }
 
 // ── handleReceive else branch (sync count 8–11, hits line 313) ───────────────

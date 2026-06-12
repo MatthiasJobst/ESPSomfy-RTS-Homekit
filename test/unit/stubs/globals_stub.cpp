@@ -38,6 +38,7 @@ uint64_t test_clock_us = 0;
 // SomfyShadeController.h lives in main/somfy/ so it can't be stubbed via stubs dir.
 // We include it directly — production methods are now compiled from SomfyShadeController.cpp.
 #include "../../main/somfy/SomfyShadeController.h"
+#include "../../main/somfy/SomfyStateMachine.h"
 
 // ── ShadeConfigFile stub state ─────────────────────────────────────────────
 #include "ShadeConfigFile.h"
@@ -47,6 +48,7 @@ int  stub_backup_call_count  = 0;
 
 // ── Global instances ────────────────────────────────────────────────────────
 SomfyShadeController somfy;
+SomfyStateMachine stateMachine(somfy);
 SocketEmitter        sockEmit;
 ConfigSettings       settings;
 MQTTClass            mqtt;

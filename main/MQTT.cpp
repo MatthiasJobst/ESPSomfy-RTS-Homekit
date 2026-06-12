@@ -117,22 +117,23 @@ void MQTTClass::receive(const char *topic, byte *payload, uint32_t length)
 
     ESP_LOGI(s_TAG, "MQTT type:[%s] command:[%s] entityId:[%s]", entityType, command, entityId);
     ESP_LOGI(s_TAG, "MQTT value:[%s]", value);
+    auto &dispatch = somfy.commandDispatcher; // alias: shorten enqueue calls
     if (strncmp(entityType, "shades", sizeof(entityType)) == 0) {
         SomfyShade *shade = somfy.getShadeById(atoi(entityId));
         if (shade) {
             int val = atoi(value);
             if (strncmp(command, "target", sizeof(command)) == 0) {
-                if (val >= 0 && val <= 100) somfy.enqueueShadeTarget(shade, shade->transformPosition((float)val));
+                if (val >= 0 && val <= 100) dispatch.enqueueShadeTarget(shade, shade->transformPosition((float)val));
             }
             if (strncmp(command, "tiltTarget", sizeof(command)) == 0) {
-                if (val >= 0 && val <= 100) somfy.enqueueShadeTiltTarget(shade, (float)val);
+                if (val >= 0 && val <= 100) dispatch.enqueueShadeTiltTarget(shade, (float)val);
             } else if (strncmp(command, "direction", sizeof(command)) == 0) {
                 if (val < 0)
-                    somfy.enqueueShadeCommand(shade, somfy_commands::Up, shade->repeats);
+                    dispatch.enqueueShadeCommand(shade, somfy_commands::Up, shade->repeats);
                 else if (val > 0)
-                    somfy.enqueueShadeCommand(shade, somfy_commands::Down, shade->repeats);
+                    dispatch.enqueueShadeCommand(shade, somfy_commands::Down, shade->repeats);
                 else
-                    somfy.enqueueShadeCommand(shade, somfy_commands::My, shade->repeats);
+                    dispatch.enqueueShadeCommand(shade, somfy_commands::My, shade->repeats);
             } else if (strncmp(command, "mypos", sizeof(command)) == 0) {
                 if (val >= 0 && val <= 100) shade->setMyPosition(static_cast<int8_t>(val));
             } else if (strncmp(command, "myTiltPos", sizeof(command)) == 0) {
@@ -140,9 +141,9 @@ void MQTTClass::receive(const char *topic, byte *payload, uint32_t length)
                     shade->setMyPosition(static_cast<int8_t>(shade->getMyPos()), static_cast<int8_t>(val));
             } else if (strncmp(command, "sunFlag", sizeof(command)) == 0) {
                 if (val > 0)
-                    somfy.enqueueShadeCommand(shade, somfy_commands::SunFlag, shade->repeats);
+                    dispatch.enqueueShadeCommand(shade, somfy_commands::SunFlag, shade->repeats);
                 else
-                    somfy.enqueueShadeCommand(shade, somfy_commands::Flag, shade->repeats);
+                    dispatch.enqueueShadeCommand(shade, somfy_commands::Flag, shade->repeats);
             } else if (strncmp(command, "position", sizeof(command)) == 0) {
                 if (val >= 0 && val <= 100) {
                     shade->target = shade->currentPos = shade->transformPosition((float)val);
@@ -154,31 +155,31 @@ void MQTTClass::receive(const char *topic, byte *payload, uint32_t length)
                     shade->emitState();
                 }
             } else if (strncmp(command, "sunny", sizeof(command)) == 0) {
-                if (val >= 0) somfy.enqueueShadeSensor(shade, int8_t{-1}, static_cast<int8_t>(val), shade->repeats);
+                if (val >= 0) dispatch.enqueueShadeSensor(shade, int8_t{-1}, static_cast<int8_t>(val), shade->repeats);
             } else if (strncmp(command, "windy", sizeof(command)) == 0) {
-                if (val >= 0) somfy.enqueueShadeSensor(shade, static_cast<int8_t>(val), int8_t{-1}, shade->repeats);
+                if (val >= 0) dispatch.enqueueShadeSensor(shade, static_cast<int8_t>(val), int8_t{-1}, shade->repeats);
             }
         }
     } else if (strncmp(entityType, "groups", sizeof(entityType)) == 0) {
-        SomfyGroup *group = somfy.getGroupById(atoi(entityId));
+        SomfyGroup *group = somfy.groupController.getGroupById(atoi(entityId));
         if (group) {
             int val = atoi(value);
             if (strncmp(command, "direction", sizeof(command)) == 0) {
                 if (val < 0)
-                    somfy.enqueueGroupCommand(group, somfy_commands::Up, group->repeats);
+                    dispatch.enqueueGroupCommand(group, somfy_commands::Up, group->repeats);
                 else if (val > 0)
-                    somfy.enqueueGroupCommand(group, somfy_commands::Down, group->repeats);
+                    dispatch.enqueueGroupCommand(group, somfy_commands::Down, group->repeats);
                 else
-                    somfy.enqueueGroupCommand(group, somfy_commands::My, group->repeats);
+                    dispatch.enqueueGroupCommand(group, somfy_commands::My, group->repeats);
             } else if (strncmp(command, "sunFlag", sizeof(command)) == 0) {
                 if (val > 0)
-                    somfy.enqueueGroupCommand(group, somfy_commands::Flag, group->repeats);
+                    dispatch.enqueueGroupCommand(group, somfy_commands::Flag, group->repeats);
                 else
-                    somfy.enqueueGroupCommand(group, somfy_commands::SunFlag, group->repeats);
+                    dispatch.enqueueGroupCommand(group, somfy_commands::SunFlag, group->repeats);
             } else if (strncmp(command, "sunny", sizeof(command)) == 0) {
-                if (val >= 0) somfy.enqueueGroupSensor(group, int8_t{-1}, static_cast<int8_t>(val), group->repeats);
+                if (val >= 0) dispatch.enqueueGroupSensor(group, int8_t{-1}, static_cast<int8_t>(val), group->repeats);
             } else if (strncmp(command, "windy", sizeof(command)) == 0) {
-                if (val >= 0) somfy.enqueueGroupSensor(group, static_cast<int8_t>(val), int8_t{-1}, group->repeats);
+                if (val >= 0) dispatch.enqueueGroupSensor(group, static_cast<int8_t>(val), int8_t{-1}, group->repeats);
             }
         }
     }

@@ -23,6 +23,7 @@
 #include "OtaService.h"
 #include "Sockets.h"
 #include "SomfyShadeController.h"
+#include "SomfyStateMachine.h"
 #include "Utils.h"
 #include "Web.h"
 
@@ -34,6 +35,7 @@ SocketEmitter sockEmit;
 ControllerNetwork net;
 rebootDelay_t rebootDelay;
 SomfyShadeController somfy;
+SomfyStateMachine stateMachine(somfy);
 MQTTClass mqtt;
 GitUpdater git;
 HomeKitClass homekit;
@@ -71,14 +73,14 @@ static void mainLoop(void *)
     vTaskDelay(pdMS_TO_TICKS(1000));
     ESP_LOGI(s_TAG, "Setting up network...");
     net.setup();
-    // Register with the task watchdog before somfy.begin() so that
+    // Register with the task watchdog before stateMachine.begin() so that
     // esp_task_wdt_reset() calls inside initialisation don't fail with
     // "task not found".
     static const esp_task_wdt_config_t wdt_cfg = {.timeout_ms = 7000, .idle_core_mask = 0, .trigger_panic = true};
     esp_task_wdt_reconfigure(&wdt_cfg);
     esp_task_wdt_add(NULL);
     ESP_LOGI(s_TAG, "Initializing Somfy controller...");
-    somfy.begin();
+    stateMachine.begin();
 
     uint32_t iterMaxMs = 0;
     uint32_t iterMaxReportedAt = 0;
@@ -95,7 +97,7 @@ static void mainLoop(void *)
         net.loop();
         if (millis() - timing > 100) ESP_LOGI(s_TAG, "Timing Net: %ldms", millis() - timing);
         timing = millis();
-        somfy.loop();
+        stateMachine.loop();
         if (millis() - timing > 100) ESP_LOGI(s_TAG, "Timing Somfy: %ldms", millis() - timing);
         timing = millis();
         if (net.connected() || net.softAPOpened) {

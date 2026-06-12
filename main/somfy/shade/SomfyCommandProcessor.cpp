@@ -137,7 +137,7 @@ void SomfyCommandProcessor::processSensorCommand(somfy_frame_t &frame, uint64_t 
     shade->flagManager.updateTimers(wasSunny, wasWindy, shade->flags.isSunny(), shade->flags.isWindy(), curTime,
                                     shade->getShadeId());
     shade->emitState();
-    somfy.updateGroupFlags();
+    somfy.groupController.updateGroupFlags();
 }
 
 void SomfyCommandProcessor::processFlagCommand(bool internal, somfy_frame_t &frame)
@@ -146,7 +146,7 @@ void SomfyCommandProcessor::processFlagCommand(bool internal, somfy_frame_t &fra
     somfy.isDirty = true;
     shade->emitState();
     shade->emitCommand(frame.cmd, internal ? "internal" : "remote", frame.remoteAddress);
-    somfy.updateGroupFlags();
+    somfy.groupController.updateGroupFlags();
 }
 
 void SomfyCommandProcessor::processSunFlagCommand(bool internal, somfy_frame_t &frame)
@@ -169,7 +169,7 @@ void SomfyCommandProcessor::processSunFlagCommand(bool internal, somfy_frame_t &
     somfy.isDirty = true;
     shade->emitState();
     shade->emitCommand(frame.cmd, internal ? "internal" : "remote", frame.remoteAddress);
-    somfy.updateGroupFlags();
+    somfy.groupController.updateGroupFlags();
 }
 
 void SomfyCommandProcessor::processMyCommand(bool internal, somfy_frame_t &frame, uint64_t curTime)

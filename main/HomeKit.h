@@ -11,7 +11,7 @@ class HomeKitClass {
      * @brief Initialise the HAP stack, create the bridge and all shade accessories,
      *        set the pairing code, and call hap_start().
      *
-     * @note Must be called after net.setup() and somfy.begin(). Safe to call
+     * @note Must be called after net.setup() and stateMachine.begin(). Safe to call
      *       repeatedly — returns immediately if already started.
      */
     void begin();

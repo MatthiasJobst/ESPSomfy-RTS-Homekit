@@ -32,12 +32,12 @@ bool ShadeConfigFile::save(SomfyShadeController *s)
 {
     this->header.version = SHADE_HDR_VER;
     this->header.roomRecordSize = ROOM_REC_SIZE;
-    this->header.roomRecords = s->roomCount();
+    this->header.roomRecords = s->roomController.roomCount();
     this->header.shadeRecordSize = SHADE_REC_SIZE;
     this->header.length = SHADE_HDR_SIZE;
     this->header.shadeRecords = s->shadeCount();
     this->header.groupRecordSize = GROUP_REC_SIZE;
-    this->header.groupRecords = s->groupCount();
+    this->header.groupRecords = s->groupController.groupCount();
     this->header.repeaterRecords = 1;
     this->header.repeaterRecordSize = REPEATER_REC_SIZE;
     this->header.settingsRecordSize = 0;
@@ -45,7 +45,7 @@ bool ShadeConfigFile::save(SomfyShadeController *s)
     this->header.transRecordSize = 0;
     this->writeHeader();
     for (uint8_t i = 0; i < SOMFY_MAX_ROOMS; i++) {
-        SomfyRoom *room = &s->rooms[i];
+        SomfyRoom *room = &s->roomController.roomSlot(i);
         if (room->roomId != 0) this->writeRoomRecord(room);
     }
     for (uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
@@ -53,7 +53,7 @@ bool ShadeConfigFile::save(SomfyShadeController *s)
         if (shade->getShadeId() != 255) this->writeShadeRecord(shade);
     }
     for (uint8_t i = 0; i < SOMFY_MAX_GROUPS; i++) {
-        SomfyGroup *group = &s->groups[i];
+        SomfyGroup *group = &s->groupController.groupSlot(i);
         if (group->getGroupId() != 255) this->writeGroupRecord(group);
     }
     this->writeRepeaterRecord(s);
@@ -63,12 +63,12 @@ bool ShadeConfigFile::backup(SomfyShadeController *s)
 {
     this->header.version = SHADE_HDR_VER;
     this->header.roomRecordSize = ROOM_REC_SIZE;
-    this->header.roomRecords = s->roomCount();
+    this->header.roomRecords = s->roomController.roomCount();
     this->header.shadeRecordSize = SHADE_REC_SIZE;
     this->header.length = SHADE_HDR_SIZE;
     this->header.shadeRecords = s->shadeCount();
     this->header.groupRecordSize = GROUP_REC_SIZE;
-    this->header.groupRecords = s->groupCount();
+    this->header.groupRecords = s->groupController.groupCount();
     this->header.repeaterRecords = 1;
     this->header.repeaterRecordSize = REPEATER_REC_SIZE;
     this->header.settingsRecordSize = settings.calcSettingsRecSize();
@@ -76,7 +76,7 @@ bool ShadeConfigFile::backup(SomfyShadeController *s)
     this->header.transRecordSize = TRANS_REC_SIZE;
     this->writeHeader();
     for (uint8_t i = 0; i < SOMFY_MAX_ROOMS; i++) {
-        SomfyRoom *room = &s->rooms[i];
+        SomfyRoom *room = &s->roomController.roomSlot(i);
         if (room->roomId != 0) this->writeRoomRecord(room);
     }
     for (uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
@@ -84,7 +84,7 @@ bool ShadeConfigFile::backup(SomfyShadeController *s)
         if (shade->getShadeId() != 255) this->writeShadeRecord(shade);
     }
     for (uint8_t i = 0; i < SOMFY_MAX_GROUPS; i++) {
-        SomfyGroup *group = &s->groups[i];
+        SomfyGroup *group = &s->groupController.groupSlot(i);
         if (group->getGroupId() != 255) this->writeGroupRecord(group);
     }
     this->writeRepeaterRecord(s);
@@ -240,9 +240,9 @@ bool ShadeConfigFile::restoreFile(SomfyShadeController *s, const char *filename,
     if (opts.shades) {
         ESP_LOGI(s_TAG, "Restoring Rooms...");
         for (uint8_t i = 0; i < this->header.roomRecords; i++) {
-            this->readRoomRecord(&s->rooms[i]);
+            this->readRoomRecord(&s->roomController.roomSlot(i));
             if (i > 0) ESP_LOGI(s_TAG, ",");
-            ESP_LOGI(s_TAG, "%d", s->rooms[i].roomId);
+            ESP_LOGI(s_TAG, "%d", s->roomController.roomSlot(i).roomId);
         }
         ESP_LOGI(s_TAG, "Restoring Shades...");
         // We should be valid so start reading.
@@ -262,15 +262,15 @@ bool ShadeConfigFile::restoreFile(SomfyShadeController *s, const char *filename,
         ESP_LOGI(s_TAG, "Restoring Groups...");
         for (uint8_t i = 0; i < this->header.groupRecords; i++) {
             if (i > 0) ESP_LOGI(s_TAG, ",");
-            ESP_LOGI(s_TAG, "%d", s->groups[i].getGroupId());
-            this->readGroupRecord(&s->groups[i]);
+            ESP_LOGI(s_TAG, "%d", s->groupController.groupSlot(i).getGroupId());
+            this->readGroupRecord(&s->groupController.groupSlot(i));
         }
         ESP_LOGI(s_TAG, "");
         if (this->header.groupRecords < SOMFY_MAX_GROUPS) {
             uint8_t ndx = this->header.groupRecords;
             // Clear out any positions that are not in the shade file.
             while (ndx < SOMFY_MAX_GROUPS) {
-                ((SomfyGroup *)&s->groups[ndx++])->clear();
+                ((SomfyGroup *)&s->groupController.groupSlot(ndx++))->clear();
             }
         }
     } else {
@@ -283,7 +283,7 @@ bool ShadeConfigFile::restoreFile(SomfyShadeController *s, const char *filename,
     if (opts.repeaters) {
         ESP_LOGI(s_TAG, "Restoring Repeaters...");
         if (this->header.repeaterRecords > 0) {
-            memset(s->repeaters, 0x00, sizeof(uint32_t) * SOMFY_MAX_REPEATERS);
+            for (uint8_t i = 0; i < SOMFY_MAX_REPEATERS; i++) s->repeaterController.repeaterSlot(i) = 0;
             for (uint8_t i = 0; i < this->header.repeaterRecords; i++) {
                 this->readRepeaterRecord(s);
             }
@@ -482,7 +482,7 @@ bool ShadeConfigFile::readRepeaterRecord(SomfyShadeController *s)
     uint32_t startPos = this->file.position();
 
     for (uint8_t i = 0; i < SOMFY_MAX_REPEATERS; i++) {
-        s->linkRepeater(this->readUInt32(0));
+        s->repeaterController.linkRepeater(this->readUInt32(0));
     }
     if (this->file.position() != startPos + this->header.repeaterRecordSize) {
         ESP_LOGI(s_TAG, "Reading to end of repeater record");
@@ -606,13 +606,13 @@ bool ShadeConfigFile::loadFile(SomfyShadeController *s, const char *filename)
         return false;
     }
     for (uint8_t i = 0; i < this->header.roomRecords; i++) {
-        this->readRoomRecord(&s->rooms[i]);
+        this->readRoomRecord(&s->roomController.roomSlot(i));
     }
     if (this->header.roomRecords < SOMFY_MAX_ROOMS) {
         uint8_t ndx = this->header.roomRecords;
         // Clear out any positions that are not in the shade file.
         while (ndx < SOMFY_MAX_ROOMS) {
-            ((SomfyRoom *)&s->rooms[ndx++])->clear();
+            ((SomfyRoom *)&s->roomController.roomSlot(ndx++))->clear();
         }
     }
 
@@ -628,17 +628,17 @@ bool ShadeConfigFile::loadFile(SomfyShadeController *s, const char *filename)
         }
     }
     for (uint8_t i = 0; i < this->header.groupRecords; i++) {
-        this->readGroupRecord(&s->groups[i]);
+        this->readGroupRecord(&s->groupController.groupSlot(i));
     }
     if (this->header.groupRecords < SOMFY_MAX_GROUPS) {
         uint8_t ndx = this->header.groupRecords;
         // Clear out any positions that are not in the shade file.
         while (ndx < SOMFY_MAX_GROUPS) {
-            ((SomfyGroup *)&s->groups[ndx++])->clear();
+            ((SomfyGroup *)&s->groupController.groupSlot(ndx++))->clear();
         }
     }
     if (this->header.repeaterRecords > 0) {
-        memset(s->repeaters, 0x00, sizeof(uint32_t) * SOMFY_MAX_REPEATERS);
+        for (uint8_t i = 0; i < SOMFY_MAX_REPEATERS; i++) s->repeaterController.repeaterSlot(i) = 0;
         for (uint8_t i = 0; i < this->header.repeaterRecords; i++)
             this->readRepeaterRecord(s);
     }
@@ -669,7 +669,8 @@ bool ShadeConfigFile::writeGroupRecord(SomfyGroup *group)
 bool ShadeConfigFile::writeRepeaterRecord(SomfyShadeController *s)
 {
     for (uint8_t i = 0; i < SOMFY_MAX_REPEATERS; i++) {
-        this->writeUInt32(s->repeaters[i], i == SOMFY_MAX_REPEATERS - 1 ? CFG_REC_END : CFG_VALUE_SEP);
+        this->writeUInt32(s->repeaterController.repeaterSlot(i),
+                          i == SOMFY_MAX_REPEATERS - 1 ? CFG_REC_END : CFG_VALUE_SEP);
     }
     return true;
 }

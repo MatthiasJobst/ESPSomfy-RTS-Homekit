@@ -60,7 +60,7 @@ void WebGroups::handleGetGroups(WebServer &server)
     HTTPMethod method = server.method();
     if (method == HTTP_POST || method == HTTP_GET) {
         auto arrJson = json.respondJson().array();
-        somfy.toJSONGroups(arrJson);
+        somfy.groupController.toJSONGroups(arrJson);
     } else
         json.respondJson().notFound();
 }
@@ -72,7 +72,7 @@ void WebGroups::handleGroup(WebServer &server)
     if (method == HTTP_GET) {
         if (server.hasArg("groupId")) {
             int groupId = atoi(server.arg("groupId").c_str());
-            SomfyGroup *group = somfy.getGroupById(groupId);
+            SomfyGroup *group = somfy.groupController.getGroupById(groupId);
             if (group) {
                 auto objJson = json.respondJson().object();
                 group->toJSON(objJson);
@@ -88,7 +88,7 @@ void WebGroups::handleGroup(WebServer &server)
             JsonObject obj;
             if (!json.parseBody(obj)) return;
             if (obj.containsKey("groupId")) {
-                SomfyGroup *group = somfy.getGroupById(obj["groupId"]);
+                SomfyGroup *group = somfy.groupController.getGroupById(obj["groupId"]);
                 if (group) {
                     group->fromJSON(obj);
                     group->save();
@@ -133,10 +133,10 @@ void WebGroups::handleGroupCommand(WebServer &server)
             if (obj.containsKey("repeat")) repeat = obj["repeat"].as<uint8_t>();
         } else
             json.respondJson().error("No group object supplied.");
-        SomfyGroup *group = somfy.getGroupById(groupId);
+        SomfyGroup *group = somfy.groupController.getGroupById(groupId);
         if (group) {
             ESP_LOGI(s_TAG, "Received: %s", server.arg("plain").c_str());
-            somfy.enqueueGroupCommand(group, command, repeat >= 0 ? (uint8_t)repeat : group->repeats);
+            somfy.commandDispatcher.enqueueGroupCommand(group, command, repeat >= 0 ? (uint8_t)repeat : group->repeats);
             auto objJson = json.respondJson().object();
             group->toJSONRef(objJson);
         } else {
@@ -149,7 +149,7 @@ void WebGroups::handleGroupCommand(WebServer &server)
 void WebGroups::handleGetNextGroup(WebServer &server)
 {
     WebJsonResponder json(server);
-    uint8_t groupId = somfy.getNextGroupId();
+    uint8_t groupId = somfy.groupController.getNextGroupId();
     auto objJson = json.respondJson().object();
     objJson.addElem("groupId", groupId);
     objJson.addElem("remoteAddress", (uint32_t)somfy.getNextRemoteAddress(groupId));
@@ -171,7 +171,7 @@ void WebGroups::handleGroupSortOrder(WebServer &server)
         for (JsonVariant v : arr) {
             uint8_t groupId = v.as<uint8_t>();
             if (groupId != 255) {
-                SomfyGroup *group = somfy.getGroupById(groupId);
+                SomfyGroup *group = somfy.groupController.getGroupById(groupId);
                 if (group) group->sortOrder = order++;
             }
         }
@@ -191,12 +191,12 @@ void WebGroups::handleAddGroup(WebServer &server)
         JsonObject obj;
         if (!json.parseBody(obj)) return;
         ESP_LOGI(s_TAG, "Counting shades");
-        if (somfy.groupCount() > SOMFY_MAX_GROUPS) {
+        if (somfy.groupController.groupCount() > SOMFY_MAX_GROUPS) {
             json.respondJson().error("Maximum number of groups exceeded.");
             return;
         } else {
             ESP_LOGI(s_TAG, "Adding group");
-            group = somfy.addGroup(obj);
+            group = somfy.groupController.addGroup(obj);
             if (!group) {
                 json.respondJson().error("Error adding group.");
                 return;
@@ -221,7 +221,7 @@ void WebGroups::handleSaveGroup(WebServer &server)
             JsonObject obj;
             if (!json.parseBody(obj)) return;
             if (obj.containsKey("groupId")) {
-                SomfyGroup *group = somfy.getGroupById(obj["groupId"]);
+                SomfyGroup *group = somfy.groupController.getGroupById(obj["groupId"]);
                 if (group) {
                     group->fromJSON(obj);
                     group->save();
@@ -243,7 +243,7 @@ void WebGroups::handleGroupOptions(WebServer &server)
     if (method == HTTP_GET || method == HTTP_POST) {
         if (server.hasArg("groupId")) {
             int groupId = atoi(server.arg("groupId").c_str());
-            SomfyGroup *group = somfy.getGroupById(groupId);
+            SomfyGroup *group = somfy.groupController.getGroupById(groupId);
             if (group) {
                 auto objJson = json.respondJson().object();
                 group->toJSON(objJson);
@@ -293,11 +293,11 @@ void WebGroups::handleDeleteGroup(WebServer &server)
         } else
             json.respondJson().error("No group object supplied.");
     }
-    SomfyGroup *group = somfy.getGroupById(groupId);
+    SomfyGroup *group = somfy.groupController.getGroupById(groupId);
     if (!group)
         json.respondJson().error("Group with the specified id not found.");
     else {
-        somfy.deleteGroup(groupId);
+        somfy.groupController.deleteGroup(groupId);
         json.respondJson().success("Group deleted.");
     }
 }
@@ -321,7 +321,7 @@ void WebGroups::handleLinkToGroup(WebServer &server)
                 json.respondJson().error("Shade id not provided.");
                 return;
             }
-            SomfyGroup *group = somfy.getGroupById(groupId);
+            SomfyGroup *group = somfy.groupController.getGroupById(groupId);
             if (!group) {
                 json.respondJson().error("Group id not found.");
                 return;
@@ -358,7 +358,7 @@ void WebGroups::handleUnlinkFromGroup(WebServer &server)
                 json.respondJson().error("Shade id not provided.");
                 return;
             }
-            SomfyGroup *group = somfy.getGroupById(groupId);
+            SomfyGroup *group = somfy.groupController.getGroupById(groupId);
             if (!group) {
                 json.respondJson().error("Group id not found.");
                 return;

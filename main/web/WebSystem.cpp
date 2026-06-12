@@ -69,16 +69,16 @@ void WebSystem::handleController(WebServer &server)
         git.toJSON(objJson);
         objJson.endObject();
         objJson.beginArray("rooms");
-        somfy.toJSONRooms(objJson);
+        somfy.roomController.toJSONRooms(objJson);
         objJson.endArray();
         objJson.beginArray("shades");
         somfy.toJSONShades(objJson);
         objJson.endArray();
         objJson.beginArray("groups");
-        somfy.toJSONGroups(objJson);
+        somfy.groupController.toJSONGroups(objJson);
         objJson.endArray();
         objJson.beginArray("repeaters");
-        somfy.toJSONRepeaters(objJson);
+        somfy.repeaterController.toJSONRepeaters(objJson);
         objJson.endArray();
     } else
         json.respondJson().notFound();
@@ -115,13 +115,13 @@ void WebSystem::handleDiscovery(WebServer &server)
             objJson.addElem("total", ESP.getHeapSize());
             objJson.endObject();
             objJson.beginArray("rooms");
-            somfy.toJSONRooms(objJson);
+            somfy.roomController.toJSONRooms(objJson);
             objJson.endArray();
             objJson.beginArray("shades");
             somfy.toJSONShades(objJson);
             objJson.endArray();
             objJson.beginArray("groups");
-            somfy.toJSONGroups(objJson);
+            somfy.groupController.toJSONGroups(objJson);
             objJson.endArray();
         }
         net.emitSockets();

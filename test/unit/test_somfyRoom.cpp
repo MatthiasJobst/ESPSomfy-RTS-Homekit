@@ -17,7 +17,7 @@ extern std::unordered_map<std::string, std::string> mqtt_unpublished;
 class RoomTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        for (auto &r : somfy.rooms) r.clear();
+        for (uint8_t i = 0; i < SOMFY_MAX_ROOMS; i++) somfy.roomController.roomSlot(i).clear();
         stub_save_call_count = 0;
         mqtt_connected_flag  = false;
         mqtt_published.clear();
@@ -30,15 +30,15 @@ protected:
 // ══════════════════════════════════════════════════════════════════════════════
 
 TEST_F(RoomTest, Clear_ResetsRoomId) {
-    somfy.rooms[0].roomId = 3;
-    somfy.rooms[0].clear();
-    EXPECT_EQ(somfy.rooms[0].roomId, 0);
-    EXPECT_STREQ(somfy.rooms[0].name, "");
+    somfy.roomController.roomSlot(0).roomId = 3;
+    somfy.roomController.roomSlot(0).clear();
+    EXPECT_EQ(somfy.roomController.roomSlot(0).roomId, 0);
+    EXPECT_STREQ(somfy.roomController.roomSlot(0).name, "");
 }
 
 TEST_F(RoomTest, Save_CallsCommit) {
-    somfy.rooms[0].roomId = 1;
-    somfy.rooms[0].save();
+    somfy.roomController.roomSlot(0).roomId = 1;
+    somfy.roomController.roomSlot(0).save();
     EXPECT_EQ(stub_save_call_count, 1);
 }
 
@@ -47,22 +47,22 @@ TEST_F(RoomTest, Save_CallsCommit) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 TEST_F(RoomTest, FromJSON_NameAndSortOrder_Parsed) {
-    somfy.rooms[0].roomId = 1;
+    somfy.roomController.roomSlot(0).roomId = 1;
     JsonDocument doc;
     JsonObject obj = doc.to<JsonObject>();
     obj["name"]      = "Bedroom";
     obj["sortOrder"] = 3;
-    EXPECT_TRUE(somfy.rooms[0].fromJSON(obj));
-    EXPECT_STREQ(somfy.rooms[0].name, "Bedroom");
-    EXPECT_EQ(somfy.rooms[0].sortOrder, 3);
+    EXPECT_TRUE(somfy.roomController.roomSlot(0).fromJSON(obj));
+    EXPECT_STREQ(somfy.roomController.roomSlot(0).name, "Bedroom");
+    EXPECT_EQ(somfy.roomController.roomSlot(0).sortOrder, 3);
 }
 
 TEST_F(RoomTest, ToJSON_DoesNotCrash) {
-    somfy.rooms[0].roomId    = 1;
-    somfy.rooms[0].sortOrder = 2;
-    strcpy(somfy.rooms[0].name, "Kitchen");
+    somfy.roomController.roomSlot(0).roomId    = 1;
+    somfy.roomController.roomSlot(0).sortOrder = 2;
+    strcpy(somfy.roomController.roomSlot(0).name, "Kitchen");
     JsonResponse json;
-    somfy.rooms[0].toJSON(json);
+    somfy.roomController.roomSlot(0).toJSON(json);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -70,18 +70,18 @@ TEST_F(RoomTest, ToJSON_DoesNotCrash) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 TEST_F(RoomTest, EmitState_DoesNotCrash) {
-    somfy.rooms[0].roomId = 1;
-    somfy.rooms[0].emitState();
+    somfy.roomController.roomSlot(0).roomId = 1;
+    somfy.roomController.roomSlot(0).emitState();
 }
 
 TEST_F(RoomTest, EmitState_WithEventName_DoesNotCrash) {
-    somfy.rooms[0].roomId = 1;
-    somfy.rooms[0].emitState("roomAdded");
+    somfy.roomController.roomSlot(0).roomId = 1;
+    somfy.roomController.roomSlot(0).emitState("roomAdded");
 }
 
 TEST_F(RoomTest, EmitState_WithNumAndEvent_DoesNotCrash) {
-    somfy.rooms[0].roomId = 1;
-    somfy.rooms[0].emitState(1, "roomState");
+    somfy.roomController.roomSlot(0).roomId = 1;
+    somfy.roomController.roomSlot(0).emitState(1, "roomState");
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -89,19 +89,19 @@ TEST_F(RoomTest, EmitState_WithNumAndEvent_DoesNotCrash) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 TEST_F(RoomTest, Publish_MqttConnected_PublishesTopics) {
-    somfy.rooms[0].roomId = 2;
-    strcpy(somfy.rooms[0].name, "Hall");
+    somfy.roomController.roomSlot(0).roomId = 2;
+    strcpy(somfy.roomController.roomSlot(0).name, "Hall");
     mqtt_connected_flag = true;
-    somfy.rooms[0].publish();
+    somfy.roomController.roomSlot(0).publish();
     EXPECT_NE(mqtt_published.find("rooms/2/roomId"), mqtt_published.end());
     EXPECT_NE(mqtt_published.find("rooms/2/name"), mqtt_published.end());
     EXPECT_NE(mqtt_published.find("rooms/2/sortOrder"), mqtt_published.end());
 }
 
 TEST_F(RoomTest, Publish_MqttDisconnected_DoesNotPublish) {
-    somfy.rooms[0].roomId = 1;
+    somfy.roomController.roomSlot(0).roomId = 1;
     mqtt_connected_flag = false;
-    somfy.rooms[0].publish();
+    somfy.roomController.roomSlot(0).publish();
     EXPECT_TRUE(mqtt_published.empty());
 }
 
@@ -110,17 +110,17 @@ TEST_F(RoomTest, Publish_MqttDisconnected_DoesNotPublish) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 TEST_F(RoomTest, Unpublish_MqttConnected_UnpublishesTopics) {
-    somfy.rooms[0].roomId = 3;
+    somfy.roomController.roomSlot(0).roomId = 3;
     mqtt_connected_flag = true;
-    somfy.rooms[0].unpublish();
+    somfy.roomController.roomSlot(0).unpublish();
     EXPECT_NE(mqtt_unpublished.find("rooms/3/roomId"), mqtt_unpublished.end());
     EXPECT_NE(mqtt_unpublished.find("rooms/3/name"), mqtt_unpublished.end());
     EXPECT_NE(mqtt_unpublished.find("rooms/3/sortOrder"), mqtt_unpublished.end());
 }
 
 TEST_F(RoomTest, Unpublish_MqttDisconnected_DoesNothing) {
-    somfy.rooms[0].roomId = 1;
+    somfy.roomController.roomSlot(0).roomId = 1;
     mqtt_connected_flag = false;
-    somfy.rooms[0].unpublish();
+    somfy.roomController.roomSlot(0).unpublish();
     EXPECT_TRUE(mqtt_unpublished.empty());
 }

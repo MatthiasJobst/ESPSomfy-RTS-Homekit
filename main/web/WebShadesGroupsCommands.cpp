@@ -77,7 +77,7 @@ void WebShadesGroupsCommands::handleRepeatCommand(WebServer &server)
             auto arrJson = json.respondJson().array();
             shade->toJSONRef(arrJson);
         } else if (groupId != 255) {
-            SomfyGroup *group = somfy.getGroupById(groupId);
+            SomfyGroup *group = somfy.groupController.getGroupById(groupId);
             if (!group) {
                 json.respondJson().error("Group reference could not be found.");
                 return;
@@ -130,7 +130,7 @@ void WebShadesGroupsCommands::handleSetSensor(WebServer &server)
             json.respondJson().error("An invalid shadeId was provided");
 
     } else if (groupId != 255) {
-        SomfyGroup *group = somfy.getGroupById(groupId);
+        SomfyGroup *group = somfy.groupController.getGroupById(groupId);
         if (group) {
             group->sendSensorCommand(windy, sunny, repeat >= 0 ? (uint8_t)repeat : group->repeats);
             group->emitState();

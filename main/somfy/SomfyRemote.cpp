@@ -112,7 +112,7 @@ void SomfyRemote::sendSensorCommand(int8_t isWindy, int8_t isSunny, uint8_t repe
     ESP_LOGI(s_TAG, "ADDR: %d", this->lastFrame.remoteAddress);
     ESP_LOGI(s_TAG, "RCODE: %d", this->lastFrame.rollingCode);
     ESP_LOGI(s_TAG, "REPEAT: %d", repeat);
-    somfy.sendFrame(this->lastFrame, repeat);
+    somfy.commandDispatcher.sendFrame(this->lastFrame, repeat);
     somfy.processFrame(this->lastFrame, true);
 }
 
@@ -153,7 +153,7 @@ void SomfyRemote::sendCommand(somfy_commands cmd, uint8_t repeat, uint8_t stepSi
         ESP_LOGI(s_TAG, "ADDR: %d", this->lastFrame.remoteAddress);
         ESP_LOGI(s_TAG, "RCODE: %d", this->lastFrame.rollingCode);
         ESP_LOGI(s_TAG, "REPEAT: %d", repeat);
-        somfy.sendFrame(this->lastFrame, repeat);
+        somfy.commandDispatcher.sendFrame(this->lastFrame, repeat);
     }
     somfy.processFrame(this->lastFrame, true);
 }

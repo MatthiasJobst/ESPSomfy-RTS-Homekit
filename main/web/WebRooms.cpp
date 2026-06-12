@@ -52,7 +52,7 @@ void WebRooms::handleGetRooms(WebServer &server)
     HTTPMethod method = server.method();
     if (method == HTTP_POST || method == HTTP_GET) {
         auto arrJson = json.respondJson().array();
-        somfy.toJSONRooms(arrJson);
+        somfy.roomController.toJSONRooms(arrJson);
     } else
         json.respondJson().notFound();
 }
@@ -64,7 +64,7 @@ void WebRooms::handleRoom(WebServer &server)
     if (method == HTTP_GET) {
         if (server.hasArg("roomId")) {
             int roomId = atoi(server.arg("roomId").c_str());
-            SomfyRoom *room = somfy.getRoomById(roomId);
+            SomfyRoom *room = somfy.roomController.getRoomById(roomId);
             if (room) {
                 auto objJson = json.respondJson().object();
                 room->toJSON(objJson);
@@ -80,7 +80,7 @@ void WebRooms::handleRoom(WebServer &server)
             JsonObject obj;
             if (!json.parseBody(obj)) return;
             if (obj.containsKey("roomId")) {
-                SomfyRoom *room = somfy.getRoomById(obj["roomId"]);
+                SomfyRoom *room = somfy.roomController.getRoomById(obj["roomId"]);
                 if (room) {
                     uint8_t err = room->fromJSON(obj);
                     if (err == 0) {
@@ -107,7 +107,7 @@ void WebRooms::handleGetNextRoom(WebServer &server)
 {
     WebJsonResponder json(server);
     auto objJson = json.respondJson().object();
-    objJson.addElem("roomId", somfy.getNextRoomId());
+    objJson.addElem("roomId", somfy.roomController.getNextRoomId());
 }
 
 void WebRooms::handleRoomSortOrder(WebServer &server)
@@ -123,7 +123,7 @@ void WebRooms::handleRoomSortOrder(WebServer &server)
         for (JsonVariant v : arr) {
             uint8_t roomId = v.as<uint8_t>();
             if (roomId != 0) {
-                SomfyRoom *room = somfy.getRoomById(roomId);
+                SomfyRoom *room = somfy.roomController.getRoomById(roomId);
                 if (room) room->sortOrder = order++;
             }
         }
@@ -143,12 +143,12 @@ void WebRooms::handleAddRoom(WebServer &server)
         JsonObject obj;
         if (!json.parseBody(obj)) return;
         ESP_LOGI(s_TAG, "Counting rooms");
-        if (somfy.roomCount() > SOMFY_MAX_ROOMS) {
+        if (somfy.roomController.roomCount() > SOMFY_MAX_ROOMS) {
             json.respondJson().error("Maximum number of rooms exceeded.");
             return;
         } else {
             ESP_LOGI(s_TAG, "Adding room");
-            room = somfy.addRoom(obj);
+            room = somfy.roomController.addRoom(obj);
             if (!room) {
                 json.respondJson().error("Error adding room.");
                 return;
@@ -173,7 +173,7 @@ void WebRooms::handleSaveRoom(WebServer &server)
             JsonObject obj;
             if (!json.parseBody(obj)) return;
             if (obj.containsKey("roomId")) {
-                SomfyRoom *room = somfy.getRoomById(obj["roomId"]);
+                SomfyRoom *room = somfy.roomController.getRoomById(obj["roomId"]);
                 if (room) {
                     room->fromJSON(obj);
                     room->save();
@@ -207,11 +207,11 @@ void WebRooms::handleDeleteRoom(WebServer &server)
         } else
             json.respondJson().error("No room object supplied.");
     }
-    SomfyRoom *room = somfy.getRoomById(roomId);
+    SomfyRoom *room = somfy.roomController.getRoomById(roomId);
     if (!room)
         json.respondJson().error("Room with the specified id not found.");
     else {
-        somfy.deleteRoom(roomId);
+        somfy.roomController.deleteRoom(roomId);
         json.respondJson().success("Room deleted.");
     }
 }

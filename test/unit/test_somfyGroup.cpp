@@ -24,9 +24,9 @@ class GroupTest : public ::testing::Test {
 protected:
     void SetUp() override {
         for (auto &s : somfy.shades) s.clear();
-        for (auto &g : somfy.groups) g.clear();
-        for (auto &r : somfy.rooms)  r.clear();
-        memset(somfy.repeaters, 0, sizeof(somfy.repeaters));
+        for (uint8_t i = 0; i < SOMFY_MAX_GROUPS; i++) somfy.groupController.groupSlot(i).clear();
+        for (uint8_t i = 0; i < SOMFY_MAX_ROOMS; i++) somfy.roomController.roomSlot(i).clear();
+        for (uint8_t i = 0; i < SOMFY_MAX_REPEATERS; i++) somfy.repeaterController.repeaterSlot(i) = 0;
         somfy.isDirty        = false;
         somfy.startingAddress = 0x100000;
         stub_shadeconfig_exists = false;
@@ -35,7 +35,7 @@ protected:
         mqtt_connected_flag     = false;
         mqtt_published.clear();
         mqtt_unpublished.clear();
-        somfy.cmdQueue   = SomfyCommandQueue{};
+        somfy.commandDispatcher.cmdQueue   = SomfyCommandQueue{};
         somfy.lastCommit = 0;
     }
 };
@@ -50,10 +50,10 @@ protected:
         somfy.shades[0].setRemoteAddress(0x100001);
         somfy.shades[0].bitLength = 56;
         somfy.shades[0].repeats   = 1;
-        somfy.groups[0].setGroupId(1);
-        somfy.groups[0].setRemoteAddress(0x200001);
-        somfy.groups[0].bitLength = 56;
-        somfy.groups[0].linkedShades[0] = 1;  // link shade 1
+        somfy.groupController.groupSlot(0).setGroupId(1);
+        somfy.groupController.groupSlot(0).setRemoteAddress(0x200001);
+        somfy.groupController.groupSlot(0).bitLength = 56;
+        somfy.groupController.groupSlot(0).linkedShades[0] = 1;  // link shade 1
     }
 };
 
@@ -62,23 +62,23 @@ protected:
 // ══════════════════════════════════════════════════════════════════════════════
 
 TEST_F(GroupTest, LinkShade_EmptySlot_AddsShadeAndReturnsTrue) {
-    somfy.groups[0].setGroupId(1);
-    EXPECT_TRUE(somfy.groups[0].linkShade(2));
-    EXPECT_EQ(somfy.groups[0].linkedShades[0], 2);
+    somfy.groupController.groupSlot(0).setGroupId(1);
+    EXPECT_TRUE(somfy.groupController.groupSlot(0).linkShade(2));
+    EXPECT_EQ(somfy.groupController.groupSlot(0).linkedShades[0], 2);
 }
 
 TEST_F(GroupTest, LinkShade_AlreadyLinked_ReturnsTrueWithoutDuplicate) {
-    somfy.groups[0].setGroupId(1);
-    somfy.groups[0].linkedShades[0] = 2;
-    EXPECT_TRUE(somfy.groups[0].linkShade(2));
-    EXPECT_EQ(somfy.groups[0].linkedShades[1], 0);  // no duplicate
+    somfy.groupController.groupSlot(0).setGroupId(1);
+    somfy.groupController.groupSlot(0).linkedShades[0] = 2;
+    EXPECT_TRUE(somfy.groupController.groupSlot(0).linkShade(2));
+    EXPECT_EQ(somfy.groupController.groupSlot(0).linkedShades[1], 0);  // no duplicate
 }
 
 TEST_F(GroupTest, LinkShade_AllSlotsFull_ReturnsFalse) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     for (uint8_t i = 0; i < SOMFY_MAX_GROUPED_SHADES; i++)
-        somfy.groups[0].linkedShades[i] = i + 1;  // fill all 32 slots
-    EXPECT_FALSE(somfy.groups[0].linkShade(99));
+        somfy.groupController.groupSlot(0).linkedShades[i] = i + 1;  // fill all 32 slots
+    EXPECT_FALSE(somfy.groupController.groupSlot(0).linkShade(99));
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -86,31 +86,31 @@ TEST_F(GroupTest, LinkShade_AllSlotsFull_ReturnsFalse) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 TEST_F(GroupTest, UnlinkShade_Present_RemovesAndCompresses) {
-    somfy.groups[0].setGroupId(1);
-    somfy.groups[0].linkedShades[0] = 1;
-    somfy.groups[0].linkedShades[1] = 2;
-    EXPECT_TRUE(somfy.groups[0].unlinkShade(1));
-    EXPECT_EQ(somfy.groups[0].linkedShades[0], 2);  // compressed
-    EXPECT_EQ(somfy.groups[0].linkedShades[1], 0);
+    somfy.groupController.groupSlot(0).setGroupId(1);
+    somfy.groupController.groupSlot(0).linkedShades[0] = 1;
+    somfy.groupController.groupSlot(0).linkedShades[1] = 2;
+    EXPECT_TRUE(somfy.groupController.groupSlot(0).unlinkShade(1));
+    EXPECT_EQ(somfy.groupController.groupSlot(0).linkedShades[0], 2);  // compressed
+    EXPECT_EQ(somfy.groupController.groupSlot(0).linkedShades[1], 0);
 }
 
 TEST_F(GroupTest, UnlinkShade_NotPresent_ReturnsFalse) {
-    somfy.groups[0].setGroupId(1);
-    somfy.groups[0].linkedShades[0] = 1;
-    EXPECT_FALSE(somfy.groups[0].unlinkShade(99));
-    EXPECT_EQ(somfy.groups[0].linkedShades[0], 1);  // unchanged
+    somfy.groupController.groupSlot(0).setGroupId(1);
+    somfy.groupController.groupSlot(0).linkedShades[0] = 1;
+    EXPECT_FALSE(somfy.groupController.groupSlot(0).unlinkShade(99));
+    EXPECT_EQ(somfy.groupController.groupSlot(0).linkedShades[0], 1);  // unchanged
 }
 
 TEST_F(GroupTest, CompressLinkedShadeIds_GapsRemoved) {
-    somfy.groups[0].setGroupId(1);
-    somfy.groups[0].linkedShades[0] = 0;
-    somfy.groups[0].linkedShades[1] = 3;
-    somfy.groups[0].linkedShades[2] = 0;
-    somfy.groups[0].linkedShades[3] = 5;
-    somfy.groups[0].compressLinkedShadeIds();
-    EXPECT_EQ(somfy.groups[0].linkedShades[0], 3);
-    EXPECT_EQ(somfy.groups[0].linkedShades[1], 5);
-    EXPECT_EQ(somfy.groups[0].linkedShades[2], 0);
+    somfy.groupController.groupSlot(0).setGroupId(1);
+    somfy.groupController.groupSlot(0).linkedShades[0] = 0;
+    somfy.groupController.groupSlot(0).linkedShades[1] = 3;
+    somfy.groupController.groupSlot(0).linkedShades[2] = 0;
+    somfy.groupController.groupSlot(0).linkedShades[3] = 5;
+    somfy.groupController.groupSlot(0).compressLinkedShadeIds();
+    EXPECT_EQ(somfy.groupController.groupSlot(0).linkedShades[0], 3);
+    EXPECT_EQ(somfy.groupController.groupSlot(0).linkedShades[1], 5);
+    EXPECT_EQ(somfy.groupController.groupSlot(0).linkedShades[2], 0);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -118,22 +118,22 @@ TEST_F(GroupTest, CompressLinkedShadeIds_GapsRemoved) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 TEST_F(GroupTest, HasShadeId_Present_ReturnsTrue) {
-    somfy.groups[0].setGroupId(1);
-    somfy.groups[0].linkedShades[0] = 3;
-    EXPECT_TRUE(somfy.groups[0].hasShadeId(3));
+    somfy.groupController.groupSlot(0).setGroupId(1);
+    somfy.groupController.groupSlot(0).linkedShades[0] = 3;
+    EXPECT_TRUE(somfy.groupController.groupSlot(0).hasShadeId(3));
 }
 
 TEST_F(GroupTest, HasShadeId_NotPresent_ReturnsFalse) {
-    somfy.groups[0].setGroupId(1);
-    EXPECT_FALSE(somfy.groups[0].hasShadeId(5));
+    somfy.groupController.groupSlot(0).setGroupId(1);
+    EXPECT_FALSE(somfy.groupController.groupSlot(0).hasShadeId(5));
 }
 
 TEST_F(GroupTest, HasShadeId_SecondSlot_IteratesPastFirst) {
     // linkedShades[0]=1 (non-zero, not 2) → loop continues → linkedShades[1]=2 → return true
-    somfy.groups[0].setGroupId(1);
-    somfy.groups[0].linkedShades[0] = 1;
-    somfy.groups[0].linkedShades[1] = 2;
-    EXPECT_TRUE(somfy.groups[0].hasShadeId(2));
+    somfy.groupController.groupSlot(0).setGroupId(1);
+    somfy.groupController.groupSlot(0).linkedShades[0] = 1;
+    somfy.groupController.groupSlot(0).linkedShades[1] = 2;
+    EXPECT_TRUE(somfy.groupController.groupSlot(0).hasShadeId(2));
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -142,8 +142,8 @@ TEST_F(GroupTest, HasShadeId_SecondSlot_IteratesPastFirst) {
 
 TEST_F(GroupWithShadeTest, UpdateFlags_LinkedShadeHasFlags_AggregatesToGroup) {
     somfy.shades[0].flags.setFlags(0x20);  // Sunny
-    somfy.groups[0].updateFlags();
-    EXPECT_EQ(somfy.groups[0].flags.getFlags(), 0x20);
+    somfy.groupController.groupSlot(0).updateFlags();
+    EXPECT_EQ(somfy.groupController.groupSlot(0).flags.getFlags(), 0x20);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -151,20 +151,20 @@ TEST_F(GroupWithShadeTest, UpdateFlags_LinkedShadeHasFlags_AggregatesToGroup) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 TEST_F(GroupWithShadeTest, EmitState_WithLinkedShade_DoesNotCrash) {
-    somfy.groups[0].emitState();
+    somfy.groupController.groupSlot(0).emitState();
 }
 
 TEST_F(GroupTest, EmitState_NoLinkedShades_DoesNotCrash) {
-    somfy.groups[0].setGroupId(1);
-    somfy.groups[0].emitState();
+    somfy.groupController.groupSlot(0).setGroupId(1);
+    somfy.groupController.groupSlot(0).emitState();
 }
 
 TEST_F(GroupWithShadeTest, EmitState_WithEventName_DoesNotCrash) {
-    somfy.groups[0].emitState("groupAdded");
+    somfy.groupController.groupSlot(0).emitState("groupAdded");
 }
 
 TEST_F(GroupWithShadeTest, EmitState_WithNumAndEvent_DoesNotCrash) {
-    somfy.groups[0].emitState(1, "groupState");
+    somfy.groupController.groupSlot(0).emitState(1, "groupState");
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -172,35 +172,35 @@ TEST_F(GroupWithShadeTest, EmitState_WithNumAndEvent_DoesNotCrash) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 TEST_F(GroupWithShadeTest, SendCommand_OneArg_Dispatches) {
-    somfy.groups[0].sendCommand(somfy_commands::My);
-    EXPECT_EQ(somfy.groups[0].direction, 0);
+    somfy.groupController.groupSlot(0).sendCommand(somfy_commands::My);
+    EXPECT_EQ(somfy.groupController.groupSlot(0).direction, 0);
 }
 
 TEST_F(GroupWithShadeTest, SendCommand_My_SetsDirectionZero) {
-    somfy.groups[0].sendCommand(somfy_commands::My, 1);
-    EXPECT_EQ(somfy.groups[0].direction, 0);
+    somfy.groupController.groupSlot(0).sendCommand(somfy_commands::My, 1);
+    EXPECT_EQ(somfy.groupController.groupSlot(0).direction, 0);
 }
 
 TEST_F(GroupWithShadeTest, SendCommand_Up_SetsDirectionMinus1) {
-    somfy.groups[0].sendCommand(somfy_commands::Up, 1);
-    EXPECT_EQ(somfy.groups[0].direction, -1);
+    somfy.groupController.groupSlot(0).sendCommand(somfy_commands::Up, 1);
+    EXPECT_EQ(somfy.groupController.groupSlot(0).direction, -1);
 }
 
 TEST_F(GroupWithShadeTest, SendCommand_Down_SetsDirectionPlus1) {
-    somfy.groups[0].sendCommand(somfy_commands::Down, 1);
-    EXPECT_EQ(somfy.groups[0].direction, 1);
+    somfy.groupController.groupSlot(0).sendCommand(somfy_commands::Down, 1);
+    EXPECT_EQ(somfy.groupController.groupSlot(0).direction, 1);
 }
 
 TEST_F(GroupWithShadeTest, SendCommand_Other_DoesNotChangeDirection) {
-    somfy.groups[0].direction = 0;
-    somfy.groups[0].sendCommand(somfy_commands::Prog, 1);
+    somfy.groupController.groupSlot(0).direction = 0;
+    somfy.groupController.groupSlot(0).sendCommand(somfy_commands::Prog, 1);
     // default branch — direction unchanged
-    EXPECT_EQ(somfy.groups[0].direction, 0);
+    EXPECT_EQ(somfy.groupController.groupSlot(0).direction, 0);
 }
 
 TEST_F(GroupWithShadeTest, SendCommand_LinkedShadeDispatched_DoesNotCrash) {
     // shade[0] is linked and exists — processInternalCommand and emitCommand are called
-    somfy.groups[0].sendCommand(somfy_commands::Up, 1);
+    somfy.groupController.groupSlot(0).sendCommand(somfy_commands::Up, 1);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -208,7 +208,7 @@ TEST_F(GroupWithShadeTest, SendCommand_LinkedShadeDispatched_DoesNotCrash) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 TEST_F(GroupTest, FromJSON_BasicFields_Parsed) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     JsonDocument doc;
     JsonObject obj = doc.to<JsonObject>();
     obj["name"]          = "Living Room";
@@ -217,35 +217,35 @@ TEST_F(GroupTest, FromJSON_BasicFields_Parsed) {
     obj["bitLength"]     = 56;
     obj["repeats"]       = 3;
     obj["flipCommands"]  = true;
-    somfy.groups[0].fromJSON(obj);
-    EXPECT_STREQ(somfy.groups[0].name, "Living Room");
-    EXPECT_EQ(somfy.groups[0].roomId, 2);
-    EXPECT_EQ(somfy.groups[0].repeats, 3);
+    somfy.groupController.groupSlot(0).fromJSON(obj);
+    EXPECT_STREQ(somfy.groupController.groupSlot(0).name, "Living Room");
+    EXPECT_EQ(somfy.groupController.groupSlot(0).roomId, 2);
+    EXPECT_EQ(somfy.groupController.groupSlot(0).repeats, 3);
 }
 
 TEST_F(GroupTest, FromJSON_WithLinkedShades_PopulatesLinkedShades) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     JsonDocument doc;
     JsonObject obj = doc.to<JsonObject>();
     JsonArray arr  = obj["linkedShades"].to<JsonArray>();
     arr.add(1);
     arr.add(2);
-    EXPECT_TRUE(somfy.groups[0].fromJSON(obj));
-    EXPECT_TRUE(somfy.groups[0].hasShadeId(1));
-    EXPECT_TRUE(somfy.groups[0].hasShadeId(2));
-    EXPECT_FALSE(somfy.groups[0].hasShadeId(3));
+    EXPECT_TRUE(somfy.groupController.groupSlot(0).fromJSON(obj));
+    EXPECT_TRUE(somfy.groupController.groupSlot(0).hasShadeId(1));
+    EXPECT_TRUE(somfy.groupController.groupSlot(0).hasShadeId(2));
+    EXPECT_FALSE(somfy.groupController.groupSlot(0).hasShadeId(3));
 }
 
 TEST_F(GroupTest, FromJSON_WithLinkedShades_ClearsExistingBeforeRepopulating) {
-    somfy.groups[0].setGroupId(1);
-    somfy.groups[0].linkedShades[0] = 7;  // pre-existing shade that is not in the JSON
+    somfy.groupController.groupSlot(0).setGroupId(1);
+    somfy.groupController.groupSlot(0).linkedShades[0] = 7;  // pre-existing shade that is not in the JSON
     JsonDocument doc;
     JsonObject obj = doc.to<JsonObject>();
     JsonArray arr  = obj["linkedShades"].to<JsonArray>();
     arr.add(3);
-    somfy.groups[0].fromJSON(obj);
-    EXPECT_TRUE(somfy.groups[0].hasShadeId(3));
-    EXPECT_FALSE(somfy.groups[0].hasShadeId(7));  // old entry must be gone
+    somfy.groupController.groupSlot(0).fromJSON(obj);
+    EXPECT_TRUE(somfy.groupController.groupSlot(0).hasShadeId(3));
+    EXPECT_FALSE(somfy.groupController.groupSlot(0).hasShadeId(7));  // old entry must be gone
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -253,20 +253,20 @@ TEST_F(GroupTest, FromJSON_WithLinkedShades_ClearsExistingBeforeRepopulating) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 TEST_F(GroupTest, ToJSON_NoLinkedShades_DoesNotCrash) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     JsonResponse json;
-    somfy.groups[0].toJSON(json);
+    somfy.groupController.groupSlot(0).toJSON(json);
 }
 
 TEST_F(GroupWithShadeTest, ToJSON_WithLinkedShade_DoesNotCrash) {
     JsonResponse json;
-    somfy.groups[0].toJSON(json);
+    somfy.groupController.groupSlot(0).toJSON(json);
 }
 
 TEST_F(GroupTest, ToJSONRef_DoesNotCrash) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     JsonResponse json;
-    somfy.groups[0].toJSONRef(json);
+    somfy.groupController.groupSlot(0).toJSONRef(json);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -274,30 +274,30 @@ TEST_F(GroupTest, ToJSONRef_DoesNotCrash) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 TEST_F(GroupTest, PublishState_MqttConnected_PublishesTopics) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     mqtt_connected_flag = true;
-    somfy.groups[0].publishState();
+    somfy.groupController.groupSlot(0).publishState();
     EXPECT_NE(mqtt_published.find("groups/1/direction"), mqtt_published.end());
 }
 
 TEST_F(GroupTest, Publish_NoArg_MqttConnected_PublishesGroupId) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     mqtt_connected_flag = true;
-    somfy.groups[0].publish();
+    somfy.groupController.groupSlot(0).publish();
     EXPECT_NE(mqtt_published.find("groups/1/groupId"), mqtt_published.end());
 }
 
 TEST_F(GroupTest, Publish_NoArg_MqttDisconnected_DoesNotPublish) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     mqtt_connected_flag = false;
-    somfy.groups[0].publish();
+    somfy.groupController.groupSlot(0).publish();
     EXPECT_TRUE(mqtt_published.empty());
 }
 
 TEST_F(GroupTest, Unpublish_NoArg_MqttConnected_UnpublishesTopics) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     mqtt_connected_flag = true;
-    somfy.groups[0].unpublish();
+    somfy.groupController.groupSlot(0).unpublish();
     EXPECT_NE(mqtt_unpublished.find("groups/1/groupId"), mqtt_unpublished.end());
 }
 
@@ -322,74 +322,74 @@ TEST_F(GroupTest, UnpublishStatic_MqttDisconnected_DoesNothing) {
 // ── publish(topic, T) overloads ───────────────────────────────────────────────
 
 TEST_F(GroupTest, Publish_StringVal_MqttConnected_ReturnsTrue) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     mqtt_connected_flag = true;
-    EXPECT_TRUE(somfy.groups[0].publish("name", "test", true));
+    EXPECT_TRUE(somfy.groupController.groupSlot(0).publish("name", "test", true));
     EXPECT_EQ(mqtt_published["groups/1/name"], "test");
 }
 
 TEST_F(GroupTest, Publish_StringVal_MqttDisconnected_ReturnsFalse) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     mqtt_connected_flag = false;
-    EXPECT_FALSE(somfy.groups[0].publish("name", "test", true));
+    EXPECT_FALSE(somfy.groupController.groupSlot(0).publish("name", "test", true));
 }
 
 TEST_F(GroupTest, Publish_Int8Val_MqttConnected_ReturnsTrue) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     mqtt_connected_flag = true;
-    EXPECT_TRUE(somfy.groups[0].publish("direction", (int8_t)1, true));
+    EXPECT_TRUE(somfy.groupController.groupSlot(0).publish("direction", (int8_t)1, true));
 }
 
 TEST_F(GroupTest, Publish_Int8Val_MqttDisconnected_ReturnsFalse) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     mqtt_connected_flag = false;
-    EXPECT_FALSE(somfy.groups[0].publish("direction", (int8_t)1, true));
+    EXPECT_FALSE(somfy.groupController.groupSlot(0).publish("direction", (int8_t)1, true));
 }
 
 TEST_F(GroupTest, Publish_Uint8Val_MqttConnected_ReturnsTrue) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     mqtt_connected_flag = true;
-    EXPECT_TRUE(somfy.groups[0].publish("groupId", (uint8_t)1, true));
+    EXPECT_TRUE(somfy.groupController.groupSlot(0).publish("groupId", (uint8_t)1, true));
 }
 
 TEST_F(GroupTest, Publish_Uint8Val_MqttDisconnected_ReturnsFalse) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     mqtt_connected_flag = false;
-    EXPECT_FALSE(somfy.groups[0].publish("groupId", (uint8_t)1, true));
+    EXPECT_FALSE(somfy.groupController.groupSlot(0).publish("groupId", (uint8_t)1, true));
 }
 
 TEST_F(GroupTest, Publish_Uint32Val_MqttConnected_ReturnsTrue) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     mqtt_connected_flag = true;
-    EXPECT_TRUE(somfy.groups[0].publish("remoteAddress", (uint32_t)0x100001, true));
+    EXPECT_TRUE(somfy.groupController.groupSlot(0).publish("remoteAddress", (uint32_t)0x100001, true));
 }
 
 TEST_F(GroupTest, Publish_Uint32Val_MqttDisconnected_ReturnsFalse) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     mqtt_connected_flag = false;
-    EXPECT_FALSE(somfy.groups[0].publish("remoteAddress", (uint32_t)0x100001, true));
+    EXPECT_FALSE(somfy.groupController.groupSlot(0).publish("remoteAddress", (uint32_t)0x100001, true));
 }
 
 TEST_F(GroupTest, Publish_Uint16Val_MqttConnected_ReturnsTrue) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     mqtt_connected_flag = true;
-    EXPECT_TRUE(somfy.groups[0].publish("rollingCode", (uint16_t)42, true));
+    EXPECT_TRUE(somfy.groupController.groupSlot(0).publish("rollingCode", (uint16_t)42, true));
 }
 
 TEST_F(GroupTest, Publish_Uint16Val_MqttDisconnected_ReturnsFalse) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     mqtt_connected_flag = false;
-    EXPECT_FALSE(somfy.groups[0].publish("rollingCode", (uint16_t)42, true));
+    EXPECT_FALSE(somfy.groupController.groupSlot(0).publish("rollingCode", (uint16_t)42, true));
 }
 
 TEST_F(GroupTest, Publish_BoolVal_MqttConnected_ReturnsTrue) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     mqtt_connected_flag = true;
-    EXPECT_TRUE(somfy.groups[0].publish("flipCommands", true, true));
+    EXPECT_TRUE(somfy.groupController.groupSlot(0).publish("flipCommands", true, true));
 }
 
 TEST_F(GroupTest, Publish_BoolVal_MqttDisconnected_ReturnsFalse) {
-    somfy.groups[0].setGroupId(1);
+    somfy.groupController.groupSlot(0).setGroupId(1);
     mqtt_connected_flag = false;
-    EXPECT_FALSE(somfy.groups[0].publish("flipCommands", true, true));
+    EXPECT_FALSE(somfy.groupController.groupSlot(0).publish("flipCommands", true, true));
 }
