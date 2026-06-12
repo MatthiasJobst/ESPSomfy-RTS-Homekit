@@ -6,11 +6,9 @@
 
 static const char *s_TAG = "SomfyRoomController";
 
-SomfyRoomController::SomfyRoomController(std::function<void()> markDirty,
-                                        std::function<void(uint8_t)> onRoomRemoved)
+SomfyRoomController::SomfyRoomController(std::function<void()> markDirty, std::function<void(uint8_t)> onRoomRemoved)
     : markDirty(std::move(markDirty)), onRoomRemoved(std::move(onRoomRemoved))
-{
-}
+{}
 
 SomfyRoom &SomfyRoomController::roomSlot(uint8_t i)
 {
@@ -114,4 +112,3 @@ void SomfyRoomController::toJSONRooms(JsonResponse &json)
         }
     }
 }
-

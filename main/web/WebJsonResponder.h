@@ -33,10 +33,7 @@
 class WebJsonResponder {
   public:
     /** @brief Bind a responder to a request server. */
-    explicit WebJsonResponder(WebServer &server)
-        : _server(server), _resp(server, s_buff, sizeof(s_buff))
-    {
-    }
+    explicit WebJsonResponder(WebServer &server) : _server(server), _resp(server, s_buff, sizeof(s_buff)) {}
 
     /**
      * @brief Deserialize the request body into a JsonObject.

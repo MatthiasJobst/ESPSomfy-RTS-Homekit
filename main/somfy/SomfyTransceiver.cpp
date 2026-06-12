@@ -334,7 +334,8 @@ void RECEIVE_ATTR SomfyTransceiver::handleReceive()
         if (duration > s_tempo_synchro_hw_min && duration < s_tempo_synchro_hw_max) {
             // We have found a hardware sync bit.  There should be at least 4 of these.
             ++s_somfy_rx.cpt_synchro_hw;
-        } else if (duration > s_tempo_synchro_sw_min && duration < s_tempo_synchro_sw_max && s_somfy_rx.cpt_synchro_hw >= 4) {
+        } else if (duration > s_tempo_synchro_sw_min && duration < s_tempo_synchro_sw_max &&
+                   s_somfy_rx.cpt_synchro_hw >= 4) {
             // If we have a full hardware sync then we should look for the software sync.  If we have a software sync
             // bit and enough hardware sync bits then we should start receiving data.  It turns out that a 56 bit packet
             // with give 4 or 14 bits of hardware sync.  An 80 bit packet gives 12, 13 or 24 bits of hw sync.  Early on
@@ -567,7 +568,8 @@ void SomfyTransceiver::emitFrame(somfy_frame_t *frame, somfy_rx_t *rx)
 
 void SomfyTransceiver::clearReceived(void)
 {
-    if (this->config.enabled) gpio_isr_handler_add((gpio_num_t)s_interruptPin, SomfyTransceiver::handleReceiveISR, NULL);
+    if (this->config.enabled)
+        gpio_isr_handler_add((gpio_num_t)s_interruptPin, SomfyTransceiver::handleReceiveISR, NULL);
 }
 
 void SomfyTransceiver::enableReceive(void)
@@ -644,8 +646,8 @@ void transceiver_config_t::fromJSON(JsonObject &obj)
     if (obj.containsKey("txPower")) this->txPower = obj["txPower"].as<int8_t>();
     if (obj.containsKey("proto")) this->proto = static_cast<radio_proto>(obj["proto"].as<uint8_t>());
     if (obj.containsKey("noiseDetection")) this->noiseDetection = obj["noiseDetection"];
-    ESP_LOGD(s_TAG, "SCK:%u MISO:%u MOSI:%u CSN:%u RX:%u TX:%u", this->SCKPin, this->MISOPin, this->MOSIPin, this->CSNPin,
-             this->RXPin, this->TXPin);
+    ESP_LOGD(s_TAG, "SCK:%u MISO:%u MOSI:%u CSN:%u RX:%u TX:%u", this->SCKPin, this->MISOPin, this->MOSIPin,
+             this->CSNPin, this->RXPin, this->TXPin);
 }
 
 void transceiver_config_t::toJSON(JsonResponse &json)
@@ -689,8 +691,8 @@ void transceiver_config_t::save()
     pref.end();
 
     ESP_LOGD(s_TAG, "Save Radio Settings ");
-    ESP_LOGD(s_TAG, "SCK:%u MISO:%u MOSI:%u CSN:%u RX:%u TX:%u", this->SCKPin, this->MISOPin, this->MOSIPin, this->CSNPin,
-             this->RXPin, this->TXPin);
+    ESP_LOGD(s_TAG, "SCK:%u MISO:%u MOSI:%u CSN:%u RX:%u TX:%u", this->SCKPin, this->MISOPin, this->MOSIPin,
+             this->CSNPin, this->RXPin, this->TXPin);
 }
 
 void transceiver_config_t::removeNVSKey(const char *key)
@@ -843,9 +845,9 @@ void transceiver_config_t::apply()
         ELECHOUSE_cc1101.setPktFormat(3);  // Format of RX and TX data.
                                            // 0 = Normal mode, use FIFOs for RX and TX.
                                            // 1 = Synchronous serial mode, Data in on GDO0 and data out on either of the
-                                          // GDOx pins. 2 = Random TX mode; sends random data using PN9 generator. Used
-                                          // for test. Works as normal mode, setting 0 (00), in RX. 3 = Asynchronous
-                                          // serial mode, Data in on GDO0 and data out on either of the GDOx pins.
+                                           // GDOx pins. 2 = Random TX mode; sends random data using PN9 generator. Used
+                                           // for test. Works as normal mode, setting 0 (00), in RX. 3 = Asynchronous
+                                           // serial mode, Data in on GDO0 and data out on either of the GDOx pins.
         ELECHOUSE_cc1101.setDcFilterOff(
             0); // Disable digital DC blocking filter before demodulator. Only for data rates â‰¤ 250 kBaud The
                 // recommended IF frequency changes when the DC blocking is disabled. 1 = Disable (current optimized).

@@ -25,7 +25,7 @@ class SomfyShade : public SomfyRemote {
         commandProcessor.shade = this;
         movementTracker.shade = this;
     }
-    SomfyTargetSequencer targetSequencer;  // Exposed to allow for testing
+    SomfyTargetSequencer targetSequencer; // Exposed to allow for testing
     uint8_t roomId = 0;
     uint8_t sortOrder = 0;
     shade_types shadeType = shade_types::roller;

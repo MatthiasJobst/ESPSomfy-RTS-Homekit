@@ -10,7 +10,7 @@
 inline uint8_t stub_active_clients = 0;
 
 class SocketEmitter {
-public:
+  public:
     JsonSockEvent json;
     JsonSockEvent *beginEmit(const char *) { return &json; }
     void endEmit(uint8_t = 255) {}

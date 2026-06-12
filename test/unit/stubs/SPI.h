@@ -6,7 +6,7 @@ struct SPISettings {
 };
 
 class SPIClass {
-public:
+  public:
     void begin(int, int, int, int) {}
     void beginTransaction(SPISettings) {}
     void endTransaction() {}

@@ -36,8 +36,7 @@ SomfyShadeController::SomfyShadeController()
       repeaterController([this] { this->isDirty = true; }),
       roomController([this] { this->isDirty = true; }, [this](uint8_t roomId) { this->onRoomRemoved(roomId); }),
       startingAddress(ESP.getEfuseMac() & 0x0FFFFF)
-{
-}
+{}
 
 SomfyShade *SomfyShadeController::findShadeByRemoteAddress(uint32_t address)
 {
@@ -300,7 +299,6 @@ void SomfyShadeController::toJSONShades(JsonResponse &json)
         }
     }
 }
-
 
 void SomfyShadeController::tickShades()
 {

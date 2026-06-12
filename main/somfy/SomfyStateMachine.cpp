@@ -8,9 +8,7 @@ extern ConfigSettings settings;
 
 static const char *s_TAG = "SomfyStateMachine";
 
-SomfyStateMachine::SomfyStateMachine(SomfyShadeController &somfy) : somfy(somfy)
-{
-}
+SomfyStateMachine::SomfyStateMachine(SomfyShadeController &somfy) : somfy(somfy) {}
 
 bool SomfyStateMachine::begin()
 {

@@ -28,9 +28,9 @@
 #include "nvs.h"
 
 extern SomfyShadeController somfy;
-extern bool     cc1101_init_ok;
-extern bool     gpio_intr_enabled;
-extern void   (*gpio_last_isr)(void *);
+extern bool cc1101_init_ok;
+extern bool gpio_intr_enabled;
+extern void (*gpio_last_isr)(void *);
 extern uint64_t test_clock_ms;
 
 // Layout-identical mirror of the module-private somfy_tx_frame_t.
@@ -38,105 +38,117 @@ struct enc_frame_t {
     uint8_t bytes[10];
     uint8_t bit_length;
     uint8_t sync_count;
-    bool    wakeup;
-    bool    tail;
+    bool wakeup;
+    bool tail;
 };
 
 // ── Fixture ──────────────────────────────────────────────────────────────────
 
 class TransceiverEncoderTest : public ::testing::Test {
-protected:
-    void SetUp() override {
-        test_clock_ms = 35000; somfy.transceiver.loop();
-        test_clock_ms = 70000; somfy.transceiver.loop();
+  protected:
+    void SetUp() override
+    {
+        test_clock_ms = 35000;
+        somfy.transceiver.loop();
+        test_clock_ms = 70000;
+        somfy.transceiver.loop();
 
         nvs_stub_reset_all();
-        rmt_stub_queue_count  = 0;
-        rmt_stub_done_cb      = nullptr;
-        rmt_stub_done_cb_ctx  = nullptr;
+        rmt_stub_queue_count = 0;
+        rmt_stub_done_cb = nullptr;
+        rmt_stub_done_cb_ctx = nullptr;
         rmt_stub_last_encoder = nullptr;
-        rmt_stub_fail_after   = 0;
-        gpio_intr_enabled     = true;
-        gpio_last_isr         = nullptr;
-        cc1101_init_ok        = true;
-        test_clock_ms         = 0;
+        rmt_stub_fail_after = 0;
+        gpio_intr_enabled = true;
+        gpio_last_isr = nullptr;
+        cc1101_init_ok = true;
+        test_clock_ms = 0;
         gpio_pin_levels.clear();
 
         somfy.transceiver.end();
-        somfy.transceiver.config          = transceiver_config_t{};
-        somfy.transceiver.config.enabled  = true;
-        somfy.transceiver.config.TXPin    = 13;
-        somfy.transceiver.config.RXPin    = 12;
+        somfy.transceiver.config = transceiver_config_t{};
+        somfy.transceiver.config.enabled = true;
+        somfy.transceiver.config.TXPin = 13;
+        somfy.transceiver.config.RXPin = 12;
         somfy.transceiver.config.save();
         somfy.transceiver.begin();
 
         // One beginFrameTx() call puts rmt_stub_last_encoder = &s_enc->base.
         somfy_frame_t f{};
         f.remoteAddress = 0x111111;
-        f.rollingCode   = 1;
-        f.cmd           = somfy_commands::Up;
-        f.proto         = radio_proto::RTS;
-        f.bitLength     = 56;
-        f.encKey        = 0xA0;
+        f.rollingCode = 1;
+        f.cmd = somfy_commands::Up;
+        f.proto = radio_proto::RTS;
+        f.bitLength = 56;
+        f.encKey = 0xA0;
         somfy.transceiver.beginTransmit();
         somfy.transceiver.beginFrameTx(f, 0);
 
         // Reset encoder so tests start at ST_WAKEUP with idx=0.
-        if (rmt_stub_last_encoder)
-            rmt_stub_last_encoder->reset(rmt_stub_last_encoder);
+        if (rmt_stub_last_encoder) rmt_stub_last_encoder->reset(rmt_stub_last_encoder);
         rmt_stub_queue_count = 0;
         rmt_stub_captured_symbol_count = 0;
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         somfy.transceiver.end();
         nvs_stub_reset_all();
     }
 
     // Run one full encode pass and return symbol count.
-    size_t encode(const enc_frame_t &frame, rmt_encode_state_t *out = nullptr) {
+    size_t encode(const enc_frame_t &frame, rmt_encode_state_t *out = nullptr)
+    {
         rmt_encode_state_t st = RMT_ENCODING_RESET;
-        size_t n = rmt_stub_last_encoder->encode(
-            rmt_stub_last_encoder, nullptr,
-            &frame, sizeof(frame), &st);
+        size_t n = rmt_stub_last_encoder->encode(rmt_stub_last_encoder, nullptr, &frame, sizeof(frame), &st);
         if (out) *out = st;
         return n;
     }
 
     // Reset encoder to ST_WAKEUP between encode calls.
-    void resetEnc() {
-        rmt_stub_last_encoder->reset(rmt_stub_last_encoder);
-    }
+    void resetEnc() { rmt_stub_last_encoder->reset(rmt_stub_last_encoder); }
 };
 
 // ── Encoder handle captured ────────────────────────────────────────────────
 
-TEST_F(TransceiverEncoderTest, Begin_CapturesEncoderHandle) {
+TEST_F(TransceiverEncoderTest, Begin_CapturesEncoderHandle)
+{
     ASSERT_NE(rmt_stub_last_encoder, nullptr);
     ASSERT_NE(rmt_stub_last_encoder->encode, nullptr);
-    ASSERT_NE(rmt_stub_last_encoder->reset,  nullptr);
-    ASSERT_NE(rmt_stub_last_encoder->del,    nullptr);
+    ASSERT_NE(rmt_stub_last_encoder->reset, nullptr);
+    ASSERT_NE(rmt_stub_last_encoder->del, nullptr);
 }
 
 // ── Symbol counts verify full state traversal ──────────────────────────────
 
-TEST_F(TransceiverEncoderTest, Encode_56bit_Wakeup_NoTail_SymbolCount) {
+TEST_F(TransceiverEncoderTest, Encode_56bit_Wakeup_NoTail_SymbolCount)
+{
     // n = 2(wakeup pulse + silence ext) + 2(sync) + 1(swsync) + 56(data) = 61
     enc_frame_t f{};
-    f.bit_length = 56; f.sync_count = 2; f.wakeup = true; f.tail = false;
+    f.bit_length = 56;
+    f.sync_count = 2;
+    f.wakeup = true;
+    f.tail = false;
     EXPECT_EQ(encode(f), 61u);
 }
 
-TEST_F(TransceiverEncoderTest, Encode_56bit_NoWakeup_NoTail_SymbolCount) {
+TEST_F(TransceiverEncoderTest, Encode_56bit_NoWakeup_NoTail_SymbolCount)
+{
     // n = 0 + 7(sync) + 1(swsync) + 56(data) = 64
     enc_frame_t f{};
-    f.bit_length = 56; f.sync_count = 7; f.wakeup = false; f.tail = false;
+    f.bit_length = 56;
+    f.sync_count = 7;
+    f.wakeup = false;
+    f.tail = false;
     EXPECT_EQ(encode(f), 64u);
 }
 
-TEST_F(TransceiverEncoderTest, Encode_WakeupAddsTwoSymbols) {
+TEST_F(TransceiverEncoderTest, Encode_WakeupAddsTwoSymbols)
+{
     enc_frame_t base{};
-    base.bit_length = 56; base.sync_count = 2; base.tail = false;
+    base.bit_length = 56;
+    base.sync_count = 2;
+    base.tail = false;
 
     base.wakeup = false;
     size_t without = encode(base);
@@ -145,37 +157,52 @@ TEST_F(TransceiverEncoderTest, Encode_WakeupAddsTwoSymbols) {
     base.wakeup = true;
     size_t with = encode(base);
 
-    EXPECT_EQ(with, without + 2u)
-        << "wakeup=true emits the HIGH pulse plus a silence-extension symbol";
+    EXPECT_EQ(with, without + 2u) << "wakeup=true emits the HIGH pulse plus a silence-extension symbol";
 }
 
-TEST_F(TransceiverEncoderTest, Encode_56bit_WithTail_SymbolCount) {
+TEST_F(TransceiverEncoderTest, Encode_56bit_WithTail_SymbolCount)
+{
     // n = 0 + 7 + 1 + 56 + 1(tail) = 65
     enc_frame_t f{};
-    f.bit_length = 56; f.sync_count = 7; f.wakeup = false; f.tail = true;
+    f.bit_length = 56;
+    f.sync_count = 7;
+    f.wakeup = false;
+    f.tail = true;
     EXPECT_EQ(encode(f), 65u);
 }
 
-TEST_F(TransceiverEncoderTest, Encode_80bit_NoTail_EvenWithTailFlag) {
+TEST_F(TransceiverEncoderTest, Encode_80bit_NoTail_EvenWithTailFlag)
+{
     // 80-bit frames never emit a tail regardless of tail flag.
     // n = 2 + 12 + 1 + 80 = 95
     enc_frame_t f{};
-    f.bit_length = 80; f.sync_count = 12; f.wakeup = true; f.tail = true;
+    f.bit_length = 80;
+    f.sync_count = 12;
+    f.wakeup = true;
+    f.tail = true;
     EXPECT_EQ(encode(f), 95u);
 }
 
-TEST_F(TransceiverEncoderTest, Encode_80bit_RepeatSync6_SymbolCount) {
+TEST_F(TransceiverEncoderTest, Encode_80bit_RepeatSync6_SymbolCount)
+{
     // n = 0 + 6 + 1 + 80 = 87
     enc_frame_t f{};
-    f.bit_length = 80; f.sync_count = 6; f.wakeup = false; f.tail = false;
+    f.bit_length = 80;
+    f.sync_count = 6;
+    f.wakeup = false;
+    f.tail = false;
     EXPECT_EQ(encode(f), 87u);
 }
 
 // ── Return state ───────────────────────────────────────────────────────────
 
-TEST_F(TransceiverEncoderTest, Encode_ReturnsCompleteFlag) {
+TEST_F(TransceiverEncoderTest, Encode_ReturnsCompleteFlag)
+{
     enc_frame_t f{};
-    f.bit_length = 56; f.sync_count = 2; f.wakeup = true; f.tail = false;
+    f.bit_length = 56;
+    f.sync_count = 2;
+    f.wakeup = true;
+    f.tail = false;
     rmt_encode_state_t st = RMT_ENCODING_RESET;
     encode(f, &st);
     EXPECT_NE(st & RMT_ENCODING_COMPLETE, 0) << "encode() must set COMPLETE when done";
@@ -183,35 +210,48 @@ TEST_F(TransceiverEncoderTest, Encode_ReturnsCompleteFlag) {
 
 // ── Data bit paths ─────────────────────────────────────────────────────────
 
-TEST_F(TransceiverEncoderTest, Encode_AllZeroBits_CorrectCount) {
+TEST_F(TransceiverEncoderTest, Encode_AllZeroBits_CorrectCount)
+{
     // Each data bit emits exactly 1 symbol regardless of value.
     enc_frame_t f{};
     memset(f.bytes, 0x00, 10);
-    f.bit_length = 56; f.sync_count = 2; f.wakeup = false; f.tail = false;
-    EXPECT_EQ(encode(f), 59u);  // 0+2+1+56 = 59
+    f.bit_length = 56;
+    f.sync_count = 2;
+    f.wakeup = false;
+    f.tail = false;
+    EXPECT_EQ(encode(f), 59u); // 0+2+1+56 = 59
 }
 
-TEST_F(TransceiverEncoderTest, Encode_AllOneBits_CorrectCount) {
+TEST_F(TransceiverEncoderTest, Encode_AllOneBits_CorrectCount)
+{
     enc_frame_t f{};
     memset(f.bytes, 0xFF, 10);
-    f.bit_length = 56; f.sync_count = 2; f.wakeup = false; f.tail = false;
-    EXPECT_EQ(encode(f), 59u);  // 0+2+1+56 = 59
+    f.bit_length = 56;
+    f.sync_count = 2;
+    f.wakeup = false;
+    f.tail = false;
+    EXPECT_EQ(encode(f), 59u); // 0+2+1+56 = 59
 }
 
 // ── Reset ──────────────────────────────────────────────────────────────────
 
-TEST_F(TransceiverEncoderTest, Reset_AllowsReencode) {
+TEST_F(TransceiverEncoderTest, Reset_AllowsReencode)
+{
     enc_frame_t f{};
-    f.bit_length = 56; f.sync_count = 2; f.wakeup = true; f.tail = false;
+    f.bit_length = 56;
+    f.sync_count = 2;
+    f.wakeup = true;
+    f.tail = false;
 
-    size_t first  = encode(f);
+    size_t first = encode(f);
     resetEnc();
     size_t second = encode(f);
 
     EXPECT_EQ(first, second) << "reset() must restore encoder to initial state";
 }
 
-TEST_F(TransceiverEncoderTest, Reset_ReturnsOK) {
+TEST_F(TransceiverEncoderTest, Reset_ReturnsOK)
+{
     EXPECT_EQ(rmt_stub_last_encoder->reset(rmt_stub_last_encoder), ESP_OK);
 }
 
@@ -222,9 +262,13 @@ TEST_F(TransceiverEncoderTest, Reset_ReturnsOK) {
 // A too-short silence causes unreliable reception on commercial Somfy motors,
 // even though our own RX path (which has looser tolerances) still decodes it.
 
-TEST_F(TransceiverEncoderTest, Encode_Wakeup_PulseHigh_MatchesSpec) {
+TEST_F(TransceiverEncoderTest, Encode_Wakeup_PulseHigh_MatchesSpec)
+{
     enc_frame_t f{};
-    f.bit_length = 56; f.sync_count = 2; f.wakeup = true; f.tail = false;
+    f.bit_length = 56;
+    f.sync_count = 2;
+    f.wakeup = true;
+    f.tail = false;
     encode(f);
 
     ASSERT_GT(rmt_stub_captured_symbol_count, 0u);
@@ -234,9 +278,13 @@ TEST_F(TransceiverEncoderTest, Encode_Wakeup_PulseHigh_MatchesSpec) {
         << "wake-up HIGH duration must match Somfy RTS spec (9415 µs ±10%)";
 }
 
-TEST_F(TransceiverEncoderTest, Encode_Wakeup_Silence_MatchesSpec) {
+TEST_F(TransceiverEncoderTest, Encode_Wakeup_Silence_MatchesSpec)
+{
     enc_frame_t f{};
-    f.bit_length = 56; f.sync_count = 2; f.wakeup = true; f.tail = false;
+    f.bit_length = 56;
+    f.sync_count = 2;
+    f.wakeup = true;
+    f.tail = false;
     encode(f);
 
     ASSERT_GT(rmt_stub_captured_symbol_count, 0u);
@@ -248,28 +296,31 @@ TEST_F(TransceiverEncoderTest, Encode_Wakeup_Silence_MatchesSpec) {
     uint32_t silence = 0;
     for (size_t i = 0; i < rmt_stub_captured_symbol_count && state != DONE; ++i) {
         const auto &s = rmt_stub_captured_symbols[i];
-        const uint16_t lvl[2] = { (uint16_t)s.level0,    (uint16_t)s.level1 };
-        const uint16_t dur[2] = { (uint16_t)s.duration0, (uint16_t)s.duration1 };
+        const uint16_t lvl[2] = {(uint16_t)s.level0, (uint16_t)s.level1};
+        const uint16_t dur[2] = {(uint16_t)s.duration0, (uint16_t)s.duration1};
         for (int h = 0; h < 2 && state != DONE; ++h) {
             if (state == BEFORE_WAKEUP) {
                 if (lvl[h] == 1) state = IN_SILENCE;
             } else { // IN_SILENCE
-                if (lvl[h] == 0) silence += dur[h];
-                else state = DONE;
+                if (lvl[h] == 0)
+                    silence += dur[h];
+                else
+                    state = DONE;
             }
         }
     }
 
-    EXPECT_EQ(state, DONE)
-        << "encoder did not emit a hardware-sync HIGH after the wake-up silence";
+    EXPECT_EQ(state, DONE) << "encoder did not emit a hardware-sync HIGH after the wake-up silence";
     EXPECT_NEAR(silence, 89565u, static_cast<uint32_t>(89565 * 0.1))
         << "wake-up→sync silence must match Somfy RTS spec (89565 µs ±10%); "
-           "got " << silence << " µs";
+           "got "
+        << silence << " µs";
 }
 
 // ── Del (via end()) ────────────────────────────────────────────────────────
 
-TEST_F(TransceiverEncoderTest, End_FreesEncoder_NoCrash) {
+TEST_F(TransceiverEncoderTest, End_FreesEncoder_NoCrash)
+{
     // end() calls rmt_del_encoder(&s_enc->base) → somfy_encoder_del() → free(e).
     // TearDown also calls end(); double-end must not crash.
     EXPECT_NO_FATAL_FAILURE(somfy.transceiver.end());

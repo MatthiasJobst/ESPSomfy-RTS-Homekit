@@ -5,10 +5,10 @@ class SomfyShade;
 class JsonResponse;
 
 class HomeKitClass {
-public:
+  public:
     void begin() {}
     void notifyShadeState(SomfyShade *) {}
-    void addShade(SomfyShade *)    {}
+    void addShade(SomfyShade *) {}
     void removeShade(SomfyShade *) {}
     void resetPairings() {}
     void toJSON(JsonResponse &) {}

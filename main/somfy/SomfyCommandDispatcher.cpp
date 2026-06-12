@@ -6,9 +6,7 @@
 
 static const char *s_TAG = "SomfyCommandDispatcher";
 
-SomfyCommandDispatcher::SomfyCommandDispatcher(SomfyTransceiver &transceiver) : transceiver(transceiver)
-{
-}
+SomfyCommandDispatcher::SomfyCommandDispatcher(SomfyTransceiver &transceiver) : transceiver(transceiver) {}
 
 bool SomfyCommandDispatcher::enqueueShadeCommand(SomfyShade *shade, somfy_commands cmd, uint8_t repeat,
                                                  uint8_t stepSize)

@@ -11,14 +11,17 @@
 #define GIT_UPDATE_CANCELLING 5
 #define GIT_UPDATE_CANCELLED 6
 
-class GitRelease { public: uint64_t id = 0; };
+class GitRelease {
+  public:
+    uint64_t id = 0;
+};
 class GitUpdater {
-public:
+  public:
     uint8_t status = GIT_STATUS_READY;
     bool lockFS = false;
-    bool begin()  { return false; }
-    void loop()   {}
-    void end()    {}
-    bool check()  { return false; }
+    bool begin() { return false; }
+    void loop() {}
+    void end() {}
+    bool check() { return false; }
     bool update() { return false; }
 };

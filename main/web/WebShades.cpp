@@ -317,8 +317,7 @@ void WebShades::handleSaveShade(WebServer &server)
                         sendShadeJSON(json, shade);
                     } else {
                         char buf[96];
-                        snprintf(buf, sizeof(buf),
-                                 "{\"status\":\"DATA\",\"desc\":\"Data Error.\", \"code\":%d}", err);
+                        snprintf(buf, sizeof(buf), "{\"status\":\"DATA\",\"desc\":\"Data Error.\", \"code\":%d}", err);
                         server.send(500, ENCODING_JSON, buf);
                     }
                 }

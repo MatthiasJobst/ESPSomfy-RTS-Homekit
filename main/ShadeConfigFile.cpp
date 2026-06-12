@@ -283,7 +283,8 @@ bool ShadeConfigFile::restoreFile(SomfyShadeController *s, const char *filename,
     if (opts.repeaters) {
         ESP_LOGI(s_TAG, "Restoring Repeaters...");
         if (this->header.repeaterRecords > 0) {
-            for (uint8_t i = 0; i < SOMFY_MAX_REPEATERS; i++) s->repeaterController.repeaterSlot(i) = 0;
+            for (uint8_t i = 0; i < SOMFY_MAX_REPEATERS; i++)
+                s->repeaterController.repeaterSlot(i) = 0;
             for (uint8_t i = 0; i < this->header.repeaterRecords; i++) {
                 this->readRepeaterRecord(s);
             }
@@ -583,8 +584,7 @@ bool ShadeConfigFile::readShadeRecord(SomfyShade *shade)
         gpio_set_direction((gpio_num_t)gpio.gpioUp, GPIO_MODE_OUTPUT);
         gpio_set_direction((gpio_num_t)gpio.gpioDown, GPIO_MODE_OUTPUT);
     }
-    if (shade->proto == radio_proto::GP_Remote)
-        gpio_set_direction((gpio_num_t)gpio.gpioMy, GPIO_MODE_OUTPUT);
+    if (shade->proto == radio_proto::GP_Remote) gpio_set_direction((gpio_num_t)gpio.gpioMy, GPIO_MODE_OUTPUT);
     if (this->header.version >= 19) shade->roomId = this->readUInt8(0);
     if (this->file.position() != startPos + this->header.shadeRecordSize) {
         ESP_LOGI(s_TAG, "Reading to end of shade record");
@@ -638,7 +638,8 @@ bool ShadeConfigFile::loadFile(SomfyShadeController *s, const char *filename)
         }
     }
     if (this->header.repeaterRecords > 0) {
-        for (uint8_t i = 0; i < SOMFY_MAX_REPEATERS; i++) s->repeaterController.repeaterSlot(i) = 0;
+        for (uint8_t i = 0; i < SOMFY_MAX_REPEATERS; i++)
+            s->repeaterController.repeaterSlot(i) = 0;
         for (uint8_t i = 0; i < this->header.repeaterRecords; i++)
             this->readRepeaterRecord(s);
     }

@@ -5,13 +5,13 @@
 extern bool cc1101_init_ok;
 
 class ELECHOUSE_CC1101 {
-public:
-    void Init()    {}
-    void SetTx()   {}
-    void SetRx()   {}
+  public:
+    void Init() {}
+    void SetTx() {}
+    void SetRx() {}
     void setSidle() {}
     void SendData(uint8_t *, uint8_t) {}
-    float getRssi()  { return -70.0f; }
+    float getRssi() { return -70.0f; }
     uint8_t getLqi() { return 0; }
     bool getCC1101() { return cc1101_init_ok; }
 

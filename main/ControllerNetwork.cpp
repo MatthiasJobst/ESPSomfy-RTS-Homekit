@@ -428,7 +428,7 @@ bool ControllerNetwork::applyNetworkConfig(JsonObject &obj)
 }
 
 ControllerNetwork::WifiApply ControllerNetwork::applyWifiCredentials(const char *ssid, const char *passphrase,
-                                                                    bool &needsReboot)
+                                                                     bool &needsReboot)
 {
     needsReboot = strcmp(ssid, settings.WIFI.ssid) != 0 || strcmp(passphrase, settings.WIFI.passphrase) != 0;
     if (!settings.WIFI.ssidExists(ssid) && strlen(ssid) > 0) return WifiApply::NotFound;

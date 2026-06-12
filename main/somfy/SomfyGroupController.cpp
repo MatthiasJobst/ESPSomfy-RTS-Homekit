@@ -6,11 +6,9 @@
 
 static const char *s_TAG = "SomfyGroupController";
 
-SomfyGroupController::SomfyGroupController(std::function<void()> markDirty,
-                                          std::function<void()> resetCommands)
+SomfyGroupController::SomfyGroupController(std::function<void()> markDirty, std::function<void()> resetCommands)
     : markDirty(std::move(markDirty)), resetCommands(std::move(resetCommands))
-{
-}
+{}
 
 SomfyGroup &SomfyGroupController::groupSlot(uint8_t i)
 {

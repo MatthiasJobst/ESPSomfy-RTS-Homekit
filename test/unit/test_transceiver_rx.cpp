@@ -20,36 +20,45 @@
 extern uint64_t test_clock_ms;
 extern uint64_t test_clock_us;
 extern void (*gpio_last_isr)(void *);
-extern void  *gpio_last_isr_arg;
-extern bool   gpio_intr_enabled;
+extern void *gpio_last_isr_arg;
+extern bool gpio_intr_enabled;
 extern SomfyShadeController somfy;
 
 // ── Protocol timing constants (mirror SomfyTransceiver.cpp) ─────────────────
-static constexpr uint32_t SYMBOL           = 640;
-static constexpr uint32_t WAKEUP_US        = 9415;
-static constexpr uint32_t HW_SYNC_US       = SYMBOL * 4;   // 2560
-static constexpr uint32_t SW_SYNC_US       = 4850;
+static constexpr uint32_t SYMBOL = 640;
+static constexpr uint32_t WAKEUP_US = 9415;
+static constexpr uint32_t HW_SYNC_US = SYMBOL * 4; // 2560
+static constexpr uint32_t SW_SYNC_US = 4850;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 // Fire the ISR with `duration` µs elapsed since last edge.
-static void sendPulse(uint32_t duration_us) {
+static void sendPulse(uint32_t duration_us)
+{
     test_clock_us += duration_us;
     if (gpio_last_isr) gpio_last_isr(gpio_last_isr_arg);
 }
 
 // Send a wakeup pulse (one HIGH edge measured at wakeup duration).
-static void sendWakeup() { sendPulse(WAKEUP_US); }
+static void sendWakeup()
+{
+    sendPulse(WAKEUP_US);
+}
 
 // Send `count` hardware-sync symbols. Each symbol = two edges of HW_SYNC_US each
 // (one rising + one falling), so the ISR counts every edge.
-static void sendHwSync(uint8_t count) {
-    for (uint8_t i = 0; i < count * 2; i++) sendPulse(HW_SYNC_US);
+static void sendHwSync(uint8_t count)
+{
+    for (uint8_t i = 0; i < count * 2; i++)
+        sendPulse(HW_SYNC_US);
 }
 
 // Send the software sync transition (a single measured HIGH of SW_SYNC_US).
 // This triggers the waiting_synchro → receiving_data transition.
-static void sendSwSync() { sendPulse(SW_SYNC_US); }
+static void sendSwSync()
+{
+    sendPulse(SW_SYNC_US);
+}
 
 // Generate the pulse stream for a Manchester-encoded bit sequence.
 // After sendSwSync() the line is LOW (end of sw_sync HIGH→LOW edge was just
@@ -60,20 +69,24 @@ static void sendSwSync() { sendPulse(SW_SYNC_US); }
 //   bit 0 → HIGH(SYMBOL), LOW(SYMBOL)
 //   bit 1 → LOW(SYMBOL),  HIGH(SYMBOL)
 // Adjacent same-level segments merge into one longer ISR-visible duration.
-static void sendDataBits(const uint8_t *bytes, uint8_t bitLen) {
+static void sendDataBits(const uint8_t *bytes, uint8_t bitLen)
+{
     // The sw_sync ends with a LOW(SYMBOL) "start-0" bit. Tracking starts from LOW.
     int cur_level = 0;
-    uint32_t acc  = SYMBOL;  // pre-load the start-0 LOW(SYMBOL) interval
+    uint32_t acc = SYMBOL; // pre-load the start-0 LOW(SYMBOL) interval
 
     auto flush = [&]() {
-        if (acc > 0) { sendPulse(acc); acc = 0; }
+        if (acc > 0) {
+            sendPulse(acc);
+            acc = 0;
+        }
     };
 
     for (uint8_t i = 0; i < bitLen; i++) {
         uint8_t bit = (bytes[i / 8] >> (7 - (i % 8))) & 1;
         // bit 0: first half HIGH, second half LOW
         // bit 1: first half LOW,  second half HIGH
-        int first_level  = bit ? 0 : 1;
+        int first_level = bit ? 0 : 1;
         int second_level = 1 - first_level;
 
         // First half-symbol
@@ -98,32 +111,32 @@ static void sendDataBits(const uint8_t *bytes, uint8_t bitLen) {
 
 // ── Test fixture ─────────────────────────────────────────────────────────────
 class TransceiverRxTest : public ::testing::Test {
-protected:
-    void SetUp() override {
-        test_clock_ms        = 0;
-        test_clock_us        = 0;
-        gpio_last_isr        = nullptr;
-        gpio_last_isr_arg    = nullptr;
-        gpio_intr_enabled    = true;
+  protected:
+    void SetUp() override
+    {
+        test_clock_ms = 0;
+        test_clock_us = 0;
+        gpio_last_isr = nullptr;
+        gpio_last_isr_arg = nullptr;
+        gpio_intr_enabled = true;
         gpio_pin_levels.clear();
 
         // Ensure transceiver starts from a clean receive state.
         somfy.transceiver.disableReceive();
 
-        somfy.transceiver.config.enabled         = true;
-        somfy.transceiver.config.noiseDetection  = false;
-        somfy.transceiver.config.RXPin           = 12;
+        somfy.transceiver.config.enabled = true;
+        somfy.transceiver.config.noiseDetection = false;
+        somfy.transceiver.config.RXPin = 12;
 
         // enableReceive() installs the ISR and captures its pointer in gpio_last_isr.
         somfy.transceiver.enableReceive();
     }
 
-    void TearDown() override {
-        somfy.transceiver.disableReceive();
-    }
+    void TearDown() override { somfy.transceiver.disableReceive(); }
 
     // Drain the rx_queue so successive tests start clean.
-    void drainQueue() {
+    void drainQueue()
+    {
         somfy_rx_t rx;
         while (somfy.transceiver.receive(&rx)) {}
     }
@@ -131,51 +144,57 @@ protected:
 
 // ── State-machine transition tests ───────────────────────────────────────────
 
-TEST_F(TransceiverRxTest, GlitchPulseIsIgnored) {
+TEST_F(TransceiverRxTest, GlitchPulseIsIgnored)
+{
     // A pulse shorter than bitMin (448 µs) must not advance cpt_synchro_hw.
     // We verify this indirectly: after 8 glitches the ISR should NOT have
     // queued a complete frame (rx_queue stays empty → receive() returns false).
-    for (int i = 0; i < 8; i++) sendPulse(100);
+    for (int i = 0; i < 8; i++)
+        sendPulse(100);
     somfy_rx_t rx;
     EXPECT_FALSE(somfy.transceiver.receive(&rx));
 }
 
-TEST_F(TransceiverRxTest, HwSyncPulsesAccumulate) {
+TEST_F(TransceiverRxTest, HwSyncPulsesAccumulate)
+{
     // Sending only hw_sync pulses (no sw_sync) never produces a frame.
     sendHwSync(4);
     somfy_rx_t rx;
     EXPECT_FALSE(somfy.transceiver.receive(&rx));
 }
 
-TEST_F(TransceiverRxTest, WakeupPulseDoesNotProduceFrame) {
+TEST_F(TransceiverRxTest, WakeupPulseDoesNotProduceFrame)
+{
     // A single wakeup pulse (~9415 µs) resets state but doesn't queue a frame.
     sendWakeup();
     somfy_rx_t rx;
     EXPECT_FALSE(somfy.transceiver.receive(&rx));
 }
 
-TEST_F(TransceiverRxTest, InvalidTimingInReceivingDataResetsToWaiting) {
+TEST_F(TransceiverRxTest, InvalidTimingInReceivingDataResetsToWaiting)
+{
     // After entering receiving_data (4 hw_sync + sw_sync), an out-of-range
     // duration resets to waiting_synchro, so no frame is ever queued.
     sendHwSync(4);
     sendSwSync();
-    sendPulse(50000);  // way out of range → reset
+    sendPulse(50000); // way out of range → reset
     somfy_rx_t rx;
     EXPECT_FALSE(somfy.transceiver.receive(&rx));
 }
 
 // ── 56-bit frame decode ───────────────────────────────────────────────────────
 
-TEST_F(TransceiverRxTest, FullFrame56Bit_ValidChecksum) {
+TEST_F(TransceiverRxTest, FullFrame56Bit_ValidChecksum)
+{
     // Build a known Somfy RTS frame and encode it to bytes.
     somfy_frame_t tx_frame;
     tx_frame.remoteAddress = 0x123456;
-    tx_frame.rollingCode   = 0x0001;
-    tx_frame.cmd           = somfy_commands::Up;
-    tx_frame.proto         = radio_proto::RTS;
-    tx_frame.bitLength     = 56;
-    tx_frame.encKey        = 0xA0;
-    uint8_t encoded[10]    = {};
+    tx_frame.rollingCode = 0x0001;
+    tx_frame.cmd = somfy_commands::Up;
+    tx_frame.proto = radio_proto::RTS;
+    tx_frame.bitLength = 56;
+    tx_frame.encKey = 0xA0;
+    uint8_t encoded[10] = {};
     tx_frame.encodeFrame(encoded);
 
     // Transmit: wakeup + 2 hw_sync symbols + sw_sync + data bits.
@@ -191,13 +210,14 @@ TEST_F(TransceiverRxTest, FullFrame56Bit_ValidChecksum) {
     const somfy_frame_t &decoded = somfy.transceiver.lastFrame();
     EXPECT_TRUE(decoded.valid);
     EXPECT_EQ(decoded.remoteAddress, tx_frame.remoteAddress);
-    EXPECT_EQ(decoded.rollingCode,   tx_frame.rollingCode);
-    EXPECT_EQ(decoded.cmd,           tx_frame.cmd);
+    EXPECT_EQ(decoded.rollingCode, tx_frame.rollingCode);
+    EXPECT_EQ(decoded.cmd, tx_frame.cmd);
 }
 
 // ── Bit-length detection ──────────────────────────────────────────────────────
 
-TEST_F(TransceiverRxTest, BitLength56_WhenHwSyncLe7) {
+TEST_F(TransceiverRxTest, BitLength56_WhenHwSyncLe7)
+{
     // cpt_synchro_hw ≤ 7 → 56-bit protocol.
     // Send 4 hw_sync symbols (= cpt_synchro_hw of 8 edge-counts, but only 4 symbols).
     // Actually each hw_sync edge = one ISR call; 4 symbols × 2 edges = 8 edges.
@@ -205,16 +225,16 @@ TEST_F(TransceiverRxTest, BitLength56_WhenHwSyncLe7) {
     // Here cpt_synchro_hw will be 8 after 4 symbols — that maps to else→56.
     somfy_frame_t tx_frame;
     tx_frame.remoteAddress = 0xABCDEF;
-    tx_frame.rollingCode   = 0x0002;
-    tx_frame.cmd           = somfy_commands::Down;
-    tx_frame.proto         = radio_proto::RTS;
-    tx_frame.bitLength     = 56;
-    tx_frame.encKey        = 0xA0;
-    uint8_t encoded[10]    = {};
+    tx_frame.rollingCode = 0x0002;
+    tx_frame.cmd = somfy_commands::Down;
+    tx_frame.proto = radio_proto::RTS;
+    tx_frame.bitLength = 56;
+    tx_frame.encKey = 0xA0;
+    uint8_t encoded[10] = {};
     tx_frame.encodeFrame(encoded);
 
     sendWakeup();
-    sendHwSync(2);       // 4 edges → cpt_synchro_hw=4 at sw_sync → ≤7 → 56-bit
+    sendHwSync(2); // 4 edges → cpt_synchro_hw=4 at sw_sync → ≤7 → 56-bit
     sendSwSync();
     sendDataBits(encoded, 56);
 
@@ -223,7 +243,8 @@ TEST_F(TransceiverRxTest, BitLength56_WhenHwSyncLe7) {
     EXPECT_EQ(rx.bit_length, 56u);
 }
 
-TEST_F(TransceiverRxTest, BitLength80_WhenHwSync12) {
+TEST_F(TransceiverRxTest, BitLength80_WhenHwSync12)
+{
     // cpt_synchro_hw > 17 → 80-bit protocol.
     // 12 hw_sync symbols × 2 edges = 24 ISR calls → cpt_synchro_hw=24 at sw_sync.
     // Goal: verify bit_length selection, not frame checksum validity.
@@ -231,23 +252,22 @@ TEST_F(TransceiverRxTest, BitLength80_WhenHwSync12) {
     // 80-bit payload and queues it (rx_queue entry has bit_length=80).
     somfy_frame_t tx_frame;
     tx_frame.remoteAddress = 0x654321;
-    tx_frame.rollingCode   = 0x0003;
-    tx_frame.cmd           = somfy_commands::My;
-    tx_frame.proto         = radio_proto::RTS;
-    tx_frame.bitLength     = 56;
-    tx_frame.encKey        = 0xA0;
-    uint8_t encoded[10]    = {};
+    tx_frame.rollingCode = 0x0003;
+    tx_frame.cmd = somfy_commands::My;
+    tx_frame.proto = radio_proto::RTS;
+    tx_frame.bitLength = 56;
+    tx_frame.encKey = 0xA0;
+    uint8_t encoded[10] = {};
     tx_frame.encodeFrame(encoded);
 
     sendWakeup();
-    sendHwSync(12);      // 24 edges → cpt_synchro_hw=24 → >17 → 80-bit
+    sendHwSync(12); // 24 edges → cpt_synchro_hw=24 → >17 → 80-bit
     sendSwSync();
-    sendDataBits(encoded, 80);  // feed 80 bits so ISR reaches cpt_bits == bit_length
+    sendDataBits(encoded, 80); // feed 80 bits so ISR reaches cpt_bits == bit_length
 
     somfy_rx_t rx;
-    somfy.transceiver.receive(&rx);   // may or may not be valid — we only check bit_length
-    EXPECT_EQ(rx.bit_length, 80u)
-        << "hw_sync count >17 should select 80-bit frame length";
+    somfy.transceiver.receive(&rx); // may or may not be valid — we only check bit_length
+    EXPECT_EQ(rx.bit_length, 80u) << "hw_sync count >17 should select 80-bit frame length";
 }
 
 // ── Bit-length classifier matrix (Tahoma capture documentation) ──────────────
@@ -272,22 +292,21 @@ struct BitLenCase {
     const char *origin;
 };
 
-class TransceiverRxBitLengthMatrix
-    : public TransceiverRxTest,
-      public ::testing::WithParamInterface<BitLenCase> {};
+class TransceiverRxBitLengthMatrix : public TransceiverRxTest, public ::testing::WithParamInterface<BitLenCase> {};
 
-TEST_P(TransceiverRxBitLengthMatrix, ClassifiesByHwSyncCount) {
+TEST_P(TransceiverRxBitLengthMatrix, ClassifiesByHwSyncCount)
+{
     const BitLenCase c = GetParam();
 
     somfy_frame_t tx;
     tx.remoteAddress = 0xA0B0C0;
-    tx.rollingCode   = 0x0001;
-    tx.cmd           = somfy_commands::My;
-    tx.proto         = radio_proto::RTS;
-    tx.bitLength     = 56;     // payload encoder is 56-bit; we feed enough
-                                // bits to satisfy `expectedBitLength` so the
-                                // ISR pushes a queue entry.
-    tx.encKey        = 0xA0;
+    tx.rollingCode = 0x0001;
+    tx.cmd = somfy_commands::My;
+    tx.proto = radio_proto::RTS;
+    tx.bitLength = 56; // payload encoder is 56-bit; we feed enough
+                       // bits to satisfy `expectedBitLength` so the
+                       // ISR pushes a queue entry.
+    tx.encKey = 0xA0;
     uint8_t encoded[10] = {};
     tx.encodeFrame(encoded);
 
@@ -298,37 +317,34 @@ TEST_P(TransceiverRxBitLengthMatrix, ClassifiesByHwSyncCount) {
 
     somfy_rx_t rx;
     somfy.transceiver.receive(&rx);
-    EXPECT_EQ(rx.bit_length, c.expectedBitLength)
-        << "hwSyncSymbols=" << static_cast<int>(c.hwSyncSymbols)
-        << " (cpt_synchro_hw=" << 2 * static_cast<int>(c.hwSyncSymbols) << ")"
-        << " — " << c.origin;
+    EXPECT_EQ(rx.bit_length, c.expectedBitLength) << "hwSyncSymbols=" << static_cast<int>(c.hwSyncSymbols)
+                                                  << " (cpt_synchro_hw=" << 2 * static_cast<int>(c.hwSyncSymbols) << ")"
+                                                  << " — " << c.origin;
 }
 
 INSTANTIATE_TEST_SUITE_P(BitLengthBuckets, TransceiverRxBitLengthMatrix,
-    ::testing::Values(
-        BitLenCase{ 2u, 56u, "standard 56-bit first tx (hw=4)"},
-        BitLenCase{ 7u, 56u, "standard 56-bit repeat (hw=14)"},
-        BitLenCase{ 6u, 80u, "80-bit via hw==12 — Tahoma repeat hypothesis A"},
-        BitLenCase{12u, 80u, "80-bit via hw>17 path (hw=24)"},
-        BitLenCase{13u, 80u, "80-bit via hw>17 — Tahoma first tx (hw=26)"}
-    ),
-    [](const ::testing::TestParamInfo<BitLenCase> &info) {
-        return std::string("Sym") + std::to_string(info.param.hwSyncSymbols)
-             + "_Bits" + std::to_string(info.param.expectedBitLength);
-    }
-);
+                         ::testing::Values(BitLenCase{2u, 56u, "standard 56-bit first tx (hw=4)"},
+                                           BitLenCase{7u, 56u, "standard 56-bit repeat (hw=14)"},
+                                           BitLenCase{6u, 80u, "80-bit via hw==12 — Tahoma repeat hypothesis A"},
+                                           BitLenCase{12u, 80u, "80-bit via hw>17 path (hw=24)"},
+                                           BitLenCase{13u, 80u, "80-bit via hw>17 — Tahoma first tx (hw=26)"}),
+                         [](const ::testing::TestParamInfo<BitLenCase> &info) {
+                             return std::string("Sym") + std::to_string(info.param.hwSyncSymbols) + "_Bits" +
+                                    std::to_string(info.param.expectedBitLength);
+                         });
 
 // ── Queue overflow ────────────────────────────────────────────────────────────
 
 // Helper: send one complete 56-bit frame with the given command.
-static void sendOneFrame(somfy_commands cmd, uint32_t addr = 0x111111) {
+static void sendOneFrame(somfy_commands cmd, uint32_t addr = 0x111111)
+{
     somfy_frame_t f;
     f.remoteAddress = addr;
-    f.rollingCode   = 1;
-    f.cmd           = cmd;
-    f.proto         = radio_proto::RTS;
-    f.bitLength     = 56;
-    f.encKey        = 0xA0;
+    f.rollingCode = 1;
+    f.cmd = cmd;
+    f.proto = radio_proto::RTS;
+    f.bitLength = 56;
+    f.encKey = 0xA0;
     uint8_t enc[10] = {};
     f.encodeFrame(enc);
 
@@ -338,36 +354,39 @@ static void sendOneFrame(somfy_commands cmd, uint32_t addr = 0x111111) {
     sendDataBits(enc, 56);
 }
 
-TEST_F(TransceiverRxTest, QueueOverflow_OldestFrameDropped) {
+TEST_F(TransceiverRxTest, QueueOverflow_OldestFrameDropped)
+{
     // MAX_RX_BUFFER == 3. Push 4 frames; the queue should hold exactly 3,
     // and receive() should succeed for 3 calls then return false.
     sendOneFrame(somfy_commands::Up);
     sendOneFrame(somfy_commands::Down);
     sendOneFrame(somfy_commands::My);
-    sendOneFrame(somfy_commands::Prog);   // 4th frame — triggers overflow
+    sendOneFrame(somfy_commands::Prog); // 4th frame — triggers overflow
 
     somfy_rx_t rx;
     int count = 0;
-    while (somfy.transceiver.receive(&rx)) count++;
+    while (somfy.transceiver.receive(&rx))
+        count++;
 
-    EXPECT_EQ(count, MAX_RX_BUFFER)
-        << "Queue should hold MAX_RX_BUFFER frames after overflow";
+    EXPECT_EQ(count, MAX_RX_BUFFER) << "Queue should hold MAX_RX_BUFFER frames after overflow";
 }
 
 // ── RF noise watchdog ─────────────────────────────────────────────────────────
 
-TEST_F(TransceiverRxTest, NoiseWatchdog_DisabledByDefault_RxStaysOn) {
+TEST_F(TransceiverRxTest, NoiseWatchdog_DisabledByDefault_RxStaysOn)
+{
     // noiseDetection = false: >100 pulses within 10 ms must not disable the ISR.
     somfy.transceiver.config.noiseDetection = false;
     gpio_intr_enabled = true;
 
-    for (int i = 0; i < 110; i++) sendPulse(50);  // rapid glitch-like pulses
+    for (int i = 0; i < 110; i++)
+        sendPulse(50); // rapid glitch-like pulses
 
-    EXPECT_TRUE(gpio_intr_enabled)
-        << "Interrupt should remain enabled when noiseDetection is off";
+    EXPECT_TRUE(gpio_intr_enabled) << "Interrupt should remain enabled when noiseDetection is off";
 }
 
-TEST_F(TransceiverRxTest, NoiseWatchdog_Enabled_DisablesRxOnThreshold) {
+TEST_F(TransceiverRxTest, NoiseWatchdog_Enabled_DisablesRxOnThreshold)
+{
     // noiseDetection = true: >100 pulses within NOISE_WINDOW_MS (10 s) disables RX.
     somfy.transceiver.config.noiseDetection = true;
     gpio_intr_enabled = true;
@@ -376,26 +395,27 @@ TEST_F(TransceiverRxTest, NoiseWatchdog_Enabled_DisablesRxOnThreshold) {
     // Inject 101 rapid pulses within the 10 s window (50 µs each → well within 10 s).
     for (int i = 0; i < 101; i++) {
         sendPulse(50);
-        test_clock_ms = (test_clock_us / 1000);  // keep ms clock consistent
+        test_clock_ms = (test_clock_us / 1000); // keep ms clock consistent
     }
 
-    EXPECT_FALSE(gpio_intr_enabled)
-        << "Interrupt should be disabled after noise threshold exceeded";
+    EXPECT_FALSE(gpio_intr_enabled) << "Interrupt should be disabled after noise threshold exceeded";
 }
 
-TEST_F(TransceiverRxTest, NoiseWatchdog_CounterResets_AfterWindow) {
+TEST_F(TransceiverRxTest, NoiseWatchdog_CounterResets_AfterWindow)
+{
     // The pulse counter resets at the start of each 10 s window. Sending 50 pulses,
     // advancing 11 s, then 50 more should NOT trigger the watchdog (each window < 100).
     somfy.transceiver.config.noiseDetection = true;
     gpio_intr_enabled = true;
 
-    for (int i = 0; i < 50; i++) sendPulse(50);
-    test_clock_ms = 11000;   // skip past the 10 s window
+    for (int i = 0; i < 50; i++)
+        sendPulse(50);
+    test_clock_ms = 11000; // skip past the 10 s window
 
-    for (int i = 0; i < 50; i++) sendPulse(50);
+    for (int i = 0; i < 50; i++)
+        sendPulse(50);
 
-    EXPECT_TRUE(gpio_intr_enabled)
-        << "Interrupt should stay enabled when pulses are spread across windows";
+    EXPECT_TRUE(gpio_intr_enabled) << "Interrupt should stay enabled when pulses are spread across windows";
 }
 
 // ── Half-symbol boundary: pulse durations that reset receiving_data state ────
@@ -410,12 +430,15 @@ TEST_F(TransceiverRxTest, NoiseWatchdog_CounterResets_AfterWindow) {
 // passes the glitch filter (>= bitMin) but fails the strict `> 448` half-symbol
 // check; 832 fails the strict `< 832` half-symbol check.  Both reset state.
 
-struct HalfSymBoundaryParam { uint32_t probe_us; };
+struct HalfSymBoundaryParam {
+    uint32_t probe_us;
+};
 
 class HalfSymbolResetBoundaryTest : public TransceiverRxTest,
                                     public ::testing::WithParamInterface<HalfSymBoundaryParam> {};
 
-TEST_P(HalfSymbolResetBoundaryTest, ResetsToWaitingOnOutOfRangePulse) {
+TEST_P(HalfSymbolResetBoundaryTest, ResetsToWaitingOnOutOfRangePulse)
+{
     // Enter receiving_data, inject the probe, verify no frame is ever queued.
     sendWakeup();
     sendHwSync(2);
@@ -427,9 +450,10 @@ TEST_P(HalfSymbolResetBoundaryTest, ResetsToWaitingOnOutOfRangePulse) {
         << "probe=" << GetParam().probe_us << " µs should reset receiving_data";
 }
 
-INSTANTIATE_TEST_SUITE_P(Boundaries, HalfSymbolResetBoundaryTest, ::testing::Values(
-    HalfSymBoundaryParam{448},    // == bitMin: passes glitch filter, NOT > half_symbol_min → RESET
-    HalfSymBoundaryParam{832},    // == half_symbol_max: NOT < half_symbol_max → RESET
-    HalfSymBoundaryParam{895},    // gap between half-symbol and full-symbol ranges → RESET
-    HalfSymBoundaryParam{50000}   // far out of range → RESET
-));
+INSTANTIATE_TEST_SUITE_P(
+    Boundaries, HalfSymbolResetBoundaryTest,
+    ::testing::Values(HalfSymBoundaryParam{448},  // == bitMin: passes glitch filter, NOT > half_symbol_min → RESET
+                      HalfSymBoundaryParam{832},  // == half_symbol_max: NOT < half_symbol_max → RESET
+                      HalfSymBoundaryParam{895},  // gap between half-symbol and full-symbol ranges → RESET
+                      HalfSymBoundaryParam{50000} // far out of range → RESET
+                      ));

@@ -36,10 +36,7 @@ class WebResponder {
      * @param buff Scratch buffer the JSON body is streamed through.
      * @param buffSize Size of @p buff in bytes.
      */
-    WebResponder(WebServer &server, char *buff, size_t buffSize)
-        : _server(server), _buff(buff), _buffSize(buffSize)
-    {
-    }
+    WebResponder(WebServer &server, char *buff, size_t buffSize) : _server(server), _buff(buff), _buffSize(buffSize) {}
 
     /**
      * @brief RAII handle for a streamed JSON object or array response body.
@@ -65,11 +62,7 @@ class WebResponder {
          * strings, with or without a key) so handlers never touch the underlying
          * response type.
          */
-        template <typename... Args>
-        void addElem(Args &&...args)
-        {
-            _resp.addElem(std::forward<Args>(args)...);
-        }
+        template <typename... Args> void addElem(Args &&...args) { _resp.addElem(std::forward<Args>(args)...); }
 
         /** @brief Open a nested object, optionally keyed. Balance with endObject(). */
         void beginObject(const char *name = nullptr) { _resp.beginObject(name); }
@@ -91,7 +84,7 @@ class WebResponder {
 
       private:
         friend class WebResponder;
-        enum class Kind:std::uint8_t{ Object, Array };
+        enum class Kind : std::uint8_t { Object, Array };
         JsonBody(WebServer &server, char *buff, size_t buffSize, Kind kind);
 
         JsonResponse _resp;

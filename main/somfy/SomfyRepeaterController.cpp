@@ -2,10 +2,7 @@
 #include <cassert>
 #include "WResp.h" // JsonResponse, used by toJSONRepeaters()
 
-SomfyRepeaterController::SomfyRepeaterController(std::function<void()> markDirty)
-    : markDirty(std::move(markDirty))
-{
-}
+SomfyRepeaterController::SomfyRepeaterController(std::function<void()> markDirty) : markDirty(std::move(markDirty)) {}
 
 uint32_t &SomfyRepeaterController::repeaterSlot(uint8_t i)
 {

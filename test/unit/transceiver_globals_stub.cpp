@@ -11,9 +11,9 @@ uint32_t nvs_stub_next_handle = 1;
 // ── GPIO stub state ────────────────────────────────────────────────────────
 #include "driver/gpio.h"
 std::unordered_map<int, uint32_t> gpio_pin_levels;
-void (*gpio_last_isr)(void *)    = nullptr;
-void  *gpio_last_isr_arg         = nullptr;
-bool   gpio_intr_enabled         = true;
+void (*gpio_last_isr)(void *) = nullptr;
+void *gpio_last_isr_arg = nullptr;
+bool gpio_intr_enabled = true;
 
 // ── MQTT stub state ────────────────────────────────────────────────────────
 #include "MQTT.h"
@@ -28,14 +28,14 @@ bool cc1101_init_ok = true;
 
 // ── RMT stub state ─────────────────────────────────────────────────────────
 #include "driver/rmt_tx.h"
-rmt_tx_done_callback_t rmt_stub_done_cb     = nullptr;
-void                  *rmt_stub_done_cb_ctx = nullptr;
-rmt_stub_queued_t      rmt_stub_queue[RMT_STUB_QUEUE_MAX] = {};
-int                    rmt_stub_queue_count = 0;
-rmt_encoder_handle_t   rmt_stub_last_encoder = nullptr;
-int                    rmt_stub_fail_after  = 0;
-rmt_symbol_word_t      rmt_stub_captured_symbols[RMT_STUB_CAPTURED_MAX] = {};
-size_t                 rmt_stub_captured_symbol_count = 0;
+rmt_tx_done_callback_t rmt_stub_done_cb = nullptr;
+void *rmt_stub_done_cb_ctx = nullptr;
+rmt_stub_queued_t rmt_stub_queue[RMT_STUB_QUEUE_MAX] = {};
+int rmt_stub_queue_count = 0;
+rmt_encoder_handle_t rmt_stub_last_encoder = nullptr;
+int rmt_stub_fail_after = 0;
+rmt_symbol_word_t rmt_stub_captured_symbols[RMT_STUB_CAPTURED_MAX] = {};
+size_t rmt_stub_captured_symbol_count = 0;
 
 // ── Chip model stub ────────────────────────────────────────────────────────
 #include "esp_chip_info.h"
@@ -56,17 +56,17 @@ uint64_t test_clock_us = 0;
 #include "../../main/somfy/SomfyStateMachine.h"
 #include "ShadeConfigFile.h"
 bool stub_shadeconfig_exists = false;
-int  stub_save_call_count    = 0;
-int  stub_backup_call_count  = 0;
+int stub_save_call_count = 0;
+int stub_backup_call_count = 0;
 
 // ── Global instances ────────────────────────────────────────────────────────
 SomfyShadeController somfy;
 SomfyStateMachine stateMachine(somfy);
-SocketEmitter        sockEmit;
-ConfigSettings       settings;
-MQTTClass            mqtt;
-GitUpdater           git;
-HomeKitClass         homekit;
+SocketEmitter sockEmit;
+ConfigSettings settings;
+MQTTClass mqtt;
+GitUpdater git;
+HomeKitClass homekit;
 
 #include "../../main/compat/preferences.h"
 Preferences pref;

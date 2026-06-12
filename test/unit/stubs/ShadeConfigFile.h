@@ -14,14 +14,22 @@ extern int stub_backup_call_count;
 class SomfyShadeController; // forward declaration — avoids circular include
 
 class ShadeConfigFile {
-public:
-    static bool exists()                                              { return stub_shadeconfig_exists; }
+  public:
+    static bool exists() { return stub_shadeconfig_exists; }
     static bool load(SomfyShadeController *, const char * = nullptr) { return true; }
 
     bool begin(const char *, bool = false) { return true; }
-    bool begin()                           { return true; }
-    bool save(SomfyShadeController *)   { stub_save_call_count++;   return true; }
-    bool backup(SomfyShadeController *) { stub_backup_call_count++; return true; }
-    bool validate()                     { return true; }
-    void end()                          {}
+    bool begin() { return true; }
+    bool save(SomfyShadeController *)
+    {
+        stub_save_call_count++;
+        return true;
+    }
+    bool backup(SomfyShadeController *)
+    {
+        stub_backup_call_count++;
+        return true;
+    }
+    bool validate() { return true; }
+    void end() {}
 };

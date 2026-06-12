@@ -33,3 +33,34 @@ add_custom_target(run_unit_tests
     DEPENDS build_unit_tests
     COMMENT "Running unit tests"
 )
+
+#── clang-format (main/ and test/ only; skips components/) ──────────────────
+# Prefer the ESP-IDF clang-format so the version matches the esp-clang toolchain
+# and clang-tidy; fall back to one on PATH.
+file(GLOB esp_clang_format
+    "$ENV{HOME}/.espressif/tools/esp-clang/esp-19.1.2_*/esp-clang/bin/clang-format")
+if(esp_clang_format)
+    list(GET esp_clang_format 0 CLANG_FORMAT_BIN)
+else()
+    find_program(CLANG_FORMAT_BIN clang-format)
+endif()
+
+file(GLOB_RECURSE format_sources CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/main/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/main/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/test/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/test/*.h")
+# Exclude generated unit-test build trees.
+list(FILTER format_sources EXCLUDE REGEX "/build/")
+
+add_custom_target(format
+    COMMAND ${CLANG_FORMAT_BIN} -i --style=file ${format_sources}
+    COMMENT "Formatting main/ and test/ sources (clang-format -i)"
+    VERBATIM
+)
+
+add_custom_target(format-check
+    COMMAND ${CLANG_FORMAT_BIN} --dry-run --Werror --style=file ${format_sources}
+    COMMENT "Checking formatting of main/ and test/ sources"
+    VERBATIM
+)

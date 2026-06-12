@@ -442,8 +442,7 @@ void GitUpdater::setLittlefsFile()
     esp_chip_info_t ci;
     esp_chip_info(&ci);
     const char *bin = "SomfyController.littlefs.bin";
-    if (ci.model == esp_chip_model_t::CHIP_ESP32)
-        bin = "SomfyController.littlefs.esp32.bin";
+    if (ci.model == esp_chip_model_t::CHIP_ESP32) bin = "SomfyController.littlefs.esp32.bin";
     strlcpy(this->currentFile, bin, sizeof(this->currentFile));
 }
 
@@ -574,7 +573,8 @@ int8_t GitUpdater::downloadFile()
                                     free(buff);
                                     https.end();
                                     sclient.stop();
-                                    int8_t ec = static_cast<int8_t>(Update.getError() ? -(Update.getError() + UPDATE_ERR_OFFSET) : -44);
+                                    int8_t ec = static_cast<int8_t>(
+                                        Update.getError() ? -(Update.getError() + UPDATE_ERR_OFFSET) : -44);
                                     return ec;
                                 }
                                 ESP_LOGI(s_TAG, "Update.end called for %s", this->currentFile);

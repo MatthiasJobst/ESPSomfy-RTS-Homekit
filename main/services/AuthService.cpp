@@ -46,7 +46,7 @@ String AuthService::tokenForClient(const IPAddress &ip) const
 }
 
 AuthService::LoginResult AuthService::login(const IPAddress &ip, const char *username, const char *password,
-                                           const char *pin) const
+                                            const char *pin) const
 {
     LoginResult result;
     String apiKey = tokenForClient(ip);

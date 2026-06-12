@@ -1,7 +1,7 @@
 // globals_stub.cpp — defines all extern globals and provides empty implementations
 // for classes whose .cpp files are not compiled in the test build.
 
-#include "nvs.h"  // NVS in-memory store definitions
+#include "nvs.h" // NVS in-memory store definitions
 
 // ── NVS stub state ─────────────────────────────────────────────────────────
 std::unordered_map<std::string, NvsStore> nvs_ns_stores;
@@ -43,17 +43,17 @@ uint64_t test_clock_us = 0;
 // ── ShadeConfigFile stub state ─────────────────────────────────────────────
 #include "ShadeConfigFile.h"
 bool stub_shadeconfig_exists = false;
-int  stub_save_call_count    = 0;
-int  stub_backup_call_count  = 0;
+int stub_save_call_count = 0;
+int stub_backup_call_count = 0;
 
 // ── Global instances ────────────────────────────────────────────────────────
 SomfyShadeController somfy;
 SomfyStateMachine stateMachine(somfy);
-SocketEmitter        sockEmit;
-ConfigSettings       settings;
-MQTTClass            mqtt;
-GitUpdater           git;
-HomeKitClass         homekit;
+SocketEmitter sockEmit;
+ConfigSettings settings;
+MQTTClass mqtt;
+GitUpdater git;
+HomeKitClass homekit;
 
 // Preferences is header-only (compat/preferences.h) so no separate instance needed —
 // but SomfyShade.cpp does `extern Preferences pref`, so define it here.
@@ -66,19 +66,32 @@ uint8_t bit_length = 56;
 // ── Transceiver stub implementations ───────────────────────────────────────
 #include "../../main/somfy/SomfyTransceiver.h"
 
-bool SomfyTransceiver::begin()  { return false; }
-void SomfyTransceiver::loop()   {}
-bool SomfyTransceiver::end()    { return false; }
-bool SomfyTransceiver::receive(somfy_rx_t *) { return false; }
-void SomfyTransceiver::clearReceived()       {}
-void SomfyTransceiver::enableReceive()       {}
-void SomfyTransceiver::disableReceive()      {}
-somfy_frame_t &SomfyTransceiver::lastFrame() { static somfy_frame_t f; return f; }
-void SomfyTransceiver::beginTransmit()  {}
-void SomfyTransceiver::endTransmit()    {}
+bool SomfyTransceiver::begin()
+{
+    return false;
+}
+void SomfyTransceiver::loop() {}
+bool SomfyTransceiver::end()
+{
+    return false;
+}
+bool SomfyTransceiver::receive(somfy_rx_t *)
+{
+    return false;
+}
+void SomfyTransceiver::clearReceived() {}
+void SomfyTransceiver::enableReceive() {}
+void SomfyTransceiver::disableReceive() {}
+somfy_frame_t &SomfyTransceiver::lastFrame()
+{
+    static somfy_frame_t f;
+    return f;
+}
+void SomfyTransceiver::beginTransmit() {}
+void SomfyTransceiver::endTransmit() {}
 void SomfyTransceiver::emitFrame(somfy_frame_t *, somfy_rx_t *) {}
-void SomfyTransceiver::beginFrequencyScan()  {}
-void SomfyTransceiver::endFrequencyScan()    {}
+void SomfyTransceiver::beginFrequencyScan() {}
+void SomfyTransceiver::endFrequencyScan() {}
 void SomfyTransceiver::processFrequencyScan(bool) {}
 void SomfyTransceiver::emitFrequencyScan(uint8_t) {}
 bool transceiver_stub_uses_pin = false;
@@ -86,19 +99,34 @@ bool transceiver_stub_uses_pin = false;
 // the "TX busy → skip" branches, and inspect transceiver_stub_begin_tx_count to
 // confirm whether a frame transmission was actually started.
 bool transceiver_stub_tx_busy = false;
-int  transceiver_stub_begin_tx_count = 0;
-void SomfyTransceiver::beginFrameTx(somfy_frame_t &, uint8_t) { transceiver_stub_begin_tx_count++; }
+int transceiver_stub_begin_tx_count = 0;
+void SomfyTransceiver::beginFrameTx(somfy_frame_t &, uint8_t)
+{
+    transceiver_stub_begin_tx_count++;
+}
 void SomfyTransceiver::beginRawFrameTx(byte *, uint8_t, uint8_t) {}
-bool SomfyTransceiver::txBusy() { return transceiver_stub_tx_busy; }
-bool SomfyTransceiver::usesPin(uint8_t) { return transceiver_stub_uses_pin; }
-bool SomfyTransceiver::save()           { return false; }
-bool SomfyTransceiver::fromJSON(JsonObject &) { return false; }
+bool SomfyTransceiver::txBusy()
+{
+    return transceiver_stub_tx_busy;
+}
+bool SomfyTransceiver::usesPin(uint8_t)
+{
+    return transceiver_stub_uses_pin;
+}
+bool SomfyTransceiver::save()
+{
+    return false;
+}
+bool SomfyTransceiver::fromJSON(JsonObject &)
+{
+    return false;
+}
 void SomfyTransceiver::toJSON(JsonResponse &) {}
-void SomfyTransceiver::handleReceive()   {}
+void SomfyTransceiver::handleReceive() {}
 void SomfyTransceiver::handleReceiveISR(void *) {}
 void transceiver_config_t::fromJSON(JsonObject &) {}
 void transceiver_config_t::toJSON(JsonResponse &) {}
-void transceiver_config_t::save()   {}
-void transceiver_config_t::load()   {}
-void transceiver_config_t::apply()  {}
+void transceiver_config_t::save() {}
+void transceiver_config_t::load() {}
+void transceiver_config_t::apply() {}
 void transceiver_config_t::removeNVSKey(const char *) {}

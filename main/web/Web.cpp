@@ -36,8 +36,10 @@ WebSystem webSystem(webServers);
 // The web layer owns the set of handler modules; begin()/end() drive them as a
 // group, in this order.
 static WebHandler *const s_handlers[] = {
-    &webFiles, &webGroups, &webRooms, &webShades, &webSettings, &webOTA, &webUtils,
-    &webHomeKit, &webShadesGroupsCommands, &webAuth, &webSystem,
+    &webFiles,  &webGroups,   &webRooms,
+    &webShades, &webSettings, &webOTA,
+    &webUtils,  &webHomeKit,  &webShadesGroupsCommands,
+    &webAuth,   &webSystem,
 };
 void Web::startup()
 {
@@ -52,7 +54,8 @@ void Web::loop()
 }
 void Web::end()
 {
-    for (WebHandler *handler : s_handlers) handler->end();
+    for (WebHandler *handler : s_handlers)
+        handler->end();
     // server.end();
 }
 void Web::begin()
@@ -62,7 +65,8 @@ void Web::begin()
     server.collectHeaders(keys, 1);
     apiServer.collectHeaders(keys, 1);
     // Every route lives in a WebHandler module; register them all.
-    for (WebHandler *handler : s_handlers) handler->begin();
+    for (WebHandler *handler : s_handlers)
+        handler->begin();
     server.begin();
     apiServer.begin();
 }

@@ -98,9 +98,9 @@ class WebHandler {
     void registerApiHandler(const Uri &uri, HTTPMethod method, Handler fn) { apiServer.on(uri, method, std::move(fn)); }
 
     // Common content-type and status strings.
-    static constexpr const char *ENCODING_TEXT = "text/plain";       /**< Content-Type: text/plain. */
-    static constexpr const char *ENCODING_HTML = "text/html";        /**< Content-Type: text/html. */
-    static constexpr const char *ENCODING_JSON = "application/json"; /**< Content-Type: application/json. */
+    static constexpr const char *ENCODING_TEXT = "text/plain";            /**< Content-Type: text/plain. */
+    static constexpr const char *ENCODING_HTML = "text/html";             /**< Content-Type: text/html. */
+    static constexpr const char *ENCODING_JSON = "application/json";      /**< Content-Type: application/json. */
     static constexpr const char *RESPONSE_404 = "404: Service Not Found"; /**< Default 404 body. */
 
     WebServer &server;    /**< Public HTTP server (port 80). */

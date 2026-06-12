@@ -30,9 +30,9 @@ class AuthService {
 
     /** @brief Outcome of a login attempt. */
     struct LoginResult {
-        bool success = false;  /**< Whether the credentials were accepted. */
-        const char *msg = "";  /**< Human-readable status message. */
-        String apiKey;         /**< Granted token (empty when not authenticated). */
+        bool success = false; /**< Whether the credentials were accepted. */
+        const char *msg = ""; /**< Human-readable status message. */
+        String apiKey;        /**< Granted token (empty when not authenticated). */
     };
 
     /**

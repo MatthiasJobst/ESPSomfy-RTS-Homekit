@@ -81,7 +81,8 @@ void SomfyMovementTracker::handleTiltTargetReached()
     shade->p_currentTiltPos(shade->tiltTarget);
     if (motionState.settingTiltPos) {
         if (shade->tiltType == tilt_types::integrated) {
-            ESP_LOGD(s_TAG, "Sending My -- tiltTarget: %.2f, tiltDirection: %d", shade->tiltTarget, shade->tiltDirection);
+            ESP_LOGD(s_TAG, "Sending My -- tiltTarget: %.2f, tiltDirection: %d", shade->tiltTarget,
+                     shade->tiltDirection);
             if (shade->tiltTarget != endpoint || shade->currentPos != endpoint)
                 shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
         } else {

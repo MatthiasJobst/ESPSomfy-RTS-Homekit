@@ -18,18 +18,22 @@
 #include "freertos/task.h"
 #include "esp_rom_sys.h"
 
-inline uint32_t millis() {
+inline uint32_t millis()
+{
     return (uint32_t)(esp_timer_get_time() / 1000ULL);
 }
 
-inline uint32_t micros() {
+inline uint32_t micros()
+{
     return (uint32_t)esp_timer_get_time();
 }
 
-inline void delay(uint32_t ms) {
+inline void delay(uint32_t ms)
+{
     vTaskDelay(pdMS_TO_TICKS(ms));
 }
 
-inline void delayMicroseconds(uint32_t us) {
+inline void delayMicroseconds(uint32_t us)
+{
     esp_rom_delay_us(us);
 }

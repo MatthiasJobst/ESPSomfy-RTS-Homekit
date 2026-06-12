@@ -9,8 +9,8 @@ class SomfyShade;
  *        when the current move began and the position it began from.
  */
 struct MoveAxis {
-    uint64_t startMs = 0;     /**< millis() when the current move began. */
-    float startPct = 0.0f;    /**< Position % (0..100) at move start. */
+    uint64_t startMs = 0;  /**< millis() when the current move began. */
+    float startPct = 0.0f; /**< Position % (0..100) at move start. */
 };
 
 /**

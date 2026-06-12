@@ -34,14 +34,14 @@ class SomfyShadeController {
   public:
     // ── Fields ──────────────────────────────────────────────────────────────
     SomfyCommandDispatcher commandDispatcher;   /**< Command queue + RF send path. */
-    SomfyGroupController groupController;        /**< Owns the group collection. */
-    bool isDirty = false;                        /**< In-memory config differs from disk. */
-    uint32_t lastCommit = 0;                     /**< millis() of last commit (auto-commit throttle). */
-    SomfyRepeaterController repeaterController;   /**< Owns the repeater address list. */
-    SomfyRoomController roomController;           /**< Owns the room collection. */
-    SomfyShade shades[SOMFY_MAX_SHADES];         /**< Shade records (primary domain). */
-    uint32_t startingAddress = 0;                /**< Base remote address, derived from the efuse MAC. */
-    SomfyTransceiver transceiver;                /**< CC1101 RF transceiver. */
+    SomfyGroupController groupController;       /**< Owns the group collection. */
+    bool isDirty = false;                       /**< In-memory config differs from disk. */
+    uint32_t lastCommit = 0;                    /**< millis() of last commit (auto-commit throttle). */
+    SomfyRepeaterController repeaterController; /**< Owns the repeater address list. */
+    SomfyRoomController roomController;         /**< Owns the room collection. */
+    SomfyShade shades[SOMFY_MAX_SHADES];        /**< Shade records (primary domain). */
+    uint32_t startingAddress = 0;               /**< Base remote address, derived from the efuse MAC. */
+    SomfyTransceiver transceiver;               /**< CC1101 RF transceiver. */
 
     /**
      * @brief Construct the model and wire the sub-controllers' callbacks.

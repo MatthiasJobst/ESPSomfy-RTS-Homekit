@@ -89,8 +89,7 @@ void WebRooms::handleRoom(WebServer &server)
                         room->toJSON(objJson);
                     } else {
                         char buf[96];
-                        snprintf(buf, sizeof(buf),
-                                 "{\"status\":\"DATA\",\"desc\":\"Data Error.\", \"code\":%d}", err);
+                        snprintf(buf, sizeof(buf), "{\"status\":\"DATA\",\"desc\":\"Data Error.\", \"code\":%d}", err);
                         server.send(500, ENCODING_JSON, buf);
                     }
                 } else
