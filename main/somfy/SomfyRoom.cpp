@@ -21,7 +21,7 @@ void SomfyRoom::clear()
 
 bool SomfyRoom::save()
 {
-    somfy.commit();
+    somfy.store.commit();
     return true;
 }
 

@@ -34,7 +34,7 @@ class ControllerTest : public ::testing::Test {
             somfy.roomController.roomSlot(i).clear();
         for (uint8_t i = 0; i < SOMFY_MAX_REPEATERS; i++)
             somfy.repeaterController.repeaterSlot(i) = 0;
-        somfy.isDirty = false;
+        somfy.store.dirty = false;
         somfy.startingAddress = 0x100000;
         git.lockFS = false;
         test_clock_ms = 0;
@@ -42,7 +42,7 @@ class ControllerTest : public ::testing::Test {
         stub_backup_call_count = 0;
         stub_shadeconfig_exists = false;
         somfy.commandDispatcher.cmdQueue = SomfyCommandQueue{};
-        somfy.lastCommit = 0;
+        somfy.store.lastCommit = 0;
         transceiver_stub_tx_busy = false;
         transceiver_stub_begin_tx_count = 0;
     }
@@ -372,7 +372,7 @@ TEST_F(ControllerTest, AddShade_Empty_ReturnsValidPointerWithId1)
 TEST_F(ControllerTest, AddShade_SetsIsDirty)
 {
     somfy.addShade();
-    EXPECT_TRUE(somfy.isDirty);
+    EXPECT_TRUE(somfy.store.dirty);
 }
 
 TEST_F(ControllerTest, AddShade_SortOrderIsMaxPlusOne)
@@ -437,7 +437,7 @@ TEST_F(ControllerTest, AddRoom_Empty_ReturnsRoomWithId1)
     auto *r = somfy.roomController.addRoom();
     ASSERT_NE(r, nullptr);
     EXPECT_EQ(r->roomId, 1);
-    EXPECT_TRUE(somfy.isDirty);
+    EXPECT_TRUE(somfy.store.dirty);
 }
 
 TEST_F(ControllerTest, AddRoom_NoIdAvailable_Asserts)
@@ -455,7 +455,7 @@ TEST_F(ControllerTest, AddGroup_Empty_ReturnsGroupWithId1)
     auto *g = somfy.groupController.addGroup();
     ASSERT_NE(g, nullptr);
     EXPECT_EQ(g->getGroupId(), 1);
-    EXPECT_TRUE(somfy.isDirty);
+    EXPECT_TRUE(somfy.store.dirty);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -483,12 +483,12 @@ TEST_F(ControllerTest, DeleteRoom_Exists_ClearsRoomAndResetsAffectedShades)
     somfy.shades[0].roomId = 1;
     somfy.shades[1].setShadeId(2);
     somfy.shades[1].roomId = 2; // different room
-    somfy.isDirty = false;
+    somfy.store.dirty = false;
     somfy.roomController.deleteRoom(1);
     EXPECT_EQ(somfy.roomController.roomSlot(0).roomId, 0);
     EXPECT_EQ(somfy.shades[0].roomId, 0); // reset
     EXPECT_EQ(somfy.shades[1].roomId, 2); // untouched
-    EXPECT_TRUE(somfy.isDirty);           // deferred persistence: marked dirty, not written here
+    EXPECT_TRUE(somfy.store.dirty);           // deferred persistence: marked dirty, not written here
 }
 
 TEST_F(ControllerTest, DeleteRoom_ResetsAffectedGroups)
@@ -503,10 +503,10 @@ TEST_F(ControllerTest, DeleteRoom_ResetsAffectedGroups)
 TEST_F(ControllerTest, DeleteGroup_Exists_ClearsSlot)
 {
     somfy.groupController.groupSlot(1).setGroupId(2);
-    somfy.isDirty = false;
+    somfy.store.dirty = false;
     somfy.groupController.deleteGroup(2);
     EXPECT_EQ(somfy.groupController.groupSlot(1).getGroupId(), 255);
-    EXPECT_TRUE(somfy.isDirty); // deferred persistence: marked dirty, not written here
+    EXPECT_TRUE(somfy.store.dirty); // deferred persistence: marked dirty, not written here
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -516,32 +516,32 @@ TEST_F(ControllerTest, DeleteGroup_Exists_ClearsSlot)
 TEST_F(ControllerTest, Commit_LockFsFalse_SavesAndClearsDirty)
 {
     git.lockFS = false;
-    somfy.isDirty = true;
-    somfy.commit();
+    somfy.store.dirty = true;
+    somfy.store.commit();
     EXPECT_EQ(stub_save_call_count, 1);
-    EXPECT_FALSE(somfy.isDirty);
+    EXPECT_FALSE(somfy.store.dirty);
 }
 
 TEST_F(ControllerTest, Commit_LockFsTrue_SkipsSave)
 {
     git.lockFS = true;
-    somfy.isDirty = true;
-    somfy.commit();
+    somfy.store.dirty = true;
+    somfy.store.commit();
     EXPECT_EQ(stub_save_call_count, 0);
-    EXPECT_TRUE(somfy.isDirty); // not cleared
+    EXPECT_TRUE(somfy.store.dirty); // not cleared
 }
 
 TEST_F(ControllerTest, WriteBackup_LockFsFalse_CallsBackup)
 {
     git.lockFS = false;
-    somfy.writeBackup();
+    somfy.store.writeBackup();
     EXPECT_EQ(stub_backup_call_count, 1);
 }
 
 TEST_F(ControllerTest, WriteBackup_LockFsTrue_SkipsBackup)
 {
     git.lockFS = true;
-    somfy.writeBackup();
+    somfy.store.writeBackup();
     EXPECT_EQ(stub_backup_call_count, 0);
 }
 
@@ -551,8 +551,8 @@ TEST_F(ControllerTest, WriteBackup_LockFsTrue_SkipsBackup)
 
 TEST_F(ControllerTest, Loop_DirtyBelowThreshold_NoCommit)
 {
-    somfy.isDirty = true;
-    somfy.lastCommit = 0;
+    somfy.store.dirty = true;
+    somfy.store.lastCommit = 0;
     test_clock_ms = 500; // < 1000 ms
     stateMachine.loop();
     EXPECT_EQ(stub_save_call_count, 0);
@@ -560,18 +560,18 @@ TEST_F(ControllerTest, Loop_DirtyBelowThreshold_NoCommit)
 
 TEST_F(ControllerTest, Loop_DirtyAboveThreshold_Commits)
 {
-    somfy.isDirty = true;
-    somfy.lastCommit = 0;
+    somfy.store.dirty = true;
+    somfy.store.lastCommit = 0;
     test_clock_ms = 1001; // > 1000 ms
     stateMachine.loop();
     EXPECT_EQ(stub_save_call_count, 1);
-    EXPECT_FALSE(somfy.isDirty);
+    EXPECT_FALSE(somfy.store.dirty);
 }
 
 TEST_F(ControllerTest, Loop_NotDirty_NeverCommits)
 {
-    somfy.isDirty = false;
-    somfy.lastCommit = 0;
+    somfy.store.dirty = false;
+    somfy.store.lastCommit = 0;
     test_clock_ms = 2000;
     stateMachine.loop();
     EXPECT_EQ(stub_save_call_count, 0);
@@ -822,12 +822,12 @@ TEST_F(ControllerTest, LinkRepeater_AllSlotsFull_ReturnsTrueWithoutAdding)
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// R  loadShadesFile / toJSONRooms / toJSONShades / toJSONGroups / toJSONRepeaters
+// R  store.load / toJSONRooms / toJSONShades / toJSONGroups / toJSONRepeaters
 // ══════════════════════════════════════════════════════════════════════════════
 
 TEST_F(ControllerTest, LoadShadesFile_ReturnsTrue)
 {
-    EXPECT_TRUE(somfy.loadShadesFile("/shades.cfg"));
+    EXPECT_TRUE(somfy.store.load("/shades.cfg"));
 }
 
 TEST_F(ControllerTest, ToJSONRooms_WithRoom_DoesNotCrash)

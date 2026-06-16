@@ -303,7 +303,7 @@ bool ShadeConfigFile::restoreFile(SomfyShadeController *s, const char *filename,
     } else {
         this->file.seek(this->file.position() + this->header.netRecordSize, SeekSet);
     }
-    if (opts.shades) s->commit();
+    if (opts.shades) s->store.commit();
     if (opts.transceiver) {
         this->readTransRecord(s->transceiver.config);
         s->transceiver.save();

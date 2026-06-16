@@ -29,7 +29,7 @@ void SomfyGroup::clear()
 bool SomfyGroup::save()
 {
     ESP_LOGD(s_TAG, "Saving group.");
-    somfy.commit();
+    somfy.store.commit();
     return true;
 }
 
@@ -42,7 +42,7 @@ bool SomfyGroup::linkShade(uint8_t shadeId)
     for (uint8_t i = 0; i < SOMFY_MAX_GROUPED_SHADES; i++) {
         if (this->linkedShades[i] == 0) {
             this->linkedShades[i] = shadeId;
-            somfy.commit();
+            somfy.store.commit();
             return true;
         }
     }
@@ -61,7 +61,7 @@ bool SomfyGroup::unlinkShade(uint8_t shadeId)
     }
     if (removed) {
         this->compressLinkedShadeIds();
-        somfy.commit();
+        somfy.store.commit();
     }
     return removed;
 }

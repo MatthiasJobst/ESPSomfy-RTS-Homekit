@@ -1,6 +1,6 @@
-// SomfyShadeController.cpp — SomfyShadeController implementation: startup/shutdown, NVS
-// persistence (load/save/backup/legacy migration), frame processing, group-flag
-// aggregation, repeater management, loop tick (movement check, auto-commit).
+// SomfyShadeController.cpp — SomfyShadeController implementation: shade lifecycle,
+// frame processing, group-flag aggregation, address allocation, MQTT/WebSocket
+// broadcast and the per-loop shade tick.  Config persistence lives in ShadeStore.
 #include <cassert>
 #include <esp_chip_info.h>
 #include <esp_log.h>
@@ -12,7 +12,6 @@
 #include "GitOTA.h"
 #include "HomeKit.h"
 #include "MQTT.h"
-#include "ShadeConfigFile.h"
 #include "Sockets.h"
 #include "Utils.h"
 #include "compat/preferences.h"
@@ -32,10 +31,11 @@ static const char *s_TAG = "SomfyController";
 // is well-defined.
 SomfyShadeController::SomfyShadeController()
     : commandDispatcher(this->transceiver),
-      groupController([this] { this->isDirty = true; }, [this] { this->commandDispatcher.cmdQueue.reset(); }),
-      repeaterController([this] { this->isDirty = true; }),
-      roomController([this] { this->isDirty = true; }, [this](uint8_t roomId) { this->onRoomRemoved(roomId); }),
-      startingAddress(ESP.getEfuseMac() & 0x0FFFFF)
+      groupController([this] { this->store.markDirty(); }, [this] { this->commandDispatcher.cmdQueue.reset(); }),
+      repeaterController([this] { this->store.markDirty(); }),
+      roomController([this] { this->store.markDirty(); }, [this](uint8_t roomId) { this->onRoomRemoved(roomId); }),
+      startingAddress(ESP.getEfuseMac() & 0x0FFFFF),
+      store(*this)
 {}
 
 SomfyShade *SomfyShadeController::findShadeByRemoteAddress(uint32_t address)
@@ -65,27 +65,7 @@ void SomfyShadeController::applyDefaultBitLengths()
             saveFlag = true;
         }
     }
-    if (saveFlag) this->commit();
-}
-
-void SomfyShadeController::commit()
-{
-    if (git.lockFS) return;
-    ShadeConfigFile file;
-    file.begin();
-    file.save(this);
-    file.end();
-    this->isDirty = false;
-    this->lastCommit = millis();
-}
-
-void SomfyShadeController::writeBackup()
-{
-    if (git.lockFS) return;
-    ShadeConfigFile file;
-    file.begin("/controller.backup", false);
-    file.backup(this);
-    file.end();
+    if (saveFlag) this->store.commit();
 }
 
 SomfyShade *SomfyShadeController::getShadeById(uint8_t shadeId)
@@ -247,7 +227,7 @@ SomfyShade *SomfyShadeController::addShade()
     shade->sortOrder = static_cast<int8_t>(this->getMaxShadeOrder() + 1);
     shade->setShadeId(shadeId);
     ESP_LOGI(s_TAG, "Sort order set to %d", shade->sortOrder);
-    this->isDirty = true;
+    this->store.markDirty();
     this->commandDispatcher.cmdQueue.reset(); // drop commands bound to now-stale shade slots
     return shade;
 }
@@ -263,7 +243,7 @@ bool SomfyShadeController::deleteShade(uint8_t shadeId)
             this->commandDispatcher.cmdQueue.reset(); // drop commands bound to the removed shade
         }
     }
-    this->commit();
+    this->store.commit();
     return true;
 }
 
@@ -281,11 +261,6 @@ void SomfyShadeController::onRoomRemoved(uint8_t roomId)
             this->groupController.groupSlot(j).emitState();
         }
     }
-}
-
-bool SomfyShadeController::loadShadesFile(const char *filename)
-{
-    return ShadeConfigFile::load(this, filename);
 }
 
 void SomfyShadeController::toJSONShades(JsonResponse &json)
@@ -307,13 +282,5 @@ void SomfyShadeController::tickShades()
             this->shades[i].checkMovement();
             this->shades[i].setGPIOs();
         }
-    }
-}
-
-void SomfyShadeController::autoCommit()
-{
-    // Only commit the file once per second.
-    if (this->isDirty && millis() - this->lastCommit > 1000) {
-        this->commit();
     }
 }

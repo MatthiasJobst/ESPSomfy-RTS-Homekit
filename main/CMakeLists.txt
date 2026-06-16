@@ -35,6 +35,7 @@ idf_component_register(
         "somfy/SomfyRepeaterController.cpp"
         "somfy/SomfyCommandDispatcher.cpp"
         "somfy/SomfyStateMachine.cpp"
+        "somfy/ShadeStore.cpp"
         "Utils.cpp"
         "WResp.cpp"
         "web/Web.cpp"

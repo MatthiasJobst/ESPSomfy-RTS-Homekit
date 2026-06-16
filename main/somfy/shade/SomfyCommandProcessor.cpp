@@ -143,7 +143,7 @@ void SomfyCommandProcessor::processSensorCommand(somfy_frame_t &frame, uint64_t 
 void SomfyCommandProcessor::processFlagCommand(bool internal, somfy_frame_t &frame)
 {
     shade->p_sunFlag(false);
-    somfy.isDirty = true;
+    somfy.store.markDirty();
     shade->emitState();
     shade->emitCommand(frame.cmd, internal ? "internal" : "remote", frame.remoteAddress);
     somfy.groupController.updateGroupFlags();
@@ -166,7 +166,7 @@ void SomfyCommandProcessor::processSunFlagCommand(bool internal, somfy_frame_t &
                 shade->p_target(0.0f);
         }
     }
-    somfy.isDirty = true;
+    somfy.store.markDirty();
     shade->emitState();
     shade->emitCommand(frame.cmd, internal ? "internal" : "remote", frame.remoteAddress);
     somfy.groupController.updateGroupFlags();
@@ -542,7 +542,7 @@ void SomfyCommandProcessor::processInternalCommand(somfy_commands cmd, uint8_t r
     case somfy_commands::Flag:
         shade->p_sunFlag(false);
         if (shade->hasSunSensor()) {
-            somfy.isDirty = true;
+            somfy.store.markDirty();
             shade->emitState();
         } else {
             ESP_LOGI(s_TAG, "Shade does not have sensor %d", shade->flags);
@@ -558,7 +558,7 @@ void SomfyCommandProcessor::processInternalCommand(somfy_commands cmd, uint8_t r
                 else if (!isSunny && shade->flagManager.noSunDone)
                     shade->p_target(0.0f);
             }
-            somfy.isDirty = true;
+            somfy.store.markDirty();
             shade->emitState();
         } else
             ESP_LOGI(s_TAG, "Shade does not have sensor %d", shade->flags);

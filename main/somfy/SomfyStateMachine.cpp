@@ -30,7 +30,7 @@ void SomfyStateMachine::loop()
     this->somfy.transceiver.loop();
     this->somfy.commandDispatcher.drainCommandQueue();
     this->somfy.tickShades();
-    this->somfy.autoCommit();
+    this->somfy.store.autoCommit();
 }
 
 void SomfyStateMachine::end()

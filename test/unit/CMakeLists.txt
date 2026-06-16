@@ -44,6 +44,7 @@ set(PRODUCTION_SOURCES
     ../../main/somfy/SomfyRepeaterController.cpp
     ../../main/somfy/SomfyCommandDispatcher.cpp
     ../../main/somfy/SomfyStateMachine.cpp
+    ../../main/somfy/ShadeStore.cpp
 )
 
 add_executable(shade_tests

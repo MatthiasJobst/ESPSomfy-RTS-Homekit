@@ -463,7 +463,7 @@ bool GitUpdater::beginUpdate(const char *version)
     this->error = 0;
     this->error = static_cast<int16_t>(this->downloadFile());
     if (this->error == 0 && !this->cancelled) {
-        somfy.commit();
+        somfy.store.commit();
         LittleFS.end();
         this->setLittlefsFile();
         this->partition = U_FLASHFS;
@@ -474,7 +474,7 @@ bool GitUpdater::beginUpdate(const char *version)
             settings.fwVersion.parse(version);
             delay(100);
             ESP_LOGI(s_TAG, "Committing Configuration...");
-            somfy.commit();
+            somfy.store.commit();
         }
         rebootDelay.requestReboot(500);
     }
@@ -486,7 +486,7 @@ bool GitUpdater::recoverFilesystem()
 {
     snprintf(this->baseUrl, sizeof(this->baseUrl), "https://github.com/" GIT_REPO "/releases/download/%s/",
              settings.fwVersion.name);
-    somfy.commit();
+    somfy.store.commit();
     LittleFS.end();
     this->setLittlefsFile();
     this->status = GIT_UPDATING;
@@ -497,7 +497,7 @@ bool GitUpdater::recoverFilesystem()
     if (this->error == 0) {
         delay(100);
         ESP_LOGI(s_TAG, "Committing Configuration...");
-        somfy.commit();
+        somfy.store.commit();
     }
     this->status = GIT_UPDATE_COMPLETE;
     rebootDelay.requestReboot(500);

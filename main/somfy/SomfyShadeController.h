@@ -1,6 +1,6 @@
 // SomfyShadeController.h — Top-level aggregate model: owns the shades plus the
-// room/group/repeater controllers, the transceiver and the command dispatcher.
-// Owns config persistence (LittleFS/NVS), frame dispatch and state broadcast.
+// room/group/repeater controllers, the transceiver, the command dispatcher and
+// the ShadeStore (config persistence).  Handles frame dispatch and state broadcast.
 // Driven by SomfyStateMachine (boot/poll).  SOMFY_MAX_* limits come from SomfyFrame.h.
 #pragma once
 #include <ArduinoJson.h>
@@ -14,6 +14,7 @@
 #include "SomfyRepeaterController.h"
 #include "SomfyCommandDispatcher.h"
 #include "SomfyCommandQueue.h"
+#include "ShadeStore.h"
 
 /**
  * @brief In-memory model of the whole Somfy system: shade array plus the
@@ -35,12 +36,11 @@ class SomfyShadeController {
     // ── Fields ──────────────────────────────────────────────────────────────
     SomfyCommandDispatcher commandDispatcher;   /**< Command queue + RF send path. */
     SomfyGroupController groupController;       /**< Owns the group collection. */
-    bool isDirty = false;                       /**< In-memory config differs from disk. */
-    uint32_t lastCommit = 0;                    /**< millis() of last commit (auto-commit throttle). */
     SomfyRepeaterController repeaterController; /**< Owns the repeater address list. */
     SomfyRoomController roomController;         /**< Owns the room collection. */
     SomfyShade shades[SOMFY_MAX_SHADES];        /**< Shade records (primary domain). */
     uint32_t startingAddress = 0;               /**< Base remote address, derived from the efuse MAC. */
+    ShadeStore store;                           /**< Config persistence (dirty flag, commit, backup, load). */
     SomfyTransceiver transceiver;               /**< CC1101 RF transceiver. */
 
     /**
@@ -66,16 +66,6 @@ class SomfyShadeController {
      * @brief Set bitLength from the transceiver config on shades that lack it; commit if any changed.
      */
     void applyDefaultBitLengths();
-
-    /**
-     * @brief Persist the config if dirty and more than 1 s has elapsed since the last commit.
-     */
-    void autoCommit();
-
-    /**
-     * @brief Write the full config to LittleFS and clear the dirty flag.
-     */
-    void commit();
 
     /**
      * @brief Remove a shade: unbridge from HomeKit, reset the command queue, commit.
@@ -124,13 +114,6 @@ class SomfyShadeController {
     SomfyShade *getShadeById(uint8_t shadeId);
 
     /**
-     * @brief Load shade config from a named file.
-     * @param filename Path of the config file.
-     * @return True on success.
-     */
-    bool loadShadesFile(const char *filename);
-
-    /**
      * @brief Dispatch an inbound RF frame to every active shade.
      * @param frame The received frame.
      * @param internal True if the frame originated from this controller (echo).
@@ -163,9 +146,4 @@ class SomfyShadeController {
      * @param json Response to append shade objects to.
      */
     void toJSONShades(JsonResponse &json);
-
-    /**
-     * @brief Write a backup snapshot of the config.
-     */
-    void writeBackup();
 };

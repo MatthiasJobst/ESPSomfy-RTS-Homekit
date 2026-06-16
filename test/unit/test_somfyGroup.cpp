@@ -32,7 +32,7 @@ class GroupTest : public ::testing::Test {
             somfy.roomController.roomSlot(i).clear();
         for (uint8_t i = 0; i < SOMFY_MAX_REPEATERS; i++)
             somfy.repeaterController.repeaterSlot(i) = 0;
-        somfy.isDirty = false;
+        somfy.store.dirty = false;
         somfy.startingAddress = 0x100000;
         stub_shadeconfig_exists = false;
         stub_save_call_count = 0;
@@ -41,7 +41,7 @@ class GroupTest : public ::testing::Test {
         mqtt_published.clear();
         mqtt_unpublished.clear();
         somfy.commandDispatcher.cmdQueue = SomfyCommandQueue{};
-        somfy.lastCommit = 0;
+        somfy.store.lastCommit = 0;
     }
 };
 

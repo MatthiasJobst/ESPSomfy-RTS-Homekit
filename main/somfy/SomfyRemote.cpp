@@ -138,12 +138,12 @@ void SomfyRemote::sendCommand(somfy_commands cmd, uint8_t repeat, uint8_t stepSi
     this->p_lastRollingCode(this->lastFrame.rollingCode);
     this->lastFrame.processed = false;
     if (this->proto == radio_proto::GP_Relay) {
-        ESP_LOGI(s_TAG, "CMD: %s", translateSomfyCommand(this->lastFrame.cmd).c_str());
+        ESP_LOGI(s_TAG, "GP_RelayCMD: %s", translateSomfyCommand(this->lastFrame.cmd).c_str());
         ESP_LOGI(s_TAG, "ADDR: %d", this->lastFrame.remoteAddress);
         ESP_LOGI(s_TAG, "RCODE: %d", this->lastFrame.rollingCode);
         ESP_LOGI(s_TAG, "SETTING GPIO");
     } else if (this->proto == radio_proto::GP_Remote) {
-        ESP_LOGI(s_TAG, "CMD: %s", translateSomfyCommand(this->lastFrame.cmd).c_str());
+        ESP_LOGI(s_TAG, "GP_Remote CMD: %s", translateSomfyCommand(this->lastFrame.cmd).c_str());
         ESP_LOGI(s_TAG, "ADDR: %d", this->lastFrame.remoteAddress);
         ESP_LOGI(s_TAG, "RCODE: %d", this->lastFrame.rollingCode);
         ESP_LOGI(s_TAG, "TRIGGER GPIO");
@@ -219,8 +219,8 @@ uint16_t SomfyRemote::setRollingCode(uint16_t code)
         pref.begin("ShadeCodes");
         pref.putUShort(this->m_remotePrefId, code);
         pref.end();
-        this->lastRollingCode = code;
-        ESP_LOGI(s_TAG, "Setting Last Rolling code %d", this->lastRollingCode);
+        uint16_t oldCode = this->p_lastRollingCode(code);
+        ESP_LOGI(s_TAG, "Setting Last Rolling code from %d to %d", oldCode, this->lastRollingCode);
     }
     return code;
 }

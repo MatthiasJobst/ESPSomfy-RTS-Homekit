@@ -156,7 +156,7 @@ void WebSystem::handleBackup(WebServer &server, bool attach)
         server.sendHeader(F("Access-Control-Expose-Headers"), F("Content-Disposition"));
     }
     ESP_LOGI(s_TAG, "Saving current shade information");
-    somfy.writeBackup();
+    somfy.store.writeBackup();
     File file = LittleFS.open("/controller.backup", "r");
     if (!file) {
         ESP_LOGE(s_TAG, "Error opening shades.cfg");

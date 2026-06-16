@@ -58,7 +58,7 @@ bool SomfyShade::linkRemote(uint32_t address, uint16_t rollingCode)
 
 void SomfyShade::markShadeDataDirty()
 {
-    somfy.isDirty = true;
+    somfy.store.markDirty();
 }
 
 void SomfyShade::commitShadePosition()
@@ -548,7 +548,7 @@ void SomfyShade::moveToTargetForced(float pos, float tilt)
 
 bool SomfyShade::save()
 {
-    somfy.commit();
+    somfy.store.commit();
     publish();
     return true;
 }

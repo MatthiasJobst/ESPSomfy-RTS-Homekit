@@ -44,7 +44,7 @@ void OtaService::applicationUploadChunk(HTTPUpload &upload)
     if (upload.status == UPLOAD_FILE_START) {
         _uploadOk = false;
         ESP_LOGI(s_TAG, "Update: %s %d", upload.filename.c_str(), upload.totalSize);
-        somfy.commit();
+        somfy.store.commit();
         LittleFS.end();
         if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASHFS))
             Update.printError(Serial);
@@ -118,7 +118,7 @@ void OtaService::shadeConfigUploadChunk(HTTPUpload &upload)
             fup.close();
         }
     } else if (upload.status == UPLOAD_FILE_END) {
-        somfy.loadShadesFile("/shades.tmp");
+        somfy.store.load("/shades.tmp");
     }
 }
 
