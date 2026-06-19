@@ -541,9 +541,9 @@ void SomfyShade::moveToTarget(float pos, float tilt)
     targetSequencer.moveToTarget(pos, tilt);
 }
 
-void SomfyShade::moveToTargetForced(float pos, float tilt)
+void SomfyShade::moveToTargetForced(float pos, uint8_t repeats, float tilt)
 {
-    targetSequencer.moveToTargetForced(pos, tilt);
+    targetSequencer.moveToTargetForced(pos, repeats, tilt);
 }
 
 bool SomfyShade::save()

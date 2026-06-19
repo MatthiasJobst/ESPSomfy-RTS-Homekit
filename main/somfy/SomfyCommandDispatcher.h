@@ -32,8 +32,12 @@ class SomfyCommandDispatcher {
     /** @brief Queue a move-to-position for a shade. @return False if the queue is full. */
     bool enqueueShadeTarget(SomfyShade *shade, float target);
 
-    /** @brief Queue a forced move-to-position for a shade. @return False if the queue is full. */
-    bool enqueueShadeTargetForced(SomfyShade *shade, float target);
+    /**
+     * @brief Queue a forced move-to-position for a shade.
+     * @param repeat Frame repeat count for the start burst (the boosted auto-stop matches it).
+     * @return False if the queue is full.
+     */
+    bool enqueueShadeTargetForced(SomfyShade *shade, float target, uint8_t repeat);
 
     /** @brief Queue a move-to-tilt for a shade. @return False if the queue is full. */
     bool enqueueShadeTiltTarget(SomfyShade *shade, float target);

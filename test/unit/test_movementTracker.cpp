@@ -8,9 +8,11 @@
 //  settingMyPos:      at-target handling, emitState change detection
 
 #include "TestableShade.h"
-#include "SomfyTransceiver.h" // MOVE_REPEATS
+#include "ConfigSettings.h"
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+
+extern ConfigSettings settings; // boosted auto-stop reads settings.forcedMoveRepeats via somfy
 
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -337,9 +339,13 @@ TEST_F(MovementTrackerTest, Down_SettingPos_NotAtTiltTarget_MovesToTiltTarget)
     EXPECT_EQ(shade.getDirection(), 0);
 }
 
-// boostedStop=true → auto-stop My uses MOVE_REPEATS (HomeKit-initiated path).
-TEST_F(MovementTrackerTest, BoostedStop_AutoStop_UsesMoveRepeats)
+// boostedStop=true → auto-stop My uses the configurable forced-move repeat count
+// (somfy.forcedMoveRepeats()), so it matches the forced start burst rather than the
+// per-shade repeats. HomeKit-initiated path.
+TEST_F(MovementTrackerTest, BoostedStop_AutoStop_UsesForcedMoveRepeats)
 {
+    const uint8_t savedForced = settings.forcedMoveRepeats;
+    settings.forcedMoveRepeats = 22; // distinct from shade.repeats and the default
     shade.repeats = 3;
     shade.currentPos = 0.0f;
     shade.target = 60.0f;
@@ -353,8 +359,9 @@ TEST_F(MovementTrackerTest, BoostedStop_AutoStop_UsesMoveRepeats)
 
     shade.checkMovement();
     EXPECT_EQ(shade.lastFrame.cmd, somfy_commands::My);
-    EXPECT_EQ(shade.lastFrame.repeats, MOVE_REPEATS);
+    EXPECT_EQ(shade.lastFrame.repeats, 22u);
     EXPECT_FALSE(shade.getBoostedStop()) << "flag must clear after consumption";
+    settings.forcedMoveRepeats = savedForced;
 }
 
 // boostedStop=false (default) → auto-stop My uses shade->repeats.

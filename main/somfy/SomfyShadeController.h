@@ -50,6 +50,18 @@ class SomfyShadeController {
 
     // ── Methods ─────────────────────────────────────────────────────────────
     /**
+     * @brief Frame repeat count for forced/boosted moves, as configured by the user.
+     *
+     * Single source for the "forced" repeat count consumed by the forced position
+     * seek, its boosted auto-stop, and HomeKit's hold-stop. Backed by
+     * ConfigSettings::forcedMoveRepeats; callers go through this accessor so the
+     * storage location can change without touching them.
+     *
+     * @return The configured forced-move repeat count.
+     */
+    uint8_t forcedMoveRepeats() const;
+
+    /**
      * @brief Allocate and register a new empty shade.
      * @return Pointer to the new shade, or nullptr if no slot is free.
      */

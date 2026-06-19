@@ -15,6 +15,7 @@
 #include "nvs.h"
 #include "MQTT.h"
 #include "SomfyShadeController.h"
+#include "SomfyRepeatCounts.h"
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 

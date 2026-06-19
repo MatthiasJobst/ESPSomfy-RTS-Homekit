@@ -39,16 +39,17 @@ class SomfyTargetSequencer {
     void moveToTarget(float pos, float tilt = -1.0f);
 
     /**
-     * @brief Move the shade toward a lift position using the forced repeat count.
+     * @brief Move the shade toward a lift position using a caller-supplied repeat count.
      *
-     * Like moveToTarget() but uses forcedMoveRepeatCount() (configurable, defaults to
-     * MOVE_REPEATS) to guarantee the motor registers a sustained press, and opts the
-     * auto-stop into a boosted stop. Tilt is ignored.
+     * Like moveToTarget() but the start burst uses @p repeats (the caller passes the
+     * configurable forced-move repeat count) to guarantee the motor registers a
+     * sustained press, and opts the auto-stop into a boosted stop. Tilt is ignored.
      *
-     * @param pos  Target lift position, 0-100.
-     * @param tilt Ignored in a forced move (logged as a warning).
+     * @param pos     Target lift position, 0-100.
+     * @param repeats Frame repeat count for the start burst.
+     * @param tilt    Ignored in a forced move (logged as a warning).
      */
-    void moveToTargetForced(float pos, float tilt = -1.0f);
+    void moveToTargetForced(float pos, uint8_t repeats, float tilt = -1.0f);
 
     /**
      * @brief Move the tilt toward a target position.
@@ -99,10 +100,4 @@ class SomfyTargetSequencer {
      * @return Number of times to repeat the frame.
      */
     uint8_t repeatCount() const;
-
-    /**
-     * @brief Frame repeat count for a forced move (ConfigSettings::forcedMoveRepeats).
-     * @return Number of times to repeat the frame.
-     */
-    uint8_t forcedMoveRepeatCount() const;
 };

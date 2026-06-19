@@ -11,7 +11,7 @@
 //              moveToTarget/moveToTiltTarget/setMyPosition set them correctly
 
 #include "TestableShade.h"
-#include "SomfyTransceiver.h"
+#include "SomfyRepeatCounts.h"
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 

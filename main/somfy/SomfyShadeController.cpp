@@ -37,6 +37,11 @@ SomfyShadeController::SomfyShadeController()
       startingAddress(ESP.getEfuseMac() & 0x0FFFFF), store(*this)
 {}
 
+uint8_t SomfyShadeController::forcedMoveRepeats() const
+{
+    return settings.forcedMoveRepeats;
+}
+
 SomfyShade *SomfyShadeController::findShadeByRemoteAddress(uint32_t address)
 {
     for (uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {

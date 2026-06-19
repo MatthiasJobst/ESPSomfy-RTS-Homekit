@@ -896,23 +896,24 @@ TEST_F(CommandQueueTest, EnqueueShadeTiltTarget_SetsFields)
 
 TEST_F(CommandQueueTest, EnqueueShadeTargetForced_SetsFields)
 {
-    EXPECT_TRUE(somfy.commandDispatcher.enqueueShadeTargetForced(somfy.getShadeById(1), 0.42f));
+    EXPECT_TRUE(somfy.commandDispatcher.enqueueShadeTargetForced(somfy.getShadeById(1), 0.42f, 9));
     EXPECT_EQ(somfy.commandDispatcher.cmdQueue.count, 1);
     EXPECT_EQ(somfy.commandDispatcher.cmdQueue.entries[0].type, cmd_queue_type_t::ShadeTargetForced);
     EXPECT_FLOAT_EQ(somfy.commandDispatcher.cmdQueue.entries[0].target, 0.42f);
+    EXPECT_EQ(somfy.commandDispatcher.cmdQueue.entries[0].repeat, 9);
 }
 
 TEST_F(CommandQueueTest, EnqueueShadeTargetForced_QueueFull_ReturnsFalse)
 {
     for (int i = 0; i < CMD_QUEUE_SIZE; i++)
-        somfy.commandDispatcher.enqueueShadeTargetForced(somfy.getShadeById(1), 0.42f);
-    EXPECT_FALSE(somfy.commandDispatcher.enqueueShadeTargetForced(somfy.getShadeById(1), 0.42f));
+        somfy.commandDispatcher.enqueueShadeTargetForced(somfy.getShadeById(1), 0.42f, 9);
+    EXPECT_FALSE(somfy.commandDispatcher.enqueueShadeTargetForced(somfy.getShadeById(1), 0.42f, 9));
     EXPECT_EQ(somfy.commandDispatcher.cmdQueue.count, CMD_QUEUE_SIZE);
 }
 
 TEST_F(CommandQueueTest, Drain_ShadeTargetForced_Dispatches)
 {
-    somfy.commandDispatcher.enqueueShadeTargetForced(somfy.getShadeById(1), 0.6f);
+    somfy.commandDispatcher.enqueueShadeTargetForced(somfy.getShadeById(1), 0.6f, 9);
     test_clock_ms = CMD_QUEUE_DRAIN_MS + 1;
     somfy.commandDispatcher.cmdQueue.lastDrain = 0;
     stateMachine.loop(); // drains the queue → dispatches the ShadeTargetForced case

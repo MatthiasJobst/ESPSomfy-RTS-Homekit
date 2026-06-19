@@ -3,6 +3,7 @@
 #include "SomfyShadeController.h"
 #include "SomfyCommandTransmitter.h"
 #include "SomfyTransceiver.h"
+#include "SomfyRepeatCounts.h"
 #include "esp_log.h"
 #include <cstring>
 

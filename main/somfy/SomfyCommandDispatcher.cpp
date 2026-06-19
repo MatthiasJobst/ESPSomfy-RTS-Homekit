@@ -29,12 +29,13 @@ bool SomfyCommandDispatcher::enqueueShadeTarget(SomfyShade *shade, float target)
     return this->cmdQueue.push(c);
 }
 
-bool SomfyCommandDispatcher::enqueueShadeTargetForced(SomfyShade *shade, float target)
+bool SomfyCommandDispatcher::enqueueShadeTargetForced(SomfyShade *shade, float target, uint8_t repeat)
 {
     queued_cmd_t c;
     c.type = cmd_queue_type_t::ShadeTargetForced;
     c.remote = shade;
     c.target = target;
+    c.repeat = repeat;
     return this->cmdQueue.push(c);
 }
 
@@ -105,7 +106,7 @@ void SomfyCommandDispatcher::drainCommandQueue()
         static_cast<SomfyShade *>(c.remote)->moveToTarget(c.target);
         break;
     case cmd_queue_type_t::ShadeTargetForced:
-        static_cast<SomfyShade *>(c.remote)->moveToTargetForced(c.target);
+        static_cast<SomfyShade *>(c.remote)->moveToTargetForced(c.target, c.repeat);
         break;
     case cmd_queue_type_t::ShadeTiltTarget:
         static_cast<SomfyShade *>(c.remote)->moveToTiltTarget(c.target);

@@ -63,7 +63,7 @@ class SomfyShade : public SomfyRemote {
     bool isAtTarget();
     bool isToggle();
     void moveToTarget(float pos, float tilt = -1.0f);
-    void moveToTargetForced(float pos, float tilt = -1.0f);
+    void moveToTargetForced(float pos, uint8_t repeats, float tilt = -1.0f);
     void moveToTiltTarget(float target);
     void sendTiltCommand(somfy_commands cmd);
     void sendCommand(somfy_commands cmd) override;

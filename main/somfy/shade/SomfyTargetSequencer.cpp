@@ -1,12 +1,9 @@
 // SomfyTargetSequencer.cpp — Programmatic position-seek implementations.
 #include "SomfyShade.h"
 #include "SomfyTargetSequencer.h"
-#include "SomfyTransceiver.h"
-#include "ConfigSettings.h"
+#include "SomfyRepeatCounts.h"
 #include "esp_log.h"
 #include <cmath>
-
-extern ConfigSettings settings;
 
 static const char *s_TAG = "SomfyTargetSequencer";
 
@@ -48,15 +45,6 @@ uint8_t SomfyTargetSequencer::repeatCount() const
     return shade->repeats;
 }
 
-// ── forcedMoveRepeatCount ────────────────────────────────────────────────────
-// Repeats used to force a programmatic up/down move. Configurable via the HomeKit
-// settings tab (ConfigSettings::forcedMoveRepeats); defaults to MOVE_REPEATS.
-
-uint8_t SomfyTargetSequencer::forcedMoveRepeatCount() const
-{
-    return settings.forcedMoveRepeats;
-}
-
 // ── moveToTarget ─────────────────────────────────────────────────────────────
 
 void SomfyTargetSequencer::moveToTarget(float pos, float tilt)
@@ -81,7 +69,7 @@ void SomfyTargetSequencer::moveToTarget(float pos, float tilt)
 
 // ── moveToTargetForced: moves to Target with high repeat to force up or down ─
 
-void SomfyTargetSequencer::moveToTargetForced(float pos, float tilt)
+void SomfyTargetSequencer::moveToTargetForced(float pos, uint8_t repeats, float tilt)
 {
     somfy_commands cmd = this->moveDirection(pos, tilt);
     if (cmd == somfy_commands::My) {
@@ -91,7 +79,7 @@ void SomfyTargetSequencer::moveToTargetForced(float pos, float tilt)
     ESP_LOGI(s_TAG, "Moving forced to %f%% from %f%%", pos, shade->currentPos);
     ESP_LOGW(s_TAG, "Tilt is set to %f%% will be ignored in forced move", tilt);
     ESP_LOGI(s_TAG, " using %s", translateSomfyCommand(cmd).c_str());
-    shade->SomfyRemote::sendCommand(cmd, this->forcedMoveRepeatCount());
+    shade->SomfyRemote::sendCommand(cmd, repeats);
     shade->setSettingPos(true);
     shade->setBoostedStop(true);
     shade->p_target(pos);

@@ -4,7 +4,7 @@
 #include "esp_log.h"
 #include "SomfyCommandProcessor.h"
 #include "SomfyShade.h"
-#include "SomfyTransceiver.h"
+#include "SomfyRepeatCounts.h"
 #include "SomfyShadeController.h"
 
 static const char *s_TAG = "SomfyCommandProcessor";

@@ -4,7 +4,10 @@
 #include "esp_log.h"
 #include "SomfyMovementTracker.h"
 #include "SomfyShade.h"
-#include "SomfyTransceiver.h"
+#include "SomfyShadeController.h"
+#include "SomfyRepeatCounts.h"
+
+extern SomfyShadeController somfy;
 
 static const char *s_TAG = "SomfyMovementTracker";
 
@@ -54,10 +57,11 @@ void SomfyMovementTracker::handlePosTargetReached(uint64_t curTime)
     const float endpoint = shade->direction > 0 ? 100.0f : 0.0f;
     shade->p_currentPos(shade->target);
     if (motionState.settingPos) {
-        // Boosted moves (e.g. HomeKit's moveToTargetForced) need their auto-stop
-        // delivered with the same repeat count as the start command — a missed
-        // stop would cause the shade to overshoot the intermediate target.
-        const uint8_t stopRepeats = motionState.boostedStop ? MOVE_REPEATS : shade->repeats;
+        // Boosted moves (e.g. HomeKit's forced target move) need their auto-stop
+        // delivered with the same repeat count as the start command — a missed stop
+        // would cause the shade to overshoot the intermediate target. That start
+        // count is the configurable forced-move repeat count, so match it here.
+        const uint8_t stopRepeats = motionState.boostedStop ? somfy.forcedMoveRepeats() : shade->repeats;
         if (!shade->isAtTarget()) {
             ESP_LOGI(s_TAG, "We are not at our tilt target: %.2f", shade->tiltTarget);
             if (shade->target != endpoint) shade->SomfyRemote::sendCommand(somfy_commands::My, stopRepeats);

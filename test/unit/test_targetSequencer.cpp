@@ -15,11 +15,8 @@
 using ::testing::_;
 using ::testing::AnyNumber;
 
-// SETMY_REPEATS / TILT_REPEATS are defined in SomfyTransceiver.h
-#include "SomfyTransceiver.h"
-#include "ConfigSettings.h"
-
-extern ConfigSettings settings; // forcedMoveRepeats drives moveToTargetForced
+// SETMY_REPEATS / TILT_REPEATS / MOVE_REPEATS are defined in SomfyRepeatCounts.h
+#include "SomfyRepeatCounts.h"
 
 // ── fixture ───────────────────────────────────────────────────────────────────
 
@@ -191,34 +188,22 @@ TEST_F(TargetSequencerTest, MoveToTarget_Roller_UsesMoveRepeats)
     EXPECT_EQ(shade.getLastFrame().repeats, MOVE_REPEATS);
 }
 
-// ── boostedStop: moveToTargetForced opts the auto-stop into MOVE_REPEATS ───
+// ── boostedStop: moveToTargetForced opts the auto-stop into the boosted path ───
 // Covers the contract that the MovementTracker reads to choose stop repeats.
 
 TEST_F(TargetSequencerTest, MoveToTargetForced_SetsBoostedStop)
 {
     shade.currentPos = 50.0f;
-    shade.moveToTargetForced(80.0f);
+    shade.moveToTargetForced(80.0f, MOVE_REPEATS);
     EXPECT_TRUE(shade.getBoostedStop());
 }
 
-// Forced move uses the configurable settings.forcedMoveRepeats, which defaults
-// to MOVE_REPEATS and is surfaced in the HomeKit settings tab.
-TEST_F(TargetSequencerTest, MoveToTargetForced_DefaultsToMoveRepeats)
+// The start burst uses the caller-supplied repeat count verbatim.
+TEST_F(TargetSequencerTest, MoveToTargetForced_UsesPassedRepeats)
 {
-    EXPECT_EQ(settings.forcedMoveRepeats, MOVE_REPEATS);
     shade.currentPos = 50.0f;
-    shade.moveToTargetForced(80.0f);
-    EXPECT_EQ(shade.getLastFrame().repeats, MOVE_REPEATS);
-}
-
-TEST_F(TargetSequencerTest, MoveToTargetForced_UsesConfiguredRepeats)
-{
-    uint8_t saved = settings.forcedMoveRepeats;
-    settings.forcedMoveRepeats = 20;
-    shade.currentPos = 50.0f;
-    shade.moveToTargetForced(80.0f);
-    EXPECT_EQ(shade.getLastFrame().repeats, 20);
-    settings.forcedMoveRepeats = saved;
+    shade.moveToTargetForced(80.0f, 17);
+    EXPECT_EQ(shade.getLastFrame().repeats, 17);
 }
 
 TEST_F(TargetSequencerTest, MoveToTarget_ClearsBoostedStop)
@@ -237,7 +222,7 @@ TEST_F(TargetSequencerTest, MoveToTargetForced_NoMoveNeeded_DoesNotTouchBoostedS
     // no flag change. Pre-existing boostedStop value must survive.
     shade.setBoostedStop(true);
     shade.currentPos = 50.0f;
-    shade.moveToTargetForced(50.0f); // no-op
+    shade.moveToTargetForced(50.0f, MOVE_REPEATS); // no-op
     EXPECT_TRUE(shade.getBoostedStop());
 }
 
@@ -750,20 +735,20 @@ TEST_F(TargetSequencerTest, MoveToTarget_NoTimings_UsesShadeRepeats)
 // I. moveToTargetForced
 // ══════════════════════════════════════════════════════════════════════════════
 
-// I1. pos > currentPos → Down sent with MOVE_REPEATS
-TEST_F(TargetSequencerTest, MoveToTargetForced_PosHigher_SendsDownWithMoveRepeats)
+// I1. pos > currentPos → Down sent with the passed repeat count
+TEST_F(TargetSequencerTest, MoveToTargetForced_PosHigher_SendsDownWithPassedRepeats)
 {
     shade.currentPos = 30.0f;
-    shade.moveToTargetForced(80.0f);
+    shade.moveToTargetForced(80.0f, MOVE_REPEATS);
     EXPECT_EQ(lastCmd(), somfy_commands::Down);
     EXPECT_EQ(shade.getLastFrame().repeats, MOVE_REPEATS);
 }
 
-// I2. pos < currentPos → Up sent with MOVE_REPEATS
-TEST_F(TargetSequencerTest, MoveToTargetForced_PosLower_SendsUpWithMoveRepeats)
+// I2. pos < currentPos → Up sent with the passed repeat count
+TEST_F(TargetSequencerTest, MoveToTargetForced_PosLower_SendsUpWithPassedRepeats)
 {
     shade.currentPos = 70.0f;
-    shade.moveToTargetForced(20.0f);
+    shade.moveToTargetForced(20.0f, MOVE_REPEATS);
     EXPECT_EQ(lastCmd(), somfy_commands::Up);
     EXPECT_EQ(shade.getLastFrame().repeats, MOVE_REPEATS);
 }
@@ -773,7 +758,7 @@ TEST_F(TargetSequencerTest, MoveToTargetForced_SamePos_NoCommand)
 {
     shade.currentPos = 50.0f;
     uint16_t rcBefore = shade.getLastFrame().rollingCode;
-    shade.moveToTargetForced(50.0f);
+    shade.moveToTargetForced(50.0f, MOVE_REPEATS);
     EXPECT_EQ(shade.getLastFrame().rollingCode, rcBefore);
 }
 
@@ -781,6 +766,6 @@ TEST_F(TargetSequencerTest, MoveToTargetForced_SamePos_NoCommand)
 TEST_F(TargetSequencerTest, MoveToTargetForced_SetsTarget)
 {
     shade.currentPos = 20.0f;
-    shade.moveToTargetForced(75.0f);
+    shade.moveToTargetForced(75.0f, MOVE_REPEATS);
     EXPECT_FLOAT_EQ(shade.target, 75.0f);
 }

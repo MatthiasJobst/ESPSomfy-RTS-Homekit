@@ -7,7 +7,7 @@
 #include "ConfigSettings.h"
 #include "Utils.h"
 #include "esp_chip_info.h"
-#include "SomfyTransceiver.h" // MOVE_REPEATS — default for forcedMoveRepeats
+#include "SomfyRepeatCounts.h" // MOVE_REPEATS — default for forcedMoveRepeats
 
 Preferences pref;
 

@@ -11,6 +11,7 @@
 //  • sendCommand / sendTiltCommand   (lines 1103–1105  — thin delegation)
 
 #include "TestableShade.h"
+#include "SomfyRepeatCounts.h"
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 

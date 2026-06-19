@@ -1,19 +1,10 @@
 // SomfyTransceiver.h — CC1101 radio transceiver layer: transceiver_config_t (pin mapping,
 // frequency, deviation, NVS persistence) and the SomfyTransceiver class (interrupt-driven
 // receive, frame transmission, frequency scanning, GPIO management).  Also defines the
-// SYMBOL, SETMY_REPEATS and TILT_REPEATS macros and the bit_length extern used by the
-// send-command path.
+// SYMBOL macro and the bit_length extern used by the send-command path. The per-command
+// frame repeat counts live in SomfyRepeatCounts.h.
 #pragma once
 #include "SomfyFrame.h"
-
-#define SETMY_REPEATS 35
-#define TILT_REPEATS 15
-// MOVE_REPEATS — initial burst length for programmatic lift moves. ~1 s of
-// continuous air time (9 frames × ~116 ms) is long enough for the motor to
-// register a sustained press and start moving on its own; the transmitter is
-// then freed. Intermediate targets are halted by a My frame from
-// handlePosTargetReached.
-#define MOVE_REPEATS 8
 
 // bit_length is set by transceiver_config_t::apply() and read by SomfyRemote::sendCommand.
 extern uint8_t bit_length;
