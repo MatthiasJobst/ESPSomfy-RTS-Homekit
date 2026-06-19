@@ -8,7 +8,8 @@
 #include <stdint.h>        // uint8_t / int8_t
 #include "../SomfyFrame.h" // somfy_commands
 
-class SomfyShade; // forward declaration — full type in SomfyShade.h
+class SomfyShade;           // forward declaration — full type in SomfyShade.h
+class SomfyMovementTracker; // sibling that owns the shared MotionState flags
 
 /**
  * @brief Translates a requested lift/tilt position into the RF commands that drive
@@ -23,7 +24,10 @@ class SomfyShade; // forward declaration — full type in SomfyShade.h
 class SomfyTargetSequencer {
   public:
     SomfyShade *shade = nullptr; /**< Owning shade; set by the SomfyShade constructor. Must not be NULL. */
-    float myPos = -1.0f;         /**< Favorite ("My") lift position, 0-100, or -1 when unset. */
+    /** Sibling owning the shared MotionState flags (settingPos/TiltPos/MyPos, boostedStop);
+     *  wired by the SomfyShade constructor so move methods set them directly, not via the hub. */
+    SomfyMovementTracker *movementTracker = nullptr;
+    float myPos = -1.0f;     /**< Favorite ("My") lift position, 0-100, or -1 when unset. */
     float myTiltPos = -1.0f;     /**< Favorite ("My") tilt position, 0-100, or -1 when unset. */
 
     /**

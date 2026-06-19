@@ -4,6 +4,7 @@
 #include "esp_log.h"
 #include "SomfyCommandProcessor.h"
 #include "SomfyShade.h"
+#include "SomfyMovementTracker.h" // movementTracker sibling: lastMovement, motionState, resetMovement
 #include "SomfyRepeatCounts.h"
 #include "SomfyShadeController.h"
 
@@ -185,7 +186,7 @@ void SomfyCommandProcessor::processMyCommand(bool internal, somfy_frame_t &frame
         else if (shade->currentPos == 0.0f)
             shade->p_target(100.0f);
         else
-            shade->p_target(shade->getLastMovement() == -1 ? 100 : 0);
+            shade->p_target(movementTracker->lastMovement == -1 ? 100 : 0);
         shade->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
         return;
     }
@@ -197,7 +198,7 @@ void SomfyCommandProcessor::processMyCommand(bool internal, somfy_frame_t &frame
         else if (shade->currentPos == 0.0f)
             shade->p_target(100);
         else
-            shade->p_target(shade->getLastMovement() == -1 ? 100 : 0);
+            shade->p_target(movementTracker->lastMovement == -1 ? 100 : 0);
         shade->emitCommand(cmd, internal ? "internal" : "remote", frame.remoteAddress);
         return;
     }
@@ -328,8 +329,8 @@ void SomfyCommandProcessor::processFrame(somfy_frame_t &frame, bool internal)
     const uint64_t curTime = millis();
     shade->lastFrame.copy(frame);
     int8_t dir = 0;
-    shade->resetMovement(curTime);
-    if (!internal) shade->clearMotionState();
+    movementTracker->resetMovement(curTime);
+    if (!internal) movementTracker->motionState.clear();
     somfy_commands cmd = shade->transformCommand(frame.cmd);
     switch (cmd) {
     case somfy_commands::Sensor:
@@ -416,7 +417,7 @@ void SomfyCommandProcessor::setShadeTargetToggle()
     else if (shade->currentPos == 0.0f)
         shade->p_target(100);
     else
-        shade->p_target(shade->getLastMovement() == -1 ? 100 : 0);
+        shade->p_target(movementTracker->lastMovement == -1 ? 100 : 0);
 }
 
 bool SomfyCommandProcessor::isDryContact()
@@ -444,7 +445,7 @@ void SomfyCommandProcessor::processInternalCommand(somfy_commands cmd, uint8_t r
     if (shade->getShadeId() == 255) return;
     const uint64_t curTime = millis();
     int8_t dir = 0;
-    shade->resetMovement(curTime);
+    movementTracker->resetMovement(curTime);
     switch (cmd) {
     case somfy_commands::Up:
         setShadeCmdUp(repeat);

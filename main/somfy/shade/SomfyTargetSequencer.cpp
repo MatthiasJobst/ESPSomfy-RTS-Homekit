@@ -1,6 +1,7 @@
 // SomfyTargetSequencer.cpp — Programmatic position-seek implementations.
 #include "SomfyShade.h"
 #include "SomfyTargetSequencer.h"
+#include "SomfyMovementTracker.h" // movementTracker sibling: motionState flags
 #include "SomfyRepeatCounts.h"
 #include "esp_log.h"
 #include <cmath>
@@ -61,12 +62,12 @@ void SomfyTargetSequencer::moveToTarget(float pos, float tilt, uint8_t repeats)
     if (tilt >= 0) ESP_LOGI(s_TAG, " tilt %f%% from %f%%", tilt, shade->currentTiltPos);
     ESP_LOGI(s_TAG, " using %s", translateSomfyCommand(cmd).c_str());
     shade->SomfyRemote::sendCommand(cmd, boosted ? repeats : this->repeatCount());
-    shade->setSettingPos(true);
-    shade->setBoostedStop(boosted);
+    movementTracker->motionState.settingPos = true;
+    movementTracker->motionState.boostedStop = boosted;
     shade->p_target(pos);
     if (tilt >= 0) {
         shade->p_tiltTarget(tilt);
-        shade->setSettingTiltPos(true);
+        movementTracker->motionState.settingTiltPos = true;
     }
 }
 
@@ -93,7 +94,7 @@ void SomfyTargetSequencer::moveToTiltTarget(float target)
         }
         shade->p_tiltTarget(target);
     }
-    if (cmd != somfy_commands::My) shade->setSettingTiltPos(true);
+    if (cmd != somfy_commands::My) movementTracker->motionState.settingTiltPos = true;
 }
 
 // ── moveToMyPosition ─────────────────────────────────────────────────────────
@@ -115,7 +116,7 @@ void SomfyTargetSequencer::moveToMyPosition()
     if (myPos == -1 && (shade->tiltType == tilt_types::none || myTiltPos == -1)) return;
     if (shade->tiltType != tilt_types::tiltonly && myPos >= 0.0f && myPos <= 100.0f) shade->p_target(myPos);
     if (myTiltPos >= 0.0f && myTiltPos <= 100.0f) shade->p_tiltTarget(myTiltPos);
-    shade->setSettingPos(false);
+    movementTracker->motionState.settingPos = false;
     if (shade->simMy()) {
         ESP_LOGI(s_TAG, "Moving to simulated favorite position");
         moveToTarget(myPos, myTiltPos);
@@ -131,19 +132,19 @@ void SomfyTargetSequencer::setMyPosition(int8_t pos, int8_t tilt)
     if (shade->tiltType == tilt_types::tiltonly) {
         shade->p_myPos(-1.0f);
         if (tilt != static_cast<int8_t>(floorf(shade->currentTiltPos))) {
-            shade->setSettingMyPos(true);
+            movementTracker->motionState.settingMyPos = true;
             if (tilt == static_cast<int8_t>(floorf(myTiltPos)))
                 moveToMyPosition();
             else
                 moveToTarget(100, tilt);
         } else if (tilt == static_cast<int8_t>(floorf(myTiltPos))) {
             if (shade->currentTiltPos != myTiltPos) {
-                shade->setSettingMyPos(true);
+                movementTracker->motionState.settingMyPos = true;
                 moveToMyPosition();
             } else {
                 shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
-                shade->setSettingPos(false);
-                shade->setSettingMyPos(true);
+                movementTracker->motionState.settingPos = false;
+                movementTracker->motionState.settingMyPos = true;
             }
         } else {
             shade->SomfyRemote::sendCommand(somfy_commands::My, SETMY_REPEATS);
@@ -155,19 +156,19 @@ void SomfyTargetSequencer::setMyPosition(int8_t pos, int8_t tilt)
         if (tilt < 0) tilt = 0;
         if (pos != static_cast<int8_t>(floorf(shade->currentPos)) ||
             tilt != static_cast<int8_t>(floorf(shade->currentTiltPos))) {
-            shade->setSettingMyPos(true);
+            movementTracker->motionState.settingMyPos = true;
             if (pos == static_cast<int8_t>(floorf(myPos)) && tilt == static_cast<int8_t>(floorf(myTiltPos)))
                 moveToMyPosition();
             else
                 moveToTarget(pos, tilt);
         } else if (pos == static_cast<int8_t>(floorf(myPos)) && tilt == static_cast<int8_t>(floorf(myTiltPos))) {
             if (shade->currentPos != myPos || shade->currentTiltPos != myTiltPos) {
-                shade->setSettingMyPos(true);
+                movementTracker->motionState.settingMyPos = true;
                 moveToMyPosition();
             } else {
                 shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
-                shade->setSettingPos(false);
-                shade->setSettingMyPos(true);
+                movementTracker->motionState.settingPos = false;
+                movementTracker->motionState.settingMyPos = true;
             }
         } else {
             shade->SomfyRemote::sendCommand(somfy_commands::My, SETMY_REPEATS);
@@ -178,19 +179,19 @@ void SomfyTargetSequencer::setMyPosition(int8_t pos, int8_t tilt)
         shade->emitState();
     } else {
         if (pos != static_cast<int8_t>(floorf(shade->currentPos))) {
-            shade->setSettingMyPos(true);
+            movementTracker->motionState.settingMyPos = true;
             if (pos == static_cast<int8_t>(floorf(myPos)))
                 moveToMyPosition();
             else
                 moveToTarget(pos);
         } else if (pos == static_cast<int8_t>(floorf(myPos))) {
             if (myPos != shade->currentPos) {
-                shade->setSettingMyPos(true);
+                movementTracker->motionState.settingMyPos = true;
                 moveToMyPosition();
             } else {
                 shade->SomfyRemote::sendCommand(somfy_commands::My, shade->repeats);
-                shade->setSettingPos(false);
-                shade->setSettingMyPos(true);
+                movementTracker->motionState.settingPos = false;
+                movementTracker->motionState.settingMyPos = true;
             }
         } else {
             shade->SomfyRemote::sendCommand(somfy_commands::My, SETMY_REPEATS);

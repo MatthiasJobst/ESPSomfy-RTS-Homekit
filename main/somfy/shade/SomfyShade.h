@@ -24,6 +24,10 @@ class SomfyShade : public SomfyRemote {
         targetSequencer.shade = this;
         commandProcessor.shade = this;
         movementTracker.shade = this;
+        // Direct sibling references to the motion-state owner, so TargetSequencer and
+        // CommandProcessor collaborate with it without routing through SomfyShade.
+        targetSequencer.movementTracker = &movementTracker;
+        commandProcessor.movementTracker = &movementTracker;
     }
     SomfyTargetSequencer targetSequencer; // Exposed to allow for testing
     uint8_t roomId = 0;
@@ -83,15 +87,6 @@ class SomfyShade : public SomfyRemote {
     // Favorite-position getters (owned by SomfyTargetSequencer)
     float getMyPos() const;
     float getMyTiltPos() const;
-    // Motion-state flag setters (owned by SomfyMovementTracker)
-    void setSettingPos(bool v);
-    void setSettingTiltPos(bool v);
-    void setSettingMyPos(bool v);
-    void setBoostedStop(bool v);
-    bool getBoostedStop() const;
-    void clearMotionState();
-    // Movement interpolation reset — called at the start of every command frame
-    void resetMovement(uint64_t t);
     // Timing and step config (owned by SomfyCommandProcessor)
     uint32_t getUpTime() const;
     uint32_t getDownTime() const;
@@ -101,9 +96,6 @@ class SomfyShade : public SomfyRemote {
     void setDownTime(uint32_t v);
     void setTiltTime(uint32_t v);
     void setStepSize(uint16_t v);
-    // Last movement direction (owned by SomfyMovementTracker)
-    int8_t getLastMovement() const;
-    void setLastMovement(int8_t v);
     // Linked remotes (owned by SomfyCommandTransmitter)
     SomfyRemote &getLinkedRemote(uint8_t i);
     // Position display inversion (owned by SomfyMQTTPublisher)

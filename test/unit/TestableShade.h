@@ -62,14 +62,21 @@ class TestableShade : public SomfyShade {
     void setStartTiltPos(float v) { movementTracker.tiltAxis.startPct = v; }
 
     // ── Additional state reads ───────────────────────────────────────────────
-    // getLastMovement() is now inherited from SomfyShade
     int8_t getDirection() const { return direction; }
     int8_t getTiltDirection() const { return tiltDirection; }
     uint64_t getMoveStart() const { return movementTracker.shadeAxis.startMs; }
     bool getSettingPos() const { return movementTracker.motionState.settingPos; }
     bool getSettingTiltPos() const { return movementTracker.motionState.settingTiltPos; }
     bool getSettingMyPos() const { return movementTracker.motionState.settingMyPos; }
-    // setSettingPos/TiltPos/MyPos are now inherited from SomfyShade
+    bool getBoostedStop() const { return movementTracker.motionState.boostedStop; }
+
+    // ── Motion-state writes (test setup; owner is movementTracker) ───────────
+    // Production code reaches movementTracker directly; these exist only for tests.
+    void setSettingPos(bool v) { movementTracker.motionState.settingPos = v; }
+    void setSettingTiltPos(bool v) { movementTracker.motionState.settingTiltPos = v; }
+    void setSettingMyPos(bool v) { movementTracker.motionState.settingMyPos = v; }
+    void setBoostedStop(bool v) { movementTracker.motionState.boostedStop = v; }
+    void setLastMovement(int8_t v) { movementTracker.lastMovement = v; }
 
     // ── Real emitCommand (bypasses mock for MQTT side-effect tests) ─────────
     void callRealEmitCommand(somfy_commands cmd, const char *source, uint32_t sourceAddress,

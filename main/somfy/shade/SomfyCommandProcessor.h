@@ -3,10 +3,15 @@
 #include "SomfyFrame.h"
 
 class SomfyShade;
+class SomfyMovementTracker;
 
 class SomfyCommandProcessor {
   public:
     SomfyShade *shade = nullptr;
+    // Sibling that owns the motion state (lastMovement, motionState) and interpolation
+    // reset this processor coordinates with. Wired by the SomfyShade constructor so the
+    // collaboration is direct instead of routed through SomfyShade delegators.
+    SomfyMovementTracker *movementTracker = nullptr;
     // Timing and step config (owned here; exposed via SomfyShade getters/setters)
     uint32_t upTime = 10000;
     uint32_t downTime = 10000;

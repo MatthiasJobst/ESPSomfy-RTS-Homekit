@@ -117,7 +117,7 @@ void SomfyMovementTracker::checkMovement()
     // tickFlagTimers so direction is stable for one tick when a flag overrides the target.
     bool tilt_first = computeDirections();
 
-    if (shade->direction != 0) shade->setLastMovement(shade->direction);
+    if (shade->direction != 0) this->lastMovement = shade->direction;
 
     // Advance sun/wind timers; may shift target/tiltTarget for this tick's interpolation.
     tickFlagTimers(curTime);

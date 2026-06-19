@@ -409,41 +409,6 @@ float SomfyShade::getMyTiltPos() const
     return targetSequencer.myTiltPos;
 }
 
-void SomfyShade::setSettingPos(bool v)
-{
-    movementTracker.motionState.settingPos = v;
-}
-
-void SomfyShade::setSettingTiltPos(bool v)
-{
-    movementTracker.motionState.settingTiltPos = v;
-}
-
-void SomfyShade::setSettingMyPos(bool v)
-{
-    movementTracker.motionState.settingMyPos = v;
-}
-
-void SomfyShade::setBoostedStop(bool v)
-{
-    movementTracker.motionState.boostedStop = v;
-}
-
-bool SomfyShade::getBoostedStop() const
-{
-    return movementTracker.motionState.boostedStop;
-}
-
-void SomfyShade::clearMotionState()
-{
-    movementTracker.motionState.clear();
-}
-
-void SomfyShade::resetMovement(uint64_t t)
-{
-    movementTracker.resetMovement(t);
-}
-
 uint32_t SomfyShade::getUpTime() const
 {
     return commandProcessor.upTime;
@@ -482,16 +447,6 @@ void SomfyShade::setTiltTime(uint32_t v)
 void SomfyShade::setStepSize(uint16_t v)
 {
     commandProcessor.stepSize = v;
-}
-
-int8_t SomfyShade::getLastMovement() const
-{
-    return movementTracker.lastMovement;
-}
-
-void SomfyShade::setLastMovement(int8_t v)
-{
-    movementTracker.lastMovement = v;
 }
 
 SomfyRemote &SomfyShade::getLinkedRemote(uint8_t i)
