@@ -27,29 +27,18 @@ class SomfyTargetSequencer {
     float myTiltPos = -1.0f;     /**< Favorite ("My") tilt position, 0-100, or -1 when unset. */
 
     /**
-     * @brief Move the shade toward a lift position (and optionally tilt) using the
-     *        normal repeat count.
+     * @brief Move the shade toward a lift position (and optionally tilt).
      *
-     * Sends a single directional command sized by repeatCount(), records the target,
-     * sets settingPos, and clears the boosted-stop flag.
-     *
-     * @param pos  Target lift position, 0-100.
-     * @param tilt Target tilt position, 0-100; pass < 0 to leave tilt unchanged.
-     */
-    void moveToTarget(float pos, float tilt = -1.0f);
-
-    /**
-     * @brief Move the shade toward a lift position using a caller-supplied repeat count.
-     *
-     * Like moveToTarget() but the start burst uses @p repeats (the caller passes the
-     * configurable forced-move repeat count) to guarantee the motor registers a
-     * sustained press, and opts the auto-stop into a boosted stop. Tilt is ignored.
+     * Records the target and sets settingPos. A non-zero @p repeats requests a
+     * forced/boosted move: the start burst uses that count and the auto-stop is
+     * boosted so a missed stop can't overshoot an intermediate target. @p repeats
+     * == 0 derives the per-shade count (repeatCount()) and uses a normal stop.
      *
      * @param pos     Target lift position, 0-100.
-     * @param repeats Frame repeat count for the start burst.
-     * @param tilt    Ignored in a forced move (logged as a warning).
+     * @param tilt    Target tilt position, 0-100; pass < 0 to leave tilt unchanged.
+     * @param repeats Start-burst repeat count; 0 = normal (derived) non-boosted move.
      */
-    void moveToTargetForced(float pos, uint8_t repeats, float tilt = -1.0f);
+    void moveToTarget(float pos, float tilt = -1.0f, uint8_t repeats = 0);
 
     /**
      * @brief Move the tilt toward a target position.

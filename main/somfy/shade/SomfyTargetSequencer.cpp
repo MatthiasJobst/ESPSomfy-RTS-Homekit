@@ -47,42 +47,27 @@ uint8_t SomfyTargetSequencer::repeatCount() const
 
 // ── moveToTarget ─────────────────────────────────────────────────────────────
 
-void SomfyTargetSequencer::moveToTarget(float pos, float tilt)
+void SomfyTargetSequencer::moveToTarget(float pos, float tilt, uint8_t repeats)
 {
     somfy_commands cmd = this->moveDirection(pos, tilt);
     if (cmd == somfy_commands::My) {
         ESP_LOGI(s_TAG, "No need to move!");
         return;
     }
-    ESP_LOGI(s_TAG, "Moving to %f%% from %f%%", pos, shade->currentPos);
+    // repeats > 0 → forced/boosted move: use the caller's count and boost the
+    // auto-stop. repeats == 0 → derive the per-shade count and use a normal stop.
+    const bool boosted = repeats > 0;
+    ESP_LOGI(s_TAG, "Moving%s to %f%% from %f%%", boosted ? " (forced)" : "", pos, shade->currentPos);
     if (tilt >= 0) ESP_LOGI(s_TAG, " tilt %f%% from %f%%", tilt, shade->currentTiltPos);
     ESP_LOGI(s_TAG, " using %s", translateSomfyCommand(cmd).c_str());
-    shade->SomfyRemote::sendCommand(cmd, this->repeatCount());
+    shade->SomfyRemote::sendCommand(cmd, boosted ? repeats : this->repeatCount());
     shade->setSettingPos(true);
-    shade->setBoostedStop(false);
+    shade->setBoostedStop(boosted);
     shade->p_target(pos);
     if (tilt >= 0) {
         shade->p_tiltTarget(tilt);
         shade->setSettingTiltPos(true);
     }
-}
-
-// ── moveToTargetForced: moves to Target with high repeat to force up or down ─
-
-void SomfyTargetSequencer::moveToTargetForced(float pos, uint8_t repeats, float tilt)
-{
-    somfy_commands cmd = this->moveDirection(pos, tilt);
-    if (cmd == somfy_commands::My) {
-        ESP_LOGI(s_TAG, "No need to move!");
-        return;
-    }
-    ESP_LOGI(s_TAG, "Moving forced to %f%% from %f%%", pos, shade->currentPos);
-    ESP_LOGW(s_TAG, "Tilt is set to %f%% will be ignored in forced move", tilt);
-    ESP_LOGI(s_TAG, " using %s", translateSomfyCommand(cmd).c_str());
-    shade->SomfyRemote::sendCommand(cmd, repeats);
-    shade->setSettingPos(true);
-    shade->setBoostedStop(true);
-    shade->p_target(pos);
 }
 
 // ── moveToTiltTarget ─────────────────────────────────────────────────────────

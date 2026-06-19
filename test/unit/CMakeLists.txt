@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 project(SomfyShadeUnitTests CXX)
-set(CMAKE_CXX_STANDARD 17)
+# Match the standard ESP-IDF compiles the firmware (main/) sources with: -std=gnu++2b
+# (C++23 + GNU extensions). CMAKE_CXX_EXTENSIONS defaults ON, giving -std=gnu++23,
+# so host tests and firmware see the same language rules.
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ── GoogleTest ──────────────────────────────────────────────────────────────

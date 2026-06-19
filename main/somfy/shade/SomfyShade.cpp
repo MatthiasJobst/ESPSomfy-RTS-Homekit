@@ -543,7 +543,7 @@ void SomfyShade::moveToTarget(float pos, float tilt)
 
 void SomfyShade::moveToTargetForced(float pos, uint8_t repeats, float tilt)
 {
-    targetSequencer.moveToTargetForced(pos, repeats, tilt);
+    targetSequencer.moveToTarget(pos, tilt, repeats);
 }
 
 bool SomfyShade::save()
