@@ -15,12 +15,8 @@ class SomfyRemote {
 
   public:
     radio_proto proto = radio_proto::RTS;
-    uint8_t gpioFlags = 0;
-    int8_t gpioDir = 0;
-    uint8_t gpioUp = 0;
-    uint8_t gpioDown = 0;
-    uint8_t gpioMy = 0;
-    uint32_t gpioRelease = 0;
+    // GPIO pin/relay state is owned by SomfyGPIOControl (see SomfyShade::gpioControl),
+    // not the remote base — the former duplicate fields here were write-only dead state.
     somfy_frame_t lastFrame = {};
     bool flipCommands = false;
     uint16_t lastRollingCode = 0;

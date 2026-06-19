@@ -724,10 +724,13 @@ bool ShadeConfigFile::writeShadeRecord(SomfyShade *shade)
     this->writeBool(shade->getFlipPosition());
     this->writeUInt8(shade->repeats);
     this->writeUInt8(shade->sortOrder);
-    this->writeUInt8(shade->gpioUp);
-    this->writeUInt8(shade->gpioDown);
-    this->writeUInt8(shade->gpioMy);
-    this->writeUInt8(shade->gpioFlags);
+    // GPIO pin assignments live in SomfyGPIOControl (the read path above also uses
+    // getGpioControl()). Writing the old SomfyRemote base fields persisted zeros.
+    const auto &gpio = shade->getGpioControl();
+    this->writeUInt8(gpio.gpioUp);
+    this->writeUInt8(gpio.gpioDown);
+    this->writeUInt8(gpio.gpioMy);
+    this->writeUInt8(gpio.gpioFlags);
     this->writeUInt8(shade->roomId, CFG_REC_END);
     return true;
 }
