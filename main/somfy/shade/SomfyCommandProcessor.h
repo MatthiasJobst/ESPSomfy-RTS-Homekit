@@ -22,4 +22,15 @@ class SomfyCommandProcessor {
     void processUpDownCommand(somfy_commands cmd, int8_t moveDir, bool internal, somfy_frame_t &frame,
                               uint64_t curTime);
     void processStepCommand(somfy_commands cmd, int8_t stepDir, bool internal, somfy_frame_t &frame);
+  private:
+    bool isDryContact();
+    bool isNotFromLinkedRemote(somfy_frame_t &frame);
+    void setShadeTargetToggle();
+    void setShadeCmdSunFlag();
+    void setShadeCmdFlag();
+    bool setShadeCmdStepDown();
+    bool setShadeCmdStepUp();
+    void setShadeCmdMy();
+    void setShadeCmdDown(const uint64_t curTime, uint8_t repeat);
+    void setShadeCmdUp(uint8_t repeat);
 };
