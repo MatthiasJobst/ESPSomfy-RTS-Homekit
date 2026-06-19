@@ -364,7 +364,8 @@ void SomfyCommandProcessor::processFrame(somfy_frame_t &frame, bool internal)
         processUpDownCommand(cmd, +1, internal, frame, curTime);
         break;
     case somfy_commands::My:
-        if (isDryContact()) return;
+        // Only drycontact2 ignores My; plain drycontact toggles (handled in processMyCommand).
+        if (shade->shadeType == shade_types::drycontact2) return;
         processMyCommand(internal, frame, curTime);
         break;
     case somfy_commands::StepUp:
