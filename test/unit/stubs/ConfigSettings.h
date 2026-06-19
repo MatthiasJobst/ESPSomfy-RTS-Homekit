@@ -80,6 +80,7 @@ class ConfigSettings : public BaseSettings {
     char hostname[32] = "somfy-test";
     char serverId[32] = "test-server-id";
     char apPassword[32] = "";
+    uint8_t forcedMoveRepeats = 8; // mirrors MOVE_REPEATS (SomfyTransceiver.h) — kept in sync by test_targetSequencer
     conn_types_t connType = conn_types_t::wifi;
     appver_t fwVersion;
     MQTTSettings MQTT;

@@ -8,9 +8,9 @@
     <meta name="apple-mobile-web-app-title" content="ESPSomfy RTS App">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
 
-    <link rel="stylesheet" href="main.css?v=2.4.7c" type="text/css" />
-    <link rel="stylesheet" href="widgets.css?v=2.4.7c" type="text/css" />
-    <link rel="stylesheet" href="icons.css?v=2.4.7c" type="text/css" />
+    <link rel="stylesheet" href="main.css?v=v0.6.1a" type="text/css" />
+    <link rel="stylesheet" href="widgets.css?v=v0.6.1a" type="text/css" />
+    <link rel="stylesheet" href="icons.css?v=v0.6.1a" type="text/css" />
     <link rel="icon" type="image/png" href="favicon.png" />
 
     <!-- iPad retina icon -->
@@ -115,19 +115,24 @@
 
 
     <script type="text/javascript" src="qrcode.min.js"></script>
-    <script type="text/javascript" src="index.js?v=2.4.7h"></script>
+    <script type="text/javascript" src="index.js?v=v0.6.1a"></script>
     <script type="text/javascript">
+    // Cache-bust query appended to every versioned asset (CSS + scripts). It is the
+    // app version plus a trailing asset-revision letter (e.g. v0.6.1a) so it stays
+    // distinct from the firmware/application version. bump_version.sh resets every
+    // version query token in this file to "<tag>a" on release; between releases bump
+    // the letter by hand (a→b→c) when iterating on assets, then reflash the data partition.
+    window.assetVer = '?v=v0.6.1a';
     // Load remaining scripts one at a time so the ESP32 never receives
     // more than one file request simultaneously. The browser's preload
     // scanner would otherwise fetch all <script src> tags in parallel,
     // overwhelming the single-threaded server.
     (async function loadScripts() {
-        const ver = '?v=2.4.7c';
         const scripts = ['ui.js', 'settings.js', 'somfy.js', 'extras.js'];
         for (const src of scripts) {
             await new Promise((resolve, reject) => {
                 const s = document.createElement('script');
-                s.src = src + ver;
+                s.src = src + window.assetVer;
                 s.onload = resolve;
                 s.onerror = () => { console.error('Failed to load ' + src); reject(new Error(src)); };
                 document.head.appendChild(s);
@@ -461,19 +466,34 @@
                 <div id="divHomeKitSettings" style="display:none;">
                     <div id="divHomeKitNotEnabled" style="display:none;padding-top:20px;text-align:center;color:#aaa;font-size:15px;">HomeKit is not enabled on this device.</div>
                     <div id="divHomeKitContent">
-                        <div style="padding-top:8px;text-align:center;">
-                            <div id="divHKQR" style="display:inline-block;"></div>
-                            <div style="font-size:14px;color:#00bcd4;margin:8px 0 4px;">Setup Code</div>
-                            <div id="spanHKSetupCode" style="font-size:2em;letter-spacing:4px;font-weight:bold;">---</div>
+                        <div class="subtab-container"><span class="selected" data-grpid="divHomeKitPairing">Pairing</span><span data-grpid="divHomeKitOptions">Options</span></div>
+                        <div id="divHomeKitPairing" class="subtab-content" style="padding-top:10px;">
+                            <div style="padding-top:8px;text-align:center;">
+                                <div id="divHKQR" style="display:inline-block;"></div>
+                                <div style="font-size:14px;color:#00bcd4;margin:8px 0 4px;">Setup Code</div>
+                                <div id="spanHKSetupCode" style="font-size:2em;letter-spacing:4px;font-weight:bold;">---</div>
+                            </div>
+                            <hr style="border-color:#333;margin:12px 0;" />
+                            <div>
+                                <div style="font-size:14px;color:#00bcd4;margin-bottom:4px;">Pairing Status</div>
+                                <div id="spanHKPairedCount" style="font-size:1.1em;">--</div>
+                            </div>
+                            <hr style="border-color:#333;margin:12px 0;" />
+                            <div class="button-container">
+                                <button id="btnHKResetPairings" type="button" onclick="hkit.resetPairings();" disabled>Reset Pairings</button>
+                            </div>
                         </div>
-                        <hr style="border-color:#333;margin:12px 0;" />
-                        <div>
-                            <div style="font-size:14px;color:#00bcd4;margin-bottom:4px;">Pairing Status</div>
-                            <div id="spanHKPairedCount" style="font-size:1.1em;">--</div>
-                        </div>
-                        <hr style="border-color:#333;margin:12px 0;" />
-                        <div class="button-container">
-                            <button id="btnHKResetPairings" type="button" onclick="hkit.resetPairings();" disabled>Reset Pairings</button>
+                        <div id="divHomeKitOptions" class="subtab-content" style="padding-top:10px;display:none;">
+                            <div>
+                                <div style="font-size:14px;color:#00bcd4;margin-bottom:4px;">Forced Move</div>
+                                <div class="field-group" style="padding:0px;">
+                                    <input id="fldForcedMoveRepeats" name="forcedMoveRepeats" type="number" min="1" max="40" length=2 placeholder="Repeats" style="width:100%;text-align:right;" autocomplete="off">
+                                    <label for="fldForcedMoveRepeats">Repeats</label>
+                                </div>
+                                <div class="button-container">
+                                    <button id="btnHKSaveSettings" type="button" onclick="hkit.saveSettings();">Save</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -10,8 +10,10 @@
 #include "Web.h"
 #include "WebJsonResponder.h"
 #include "HomeKit.h"
+#include "ConfigSettings.h"
 
 extern HomeKitClass homekit;
+extern ConfigSettings settings;
 
 void WebHomeKit::begin()
 {
@@ -34,6 +36,7 @@ void WebHomeKit::handleHomeKit(WebServer &server)
     if (server.method() == HTTP_GET) {
         auto objJson = json.respondJson().object();
         homekit.toJSON(objJson);
+        objJson.addElem("forcedMoveRepeats", settings.forcedMoveRepeats);
     } else
         json.respondJson().notFound();
 }

@@ -98,7 +98,7 @@ void WebSettings::handleSetGeneral(WebServer &server)
     if (!json.parseBody(obj)) return;
     HTTPMethod method = server.method();
     if (method == HTTP_POST || method == HTTP_PUT) {
-        if (obj.containsKey("hostname") || obj.containsKey("checkForUpdate")) {
+        if (obj.containsKey("hostname") || obj.containsKey("checkForUpdate") || obj.containsKey("forcedMoveRepeats")) {
             bool checkForUpdate = settings.checkForUpdate;
             settings.fromJSON(obj);
             settings.save();

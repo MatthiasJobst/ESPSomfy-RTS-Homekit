@@ -63,14 +63,21 @@ echo "${FULL_TAG}" > data/appversion
 # 4. README.md
 sed -i '' "s|Current version: \*\*v[^*]*\*\*|Current version: **${FULL_TAG}**|" README.md
 
+# 5. data/index.html — cache-bust query (?v=...) for all versioned web assets
+#    (CSS, index.js, and window.assetVer used for the lazy-loaded scripts).
+#    A trailing letter ('a' on each release) keeps the asset revision distinct from
+#    the firmware/application version and can be hand-bumped (a→b→c) between releases.
+sed -i '' -E "s|\?v=[^\"';]*|?v=${FULL_TAG}a|g" data/index.html
+
 echo "Updated files:"
 grep "FW_VERSION" main/ConfigSettings.h
 grep "appVersion = " data/settings.js | head -1
 echo "data/appversion:  $(cat data/appversion)"
 grep "Current version" README.md
+grep "window.assetVer = " data/index.html
 
 # Commit and tag
-git add main/ConfigSettings.h data/settings.js data/appversion README.md
+git add main/ConfigSettings.h data/settings.js data/appversion README.md data/index.html
 git commit -m "Bump version to ${FULL_TAG}"
 git tag "${FULL_TAG}"
 

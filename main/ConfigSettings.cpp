@@ -7,10 +7,13 @@
 #include "ConfigSettings.h"
 #include "Utils.h"
 #include "esp_chip_info.h"
+#include "SomfyTransceiver.h" // MOVE_REPEATS — default for forcedMoveRepeats
 
 Preferences pref;
 
 static const char *s_TAG = "ConfigSettings";
+
+ConfigSettings::ConfigSettings() : forcedMoveRepeats(MOVE_REPEATS) {}
 
 void restore_options_t::fromJSON(JsonObject &obj)
 {
@@ -230,6 +233,7 @@ bool ConfigSettings::load()
     pref.begin("CFG");
     pref.getString("hostname", this->hostname, sizeof(this->hostname));
     this->checkForUpdate = pref.getBool("checkForUpdate", true);
+    this->forcedMoveRepeats = pref.getUChar("fmRepeats", this->forcedMoveRepeats);
     this->connType = static_cast<conn_types_t>(pref.getChar("connType", 0x00));
     // ESP_LOGI(s_TAG, "Preference GFG Free Entries: %d", pref.freeEntries());
     pref.end();
@@ -262,6 +266,7 @@ bool ConfigSettings::save()
     pref.putString("hostname", this->hostname);
     pref.putChar("connType", static_cast<int8_t>(this->connType));
     pref.putBool("checkForUpdate", this->checkForUpdate);
+    pref.putUChar("fmRepeats", this->forcedMoveRepeats);
     pref.end();
     return true;
 }
@@ -271,6 +276,7 @@ bool ConfigSettings::toJSON(JsonObject &obj)
     obj["connType"] = static_cast<uint8_t>(this->connType);
     obj["chipModel"] = this->chipModel;
     obj["checkForUpdate"] = this->checkForUpdate;
+    obj["forcedMoveRepeats"] = this->forcedMoveRepeats;
     return true;
 }
 void ConfigSettings::toJSON(JsonResponse &json)
@@ -279,6 +285,7 @@ void ConfigSettings::toJSON(JsonResponse &json)
     json.addElem("connType", static_cast<uint8_t>(this->connType));
     json.addElem("chipModel", this->chipModel);
     json.addElem("checkForUpdate", this->checkForUpdate);
+    json.addElem("forcedMoveRepeats", this->forcedMoveRepeats);
 }
 
 bool ConfigSettings::requiresAuth()
@@ -290,6 +297,12 @@ bool ConfigSettings::fromJSON(JsonObject &obj)
     if (obj.containsKey("hostname")) this->parseValueString(obj, "hostname", this->hostname, sizeof(this->hostname));
     if (obj.containsKey("connType")) this->connType = static_cast<conn_types_t>(obj["connType"].as<uint8_t>());
     if (obj.containsKey("checkForUpdate")) this->checkForUpdate = obj["checkForUpdate"];
+    if (obj.containsKey("forcedMoveRepeats")) {
+        int repeats = obj["forcedMoveRepeats"].as<int>();
+        if (repeats < 1) repeats = 1;
+        if (repeats > 40) repeats = 40;
+        this->forcedMoveRepeats = static_cast<uint8_t>(repeats);
+    }
     return true;
 }
 void ConfigSettings::print()

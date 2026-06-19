@@ -17,6 +17,9 @@ using ::testing::AnyNumber;
 
 // SETMY_REPEATS / TILT_REPEATS are defined in SomfyTransceiver.h
 #include "SomfyTransceiver.h"
+#include "ConfigSettings.h"
+
+extern ConfigSettings settings; // forcedMoveRepeats drives moveToTargetForced
 
 // ── fixture ───────────────────────────────────────────────────────────────────
 
@@ -196,6 +199,26 @@ TEST_F(TargetSequencerTest, MoveToTargetForced_SetsBoostedStop)
     shade.currentPos = 50.0f;
     shade.moveToTargetForced(80.0f);
     EXPECT_TRUE(shade.getBoostedStop());
+}
+
+// Forced move uses the configurable settings.forcedMoveRepeats, which defaults
+// to MOVE_REPEATS and is surfaced in the HomeKit settings tab.
+TEST_F(TargetSequencerTest, MoveToTargetForced_DefaultsToMoveRepeats)
+{
+    EXPECT_EQ(settings.forcedMoveRepeats, MOVE_REPEATS);
+    shade.currentPos = 50.0f;
+    shade.moveToTargetForced(80.0f);
+    EXPECT_EQ(shade.getLastFrame().repeats, MOVE_REPEATS);
+}
+
+TEST_F(TargetSequencerTest, MoveToTargetForced_UsesConfiguredRepeats)
+{
+    uint8_t saved = settings.forcedMoveRepeats;
+    settings.forcedMoveRepeats = 20;
+    shade.currentPos = 50.0f;
+    shade.moveToTargetForced(80.0f);
+    EXPECT_EQ(shade.getLastFrame().repeats, 20);
+    settings.forcedMoveRepeats = saved;
 }
 
 TEST_F(TargetSequencerTest, MoveToTarget_ClearsBoostedStop)

@@ -154,6 +154,7 @@ class MQTTSettings : BaseSettings {
 };
 class ConfigSettings : BaseSettings {
   public:
+    ConfigSettings();
     static void printAvailHeap();
     char serverId[10] = "";
     char hostname[32] = "ESPSomfyRTS";
@@ -162,6 +163,9 @@ class ConfigSettings : BaseSettings {
     appver_t fwVersion;
     appver_t appVersion;
     bool checkForUpdate = true;
+    // Frame repeats used for a forced position move (SomfyTargetSequencer::moveToTargetForced).
+    // Defaults to MOVE_REPEATS; the constructor is the single source of that default.
+    uint8_t forcedMoveRepeats;
     uint8_t status;
     IPSettings IP;
     WifiSettings WIFI;

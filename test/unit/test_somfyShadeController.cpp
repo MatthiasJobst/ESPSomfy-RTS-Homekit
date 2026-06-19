@@ -488,7 +488,7 @@ TEST_F(ControllerTest, DeleteRoom_Exists_ClearsRoomAndResetsAffectedShades)
     EXPECT_EQ(somfy.roomController.roomSlot(0).roomId, 0);
     EXPECT_EQ(somfy.shades[0].roomId, 0); // reset
     EXPECT_EQ(somfy.shades[1].roomId, 2); // untouched
-    EXPECT_TRUE(somfy.store.dirty);           // deferred persistence: marked dirty, not written here
+    EXPECT_TRUE(somfy.store.dirty);       // deferred persistence: marked dirty, not written here
 }
 
 TEST_F(ControllerTest, DeleteRoom_ResetsAffectedGroups)

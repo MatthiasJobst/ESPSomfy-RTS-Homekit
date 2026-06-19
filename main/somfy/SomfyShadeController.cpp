@@ -34,8 +34,7 @@ SomfyShadeController::SomfyShadeController()
       groupController([this] { this->store.markDirty(); }, [this] { this->commandDispatcher.cmdQueue.reset(); }),
       repeaterController([this] { this->store.markDirty(); }),
       roomController([this] { this->store.markDirty(); }, [this](uint8_t roomId) { this->onRoomRemoved(roomId); }),
-      startingAddress(ESP.getEfuseMac() & 0x0FFFFF),
-      store(*this)
+      startingAddress(ESP.getEfuseMac() & 0x0FFFFF), store(*this)
 {}
 
 SomfyShade *SomfyShadeController::findShadeByRemoteAddress(uint32_t address)

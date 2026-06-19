@@ -284,7 +284,14 @@ class General {
             }
         });
     }
-    setAppVersion() { document.getElementById('spanAppVersion').innerText = this.appVersion; }
+    setAppVersion() {
+        // Application = the web bundle. Show its asset revision (e.g. v0.6.1a) from
+        // the loaded index.html so it stays distinct from the firmware version.
+        let v = (typeof window.assetVer === 'string' && window.assetVer)
+            ? window.assetVer.replace('?v=', '')
+            : this.appVersion;
+        document.getElementById('spanAppVersion').innerText = v;
+    }
     setTimeZones() {
         let dd = document.getElementById('selTimeZone');
         dd.length = 0;

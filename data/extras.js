@@ -607,6 +607,8 @@ class HomeKit {
             if (content)    content.style.display    = '';
             let code = document.getElementById('spanHKSetupCode');
             if (code) code.innerHTML = data.setupCode || '---';
+            let repeats = document.getElementById('fldForcedMoveRepeats');
+            if (repeats && typeof data.forcedMoveRepeats !== 'undefined') repeats.value = data.forcedMoveRepeats;
             let qrdiv = document.getElementById('divHKQR');
             if (qrdiv && data.qrPayload && typeof qrcode !== 'undefined') {
                 try {
@@ -619,6 +621,18 @@ class HomeKit {
                 } catch(e) { console.error('QR error:', e); }
             }
             this._updatePairingStatus((data.pairedCount || 0) > 0);
+        });
+    }
+    saveSettings() {
+        let fld = document.getElementById('fldForcedMoveRepeats');
+        let repeats = parseInt(fld.value, 10);
+        if (isNaN(repeats) || repeats < 1 || repeats > 40) {
+            ui.errorMessage('Invalid Repeats').querySelector('.sub-message').innerHTML = 'Repeats must be a number between 1 and 40.';
+            return;
+        }
+        putJSONSync('/setgeneral', { forcedMoveRepeats: repeats }, (err, response) => {
+            if (err) ui.serviceError(err);
+            else ui.infoMessage('HomeKit settings saved.');
         });
     }
     resetPairings() {

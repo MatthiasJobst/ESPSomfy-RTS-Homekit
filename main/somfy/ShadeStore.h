@@ -24,8 +24,8 @@ class ShadeStore {
      */
     explicit ShadeStore(SomfyShadeController &controller);
 
-    bool dirty = false;       /**< In-memory config differs from disk. */
-    uint32_t lastCommit = 0;  /**< millis() of the last commit (auto-commit throttle). */
+    bool dirty = false;      /**< In-memory config differs from disk. */
+    uint32_t lastCommit = 0; /**< millis() of the last commit (auto-commit throttle). */
 
     /**
      * @brief Flag the config as needing persistence.
