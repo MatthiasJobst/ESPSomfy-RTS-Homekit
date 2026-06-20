@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/MatthiasJobst/ESPSomfy-RTS-Homekit/actions/workflows/ci.yaml/badge.svg)](https://github.com/MatthiasJobst/ESPSomfy-RTS-Homekit/actions/workflows/ci.yaml) [![Release](https://github.com/MatthiasJobst/ESPSomfy-RTS-Homekit/actions/workflows/release.yaml/badge.svg)](https://github.com/MatthiasJobst/ESPSomfy-RTS-Homekit/actions/workflows/release.yaml)
 
-Current version: **v0.6.1**
+Current version: **v0.7.0**
 
 ## Note for this fork
 This code has been created to merge the [ESPSomfy-RTS](https://github.com/rstrouse/ESPSomfy-RTS) controller with Homekit. This should allow the device to connect directly with homekit and expose shades there.
