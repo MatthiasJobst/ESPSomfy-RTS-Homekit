@@ -81,6 +81,8 @@ All shade configuration is stored in **LittleFS** as `shades.cfg` — a versione
 
 HTTP on port 80 (`WebServer`), WebSocket on port 8080 (`WebSocketsServer`), REST API on port 8081. Handlers are split across `web/Web*.cpp` files by domain (shades, groups, rooms, settings, OTA). All state updates push JSON events over the WebSocket using `SocketEmitter` / `JsonSockEvent` / `WResp`.
 
+**Cache-busting convention:** web assets in `data/` (CSS, JS) are loaded with a `?v=<FW_VERSION><letter>` query in `data/index.html` (also mirrored in `window.assetVer` for the lazy-loaded scripts). The trailing letter (`a`, `b`, `c`, …) keeps the asset revision distinct from the firmware version. **Whenever you change any file under `data/` between releases, bump that trailing letter once** (e.g. `v0.7.0a` → `v0.7.0b`) across all `?v=` occurrences and `window.assetVer` so browsers re-fetch the changed assets. `bump_version.sh` resets the letter back to `a` on each firmware release.
+
 ### Unit test stubs
 
 `test/unit/stubs/` provides host-compilable replacements for Arduino, ESP-IDF, and heavy project headers. `globals_stub.cpp` provides stub implementations of `SomfyShadeController` methods not under test, and the NVS in-memory store (`nvs_ns_stores`). When adding a new method to `SomfyShadeController`, add a stub implementation there too.

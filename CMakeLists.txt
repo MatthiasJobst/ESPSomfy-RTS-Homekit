@@ -17,6 +17,19 @@ project(SomfyController)
 idf_build_set_property(COMPILE_DEFINITIONS
     "ARDUINO_NETWORK_EVENT_TASK_STACK_SIZE=16384" APPEND)
 
+# The LittleFS image (built by littlefs_create_partition_image in
+# main/CMakeLists.txt) is named after its partition: build/spiffs.bin. Mirror it
+# under the canonical *.littlefs.bin name so it can be uploaded via the web UI /
+# GitOTA without a manual rename, and so release CI can publish the IDF-generated
+# image directly. The web upload guard (data/extras.js) requires ".littlefs" in
+# the filename; GitOTA downloads SomfyController.littlefs.bin from releases.
+add_custom_command(TARGET app POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+        "${CMAKE_BINARY_DIR}/spiffs.bin"
+        "${CMAKE_BINARY_DIR}/SomfyController.littlefs.bin"
+    BYPRODUCTS "${CMAKE_BINARY_DIR}/SomfyController.littlefs.bin"
+    COMMENT "Mirroring LittleFS image to SomfyController.littlefs.bin")
+
 #── Unit Tests (host-based, separate from firmware build) ──────────────────
 set(test_source_dir "${CMAKE_CURRENT_SOURCE_DIR}/test/unit")
 set(test_build_dir "${test_source_dir}/build")

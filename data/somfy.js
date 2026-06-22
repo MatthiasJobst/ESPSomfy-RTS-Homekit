@@ -851,12 +851,16 @@ class Somfy {
         });
     }
     setLinkedRemotesList(shade) {
-        let divCfg = '';
-        for (let i = 0; i < shade.linkedRemotes.length; i++) {
-            let remote = shade.linkedRemotes[i];
-            divCfg += `<div class="somfyLinkedRemote" data-shadeid="${shade.shadeId}" data-remoteaddress="${remote.remoteAddress}" style="text-align:center;">`;
-            divCfg += `<span class="linkedremote-address" style="display:inline-block;width:127px;text-align:left;">${remote.remoteAddress}</span>`;
-            divCfg += `<span class="linkedremote-code" style="display:inline-block;width:77px;text-align:left;">${remote.lastRollingCode}</span>`;
+        let linkedRemotes = (shade && shade.linkedRemotes) ? shade.linkedRemotes : [];
+        let divCfg = '<div class="linkedremote-header">Linked Remotes</div>';
+        if (linkedRemotes.length === 0) {
+            divCfg += '<div class="linkedremote-none">No linked remotes</div>';
+        }
+        for (let i = 0; i < linkedRemotes.length; i++) {
+            let remote = linkedRemotes[i];
+            divCfg += `<div class="somfyLinkedRemote" data-shadeid="${shade.shadeId}" data-remoteaddress="${remote.remoteAddress}">`;
+            divCfg += `<span class="linkedremote-address">${remote.remoteAddress}</span>`;
+            divCfg += `<span class="linkedremote-code">${remote.lastRollingCode}</span>`;
             divCfg += `<div class="button-outline" onclick="somfy.unlinkRemote(${shade.shadeId}, ${remote.remoteAddress});"><i class="icss-trash"></i></div>`;
             divCfg += '</div>';
         }

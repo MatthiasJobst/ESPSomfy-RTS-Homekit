@@ -87,15 +87,32 @@
 .wizard[data-stepid="6"] .wizard-step:not([data-stepid="6"]) { display: none; }
 .wizard[data-stepid="7"] .wizard-step:not([data-stepid="7"]) { display: none; }
 
+/* Shared base layout for the Somfy list-row widgets. */
+.somfyRepeater,
+.somfyRoom,
+.somfyGroup,
+.somfyShade,
+.repeater-name,
+.linked-shade,
+.somfyLinkedRemote {
+    padding-bottom: 4px;
+    display: inline-table;
+    padding-left: 4px;
+    padding-right: 4px;
+}
 .somfyRepeater,
 .somfyRoom,
 .somfyGroup,
 .somfyShade {
     text-align: center;
-    padding-bottom: 4px;
-    display: inline-table;
-    padding-left: 4px;
-    padding-right: 4px;
+}
+.repeater-name,
+.linked-shade,
+.somfyLinkedRemote {
+    width: 100%;
+}
+.repeater-name {
+    text-align: left;
 }
     .linked-shade > div,
     .linked-shade > span,
@@ -106,23 +123,38 @@
     .somfyGroup > div,
     .somfyGroup > span,
     .somfyShade > div,
-    .somfyShade > span {
+    .somfyShade > span,
+    .somfyLinkedRemote > div,
+    .somfyLinkedRemote > span {
         display: table-cell;
         padding-left: 4px;
         padding-right: 4px;
     }
-.repeater-name,
-.linked-shade {
-    width: 100%;
-    padding-bottom: 4px;
-    display: inline-table;
-    padding-left: 4px;
-    padding-right: 4px;
-}
-.repeater-name {
-    text-align:left;
-}
     .linked-shade > .linkedshade-name { width: 100%; }
+#divLinkedRemoteList {
+    overflow-y: auto;
+    max-height: 177px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+.linkedremote-header {
+    font-size: .8em;
+    font-weight: bold;
+    padding-bottom: 4px;
+}
+.linkedremote-none {
+    font-style: italic;
+    text-align: center;
+    padding: 4px 0;
+}
+    .somfyLinkedRemote > .linkedremote-address {
+        width: 100%;
+        text-align: left;
+    }
+    .somfyLinkedRemote > .linkedremote-code {
+        text-align: left;
+        white-space: nowrap;
+    }
 .pin-digit {
     margin: 0 0.3rem;
     padding: 0.5rem;

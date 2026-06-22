@@ -6,10 +6,6 @@ on:
 
 env:
   IDF_VERSION: "v5.5.3"
-  LITTLEFS_VERSION: "v2.5.1"
-  MKLITTLEFS_VERSION: "3.1.0"
-  SPIFFS_SIZE: "1990656"
-  SPIFFS_SIZE_ESP32: "942080"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -41,6 +37,18 @@ jobs:
         with:
           name: firmware-esp32s3
           path: SomfyController.esp32s3.bin
+          retention-days: 5
+
+      # The IDF build generates the LittleFS image (build/spiffs.bin) and mirrors
+      # it to SomfyController.littlefs.bin via the POST_BUILD step in CMakeLists.txt.
+      - name: Copy LittleFS image
+        run: cp build/SomfyController.littlefs.bin SomfyController.littlefs.bin
+
+      - name: Upload LittleFS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: littlefs
+          path: SomfyController.littlefs.bin
           retention-days: 5
 
   unit-tests:
@@ -114,70 +122,10 @@ jobs:
           path: SomfyController.esp32.bin
           retention-days: 5
 
-  littlefs:
-    name: Build LittleFS image (ESP32-S3)
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Checkout mklittlefs
-        uses: actions/checkout@v4
-        with:
-          repository: earlephilhower/mklittlefs
-          path: mklittlefs
-          ref: ${{ env.MKLITTLEFS_VERSION }}
-
-      - name: Checkout LittleFS
-        uses: actions/checkout@v4
-        with:
-          repository: littlefs-project/littlefs
-          path: mklittlefs/littlefs
-          ref: ${{ env.LITTLEFS_VERSION }}
-
-      - name: Build mklittlefs
-        run: make -C mklittlefs
-
-      - name: Create LittleFS image
-        run: |
-          ./mklittlefs/mklittlefs --create data --size ${{ env.SPIFFS_SIZE }} SomfyController.littlefs.bin
-
-      - name: Upload LittleFS artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: littlefs
-          path: SomfyController.littlefs.bin
-          retention-days: 5
-
-  littlefs-esp32:
-    name: Build LittleFS image (ESP32 4MB)
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Checkout mklittlefs
-        uses: actions/checkout@v4
-        with:
-          repository: earlephilhower/mklittlefs
-          path: mklittlefs
-          ref: ${{ env.MKLITTLEFS_VERSION }}
-
-      - name: Checkout LittleFS
-        uses: actions/checkout@v4
-        with:
-          repository: littlefs-project/littlefs
-          path: mklittlefs/littlefs
-          ref: ${{ env.LITTLEFS_VERSION }}
-
-      - name: Build mklittlefs
-        run: make -C mklittlefs
-
-      - name: Create LittleFS image
-        run: |
-          ./mklittlefs/mklittlefs --create data --size ${{ env.SPIFFS_SIZE_ESP32 }} SomfyController.littlefs.esp32.bin
+      # The IDF build generates the LittleFS image (build/spiffs.bin) sized from
+      # the 4MB partition table and mirrors it to SomfyController.littlefs.bin.
+      - name: Copy LittleFS image
+        run: cp build/SomfyController.littlefs.bin SomfyController.littlefs.esp32.bin
 
       - name: Upload LittleFS artifact
         uses: actions/upload-artifact@v4
@@ -188,7 +136,7 @@ jobs:
 
   release:
     name: Upload release assets
-    needs: [build, build-esp32, littlefs, littlefs-esp32, unit-tests]
+    needs: [build, build-esp32, unit-tests]
     runs-on: ubuntu-latest
     permissions:
       contents: write
