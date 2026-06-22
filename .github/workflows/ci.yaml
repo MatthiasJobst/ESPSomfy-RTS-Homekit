@@ -8,9 +8,6 @@ on:
 
 env:
   IDF_VERSION: "v5.5.3"
-  LITTLEFS_VERSION: "v2.5.1"
-  MKLITTLEFS_VERSION: "3.1.0"
-  SPIFFS_SIZE: "1990656"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -27,19 +24,15 @@ jobs:
       - name: Initialize submodules
         run: git submodule update --init --recursive
 
+      # Builds the firmware and (via the POST_BUILD step in CMakeLists.txt) the
+      # LittleFS image; compiling both is the CI signal. The binaries themselves
+      # are not uploaded here — release.yaml publishes the release artifacts.
       - name: Build with ESP-IDF
         uses: espressif/esp-idf-ci-action@v1
         with:
           esp_idf_version: ${{ env.IDF_VERSION }}
           target: esp32s3
           command: idf.py build
-
-      - name: Upload firmware artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: firmware-esp32s3
-          path: build/SomfyController.bin
-          retention-days: 5
 
   unit-tests:
     name: Unit Tests
@@ -81,39 +74,3 @@ jobs:
         with:
           name: coverage-report
           path: test/unit/build/coverage/
-
-  littlefs:
-    name: Build LittleFS image
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Checkout mklittlefs
-        uses: actions/checkout@v4
-        with:
-          repository: earlephilhower/mklittlefs
-          path: mklittlefs
-          ref: ${{ env.MKLITTLEFS_VERSION }}
-
-      - name: Checkout LittleFS
-        uses: actions/checkout@v4
-        with:
-          repository: littlefs-project/littlefs
-          path: mklittlefs/littlefs
-          ref: ${{ env.LITTLEFS_VERSION }}
-
-      - name: Build mklittlefs
-        run: make -C mklittlefs
-
-      - name: Create LittleFS image
-        run: |
-          ./mklittlefs/mklittlefs --create data --size ${{ env.SPIFFS_SIZE }} SomfyController.littlefs.bin
-
-      - name: Upload LittleFS artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: littlefs
-          path: SomfyController.littlefs.bin
-          retention-days: 5
