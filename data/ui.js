@@ -481,7 +481,7 @@ class UIBinder {
         let divHome = document.getElementById('divHomePnl');
         divHome.style.display = 'none';
         divCfg.style.display = '';
-        document.getElementById('icoConfig').className = 'icss-home';
+        document.getElementById('icoConfig').classList.add('show-home');
         if (sockIsOpen) socket.send('join:0');
         let overlay = ui.waitMessage(document.getElementById('divSecurityOptions'));
         overlay.style.borderRadius = '5px';
@@ -500,7 +500,7 @@ class UIBinder {
         let divHome = document.getElementById('divHomePnl');
         divHome.style.display = '';
         divCfg.style.display = 'none';
-        document.getElementById('icoConfig').className = 'icss-gear';
+        document.getElementById('icoConfig').classList.remove('show-home');
         if (sockIsOpen) socket.send('leave:0');
         general.setSecurityConfig({ type: 0, username: '', password: '', pin: '', permissions: 0 });
     }

@@ -401,67 +401,6 @@ i.icss-trash {
         border-radius: .07em;
         transform: translateX(-50%);
     }
-i.icss-gear {
-    width: .5em;
-    height: .5em;
-    position: relative;
-    border-radius: 100%;
-    background-color: transparent;
-    border-width: .07em;
-    border-style: solid;
-    border-color: transparent;
-    margin: .25em;
-    box-shadow: 0 0 0 .1em, inset 0 0 0 .3em;
-}
-
-    i.icss-gear:before {
-        width: .18em;
-        height: .18em;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        box-shadow: .41em 0, -.41em 0, 0 .41em, 0 -.41em;
-    }
-
-    i.icss-gear:after {
-        width: .18em;
-        height: .18em;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) rotate(45deg);
-        box-shadow: .42em 0, -.42em 0, 0 .42em, 0 -.42em;
-    }
-i.icss-gears {
-    width: .5em;
-    height: .5em;
-    position: relative;
-    border-radius: 100%;
-    border-width: .063em;
-    border-style: solid;
-    border-color: transparent;
-    margin: .36em .532em .08em .1em;
-    box-shadow: .51em -.32em 0 -.06em;
-}
-
-    i.icss-gears:before {
-        width: .7em;
-        height: .7em;
-        border-radius: 100%;
-        background: linear-gradient(0deg,transparent 39%,currentcolor 39%,currentcolor 61%, transparent 61%), linear-gradient(60deg,transparent 42%, currentcolor 42%,currentcolor 58%, transparent 58%), linear-gradient(120deg,transparent 42%, currentcolor 42%,currentcolor 58%, transparent 58%);
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-    }
-
-    i.icss-gears:after {
-        width: .55em;
-        height: .55em;
-        border-radius: 100%;
-        background: linear-gradient(0deg,transparent 37%,currentcolor 37%,currentcolor 63%, transparent 63%), linear-gradient(60deg,transparent 40%, currentcolor 40%,currentcolor 60%, transparent 60%), linear-gradient(120deg,transparent 40%, currentcolor 40%,currentcolor 60%, transparent 60%);
-        top: -.135em;
-        left: .695em;
-        transform: translate(-50%, -50%) rotate(25deg);
-    }
 i.icss-somfy-down {
     width: 1em;
     height: 1em;
@@ -529,36 +468,6 @@ i.icss-somfy-toggle {
 
 
 
-i.icss-home {
-    width: .8em;
-    height: .45em;
-    background-color: transparent;
-    border-width: 0;
-    border-style: solid;
-    border-radius: 0 0 .02em .02em;
-    box-shadow: inset .285em .1em, inset -.285em .1em;
-    margin: .55em .1em 0;
-}
-
-    i.icss-home:before {
-        border-width: 0 .4em .4em;
-        border-style: solid;
-        border-color: currentColor transparent;
-        transform: translateX(-50%);
-        box-shadow: 0 .1em;
-        top: -.4em;
-        left: 50%;
-    }
-
-    i.icss-home:after {
-        width: .76em;
-        height: .76em;
-        border-width: 0.065em 0 0 0.065em;
-        border-style: solid;
-        transform: translateX(-50%) rotate(45deg);
-        top: -0.4em;
-        left: 50%;
-    }
 i.icss-window {
     width: 1.1em;
     height: .75em;

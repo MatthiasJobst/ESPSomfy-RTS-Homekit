@@ -79,7 +79,8 @@ form {
     margin-top:-18px;
 }
 
-.field-group {
+.field-group,
+.button-container {
     box-sizing: border-box;
     clear: both;
     padding: 4px 0;
@@ -88,16 +89,7 @@ form {
     width: 100%;
 }
 
-.field-group1 {
-    box-sizing: border-box;
-    clear: both;
-    padding: 4px 0;
-    position: relative;
-    margin: 1px 0;
-    width: 100%;
-}
-
-    .field-group1 > span {
+    .field-sep {
         color: #757575;
         display: inline-block;
         margin: 0 0 5px 0;
@@ -120,7 +112,7 @@ form {
     margin-top:-10px;
     color:#00bcd4;
 }
-.field-group1 > div.field-group {
+.radioPins {
     display:inline-block;
     width:auto;
 }
@@ -130,7 +122,8 @@ form {
 
 input[type=password],
 input[type=number],
-input[type=text] {
+input[type=text],
+select {
     font-size: 15px;
     margin-bottom: 14px;
     -webkit-appearance: none;
@@ -144,22 +137,6 @@ input[type=text] {
     border-right: none;
     border-bottom: 1px solid #00bcd4;
     background-color: transparent;
-}
-
-select {
-    font-size: 15px;
-    -webkit-appearance: none;
-    appearance: none;
-    background: #fafafa;
-    color: #636363;
-    border: none;
-    border-radius: 0;
-    border-top: none;
-    border-left: none;
-    border-right: none;
-    border-bottom: 1px solid #00bcd4;
-    background-color: transparent;
-    margin-bottom:14px;
 }
 
 .field-group input[type=password],
@@ -178,12 +155,8 @@ input[type=text]:focus {
 }
 
 .button-container {
-    box-sizing: border-box;
-    clear: both;
-    margin: 1px 0 0;
-    padding: 4px 0;
-    position: relative;
-    width: 100%;
+    /* shares the .field-group base above; only the bottom margin differs */
+    margin-bottom: 0;
 }
 
 button[type=button],
@@ -352,9 +325,6 @@ input[type=checkbox] {
     width:20px;
     height:20px;
     vertical-align:middle;
-}
-div.field-group1.inputPin {
-    margin-top:-10px;
 }
 legend {
     border: 1px solid #ccc;
@@ -680,7 +650,6 @@ div.wait-overlay > .lds-roller {
     .somfyShadeCtl[data-roomid="0"] .shadectl-room {
         display:none;
     }
-    .somfyGroupCtl .groupctl-mypos,
     .somfyShadeCtl .shadectl-mypos {
         white-space: nowrap;
         font-size: 12px;
@@ -854,6 +823,32 @@ div.frame-pulses {
     text-overflow:ellipsis;
     display:none;
 }
+#icoConfig .ct-icon {
+    /* Bootstrap Icons SVGs served from LittleFS, recolored to the button's
+       currentColor via CSS mask so they stay white on the blue button. */
+    width: 22px;
+    height: 22px;
+    display: inline-block;
+    vertical-align: middle;
+    background-color: currentColor;
+    -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+            mask-position: center;
+    -webkit-mask-size: contain;
+            mask-size: contain;
+}
+    #icoConfig .ct-gear {
+        -webkit-mask-image: url('/house-gear-fill.svg');
+                mask-image: url('/house-gear-fill.svg');
+    }
+    #icoConfig .ct-home {
+        -webkit-mask-image: url('/house-fill.svg');
+                mask-image: url('/house-fill.svg');
+        display: none;
+    }
+    #icoConfig.show-home .ct-gear { display: none; }
+    #icoConfig.show-home .ct-home { display: inline-block; }
 #icoHomeKit {
     opacity: 0.25;
     transition: filter 0.3s, opacity 0.3s;
