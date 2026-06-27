@@ -5,7 +5,6 @@
 // all initialisation and the poll loop run inside mainLoop which has a full
 // 8192-byte stack.
 
-#include <cstring>
 #include <esp_log.h>
 #include <esp_system.h>
 #include <esp_task_wdt.h>
@@ -29,7 +28,6 @@
 #include "Web.h"
 
 static void setCodeForHomeKit();
-static void logNvsUsage();
 
 ConfigSettings settings;
 Web webServer;
@@ -67,7 +65,6 @@ static void mainLoop(void *)
         ESP_LOGE(s_TAG, "Error mounting file system");
     settings.begin();
     setCodeForHomeKit();
-    logNvsUsage();
     if (WiFi.status() == WL_CONNECTED) WiFi.disconnect(true);
     vTaskDelay(pdMS_TO_TICKS(10));
     ESP_LOGI(s_TAG, "Initializing web server...");
@@ -168,62 +165,6 @@ static void setCodeForHomeKit()
             }
         }
     }
-}
-
-/**
- * @brief Log NVS partition usage and a per-namespace entry breakdown.
- *
- * Diagnostic for the `nvs` partition filling up (seen as PHY calibration
- * write failures, ESP_ERR_NVS_NOT_ENOUGH_SPACE 0x1105). HomeKit (HAP) stores
- * its runtime pairing data in this same partition, so it can crowd out the app
- * config and the PHY cal blob. Prints overall used/free/total entries and the
- * number of keys per namespace so the dominant consumer can be identified.
- */
-static void logNvsUsage()
-{
-    nvs_stats_t stats;
-    if (nvs_get_stats(NULL, &stats) == ESP_OK) {
-        ESP_LOGI(s_TAG, "NVS 'nvs' partition: used=%zu free=%zu total=%zu entries (%.0f%% full), namespaces=%zu",
-                 stats.used_entries, stats.free_entries, stats.total_entries,
-                 stats.total_entries ? 100.0f * stats.used_entries / stats.total_entries : 0.0f,
-                 stats.namespace_count);
-    } else {
-        ESP_LOGW(s_TAG, "NVS stats unavailable");
-        return;
-    }
-
-    // Tally keys per namespace. Namespace names are short (<= 15 chars); track a
-    // small fixed set of distinct names and their counts.
-    struct {
-        char name[16];
-        uint32_t count;
-    } seen[24] = {};
-    size_t distinct = 0;
-    uint32_t total = 0;
-
-    nvs_iterator_t it = NULL;
-    esp_err_t res = nvs_entry_find("nvs", NULL, NVS_TYPE_ANY, &it);
-    while (res == ESP_OK) {
-        nvs_entry_info_t info;
-        nvs_entry_info(it, &info);
-        total++;
-        size_t i = 0;
-        for (; i < distinct; i++) {
-            if (strncmp(seen[i].name, info.namespace_name, sizeof(seen[i].name)) == 0) break;
-        }
-        if (i == distinct && distinct < sizeof(seen) / sizeof(seen[0])) {
-            strncpy(seen[distinct].name, info.namespace_name, sizeof(seen[distinct].name) - 1);
-            distinct++;
-        }
-        if (i < sizeof(seen) / sizeof(seen[0])) seen[i].count++;
-        res = nvs_entry_next(&it);
-    }
-    nvs_release_iterator(it);
-
-    for (size_t i = 0; i < distinct; i++) {
-        ESP_LOGI(s_TAG, "  NVS ns [%s]: %lu keys", seen[i].name, seen[i].count);
-    }
-    ESP_LOGI(s_TAG, "NVS total keys enumerated: %lu", total);
 }
 
 /** @brief Linker stub — arduino-esp32 references setup() even when CONFIG_AUTOSTART_ARDUINO=n. */
