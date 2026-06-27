@@ -2,8 +2,11 @@
 
 #include <cstdio>
 #include <cstring>
+#include <string>
+#include <vector>
 #include <esp_log.h>
 #include <esp_mac.h>
+#include <nvs.h>
 #include <hap.h>
 #include <hap_apple_chars.h>
 #include <hap_apple_servs.h>
@@ -14,6 +17,9 @@
 static const char *s_TAG = "HomeKit";
 
 #define HAP_SETUP_ID "SMFY"
+
+// Namespace holding HAP's runtime keystore (see hap_platform_keystore).
+#define HAP_RUNTIME_NAMESPACE "hap_main"
 
 extern ConfigSettings settings;
 extern SomfyShadeController somfy;
@@ -34,6 +40,85 @@ static uint8_t directionToPositionState(int8_t direction)
     if (direction > 0) return HAP_POS_STATE_INCREASING;
     if (direction < 0) return HAP_POS_STATE_DECREASING;
     return HAP_POS_STATE_STOPPED;
+}
+
+/**
+ * @brief Build the stable HomeKit identity string for a shade.
+ *
+ * Derived from the immutable shade id (not the user-editable name), so it never
+ * changes across renames. Used both as the accessory serial number and as the
+ * key for HAP's persistent accessory-AID mapping. Keying the AID by this id keeps
+ * a shade's HomeKit AID — and therefore its room, scene and automation
+ * assignments — stable when it is renamed, and stays within the NVS key length
+ * limit that long shade names would otherwise exceed.
+ *
+ * @param shade Shade to identify. Must not be NULL.
+ * @param buf   Output buffer.
+ * @param len   Size of @p buf.
+ */
+static void shadeStableId(SomfyShade *shade, char *buf, size_t len)
+{
+    snprintf(buf, len, "SMF-%03d", shade->getShadeId());
+}
+
+/**
+ * @brief One-time migration of a shade's accessory AID from name-keyed to id-keyed.
+ *
+ * Firmware before the id-keying change stored the persistent HomeKit AID under the
+ * (mutable) shade name. To preserve a shade's AID — and therefore its HomeKit
+ * room, scene and automation assignments — across an OTA update, copy any legacy
+ * name-keyed entry to the stable id key and delete the old one. No-op once
+ * migrated, or for shades that never had a legacy entry. Runs in place on the
+ * existing `nvs` partition, so no data is lost on update.
+ *
+ * @note MIGRATION SHIM — introduced after v0.7.1. Pure backward-compatibility:
+ *       it does nothing on devices already on id-keyed AIDs. Remove this function
+ *       and its call in uniqueAidForShade() once the installed base has updated
+ *       past the introducing release (no device still holds name-keyed AIDs);
+ *       pruneOrphanAccessoryAids() then cleans up any stragglers anyway.
+ *
+ * @param shade Shade being registered. Must not be NULL.
+ * @param id    Stable id key for the shade (from shadeStableId()).
+ */
+static void migrateLegacyNamedAid(SomfyShade *shade, const char *id)
+{
+    if (shade->name[0] == '\0') return;
+
+    nvs_handle_t handle;
+    if (nvs_open_from_partition(CONFIG_HAP_PLATFORM_DEF_NVS_RUNTIME_PARTITION, HAP_RUNTIME_NAMESPACE,
+                                NVS_READWRITE, &handle) != ESP_OK)
+        return;
+
+    size_t sz = 0;
+    bool haveStable = (nvs_get_blob(handle, id, nullptr, &sz) == ESP_OK);
+
+    int aid = 0;
+    sz = sizeof(aid);
+    bool haveLegacy = (nvs_get_blob(handle, shade->name, &aid, &sz) == ESP_OK && sz == sizeof(aid));
+
+    if (!haveStable && haveLegacy && nvs_set_blob(handle, id, &aid, sizeof(aid)) == ESP_OK) {
+        nvs_erase_key(handle, shade->name);
+        nvs_commit(handle);
+        ESP_LOGI(s_TAG, "Migrated HomeKit AID %d: '%s' -> %s", aid, shade->name, id);
+    }
+    nvs_close(handle);
+}
+
+/**
+ * @brief Resolve (and persist on first use) the stable HomeKit AID for a shade.
+ *
+ * Migrates any pre-existing name-keyed AID first, so a shade keeps its AID across
+ * the upgrade to id-based keys.
+ *
+ * @param shade Shade to look up. Must not be NULL.
+ * @return Accessory instance id, stable across reboots and renames.
+ */
+static int uniqueAidForShade(SomfyShade *shade)
+{
+    char id[16];
+    shadeStableId(shade, id, sizeof(id));
+    migrateLegacyNamedAid(shade, id); // MIGRATION SHIM (post-v0.7.1) — removable, see function doc
+    return hap_get_unique_aid(id);
 }
 
 /**
@@ -151,7 +236,7 @@ static hap_acc_t *createShadeAccessory(SomfyShade *shade)
     uint8_t posState = directionToPositionState(shade->direction);
 
     char serial[24];
-    snprintf(serial, sizeof(serial), "SMF-%03d", shade->getShadeId());
+    shadeStableId(shade, serial, sizeof(serial));
 
     hap_acc_cfg_t cfg = {
         .name = shade->name,
@@ -225,7 +310,7 @@ void HomeKitClass::begin()
         if (shade->getShadeId() == 255 || shade->name[0] == '\0') continue;
         hap_acc_t *acc = createShadeAccessory(shade);
         if (acc) {
-            hap_add_bridged_accessory(acc, hap_get_unique_aid(shade->name));
+            hap_add_bridged_accessory(acc, uniqueAidForShade(shade));
             ESP_LOGI(s_TAG, "Added shade '%s' (id=%d)", shade->name, shade->getShadeId());
         }
     }
@@ -253,6 +338,8 @@ void HomeKitClass::begin()
 
     hap_start();
     _started = true;
+    // Reclaim AID entries left behind by shades renamed/deleted in a previous session.
+    pruneOrphanAccessoryAids();
     ESP_LOGI(s_TAG, "HomeKit bridge started");
 }
 
@@ -305,7 +392,7 @@ void HomeKitClass::addShade(SomfyShade *shade)
     if (!_started || !shade || shade->getShadeId() == 255 || shade->name[0] == '\0') return;
     hap_acc_t *acc = createShadeAccessory(shade);
     if (acc) {
-        hap_add_bridged_accessory(acc, hap_get_unique_aid(shade->name));
+        hap_add_bridged_accessory(acc, uniqueAidForShade(shade));
         hap_update_config_number();
         ESP_LOGI(s_TAG, "Dynamically added shade '%s'", shade->name);
     }
@@ -327,4 +414,87 @@ void HomeKitClass::removeShade(SomfyShade *shade)
         }
         acc = hap_acc_get_next(acc);
     }
+}
+
+/**
+ * @brief Test whether a `hap_main` key is HAP identity/counter data that must be kept.
+ *
+ * HAP stores its accessory identity and config counters under fixed, well-known
+ * keys. Everything else in the namespace is a per-accessory `name -> AID` blob.
+ *
+ * @param key NVS key name.
+ * @return true if the key is a fixed HAP key and must never be pruned.
+ */
+static bool isFixedHapKey(const char *key)
+{
+    static const char *const kKeptKeys[] = {"acc_id",     "ltska",     "ltpka", "fw_rev",
+                                            "config_num", "state_num", "cur_aid"};
+    for (const char *kept : kKeptKeys) {
+        if (strcmp(key, kept) == 0) return true;
+    }
+    return false;
+}
+
+/**
+ * @brief Decide whether a `hap_main` blob is an orphaned accessory-AID entry.
+ *
+ * An entry is an orphan when it is a 4-byte (sizeof(int)) AID blob whose key is
+ * neither a fixed HAP key nor the stable id of a currently-registered shade. The
+ * size check is a safeguard: identity blobs (keys, ids, fw revision) are larger
+ * and counters are 2 bytes, so an unrecognised future key is only ever removed
+ * if it has the exact shape of an AID entry.
+ *
+ * @param handle Open handle on the HAP runtime keystore namespace.
+ * @param key    NVS key to evaluate.
+ * @return true if the entry should be deleted.
+ */
+static bool isOrphanAidEntry(nvs_handle_t handle, const char *key)
+{
+    if (isFixedHapKey(key)) return false;
+
+    size_t len = 0;
+    if (nvs_get_blob(handle, key, nullptr, &len) != ESP_OK) return false;
+    if (len != sizeof(int)) return false;
+
+    // Keep entries that match a shade HomeKit currently registers (same filter as begin()).
+    for (uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
+        SomfyShade *shade = &somfy.shades[i];
+        if (shade->getShadeId() == 255 || shade->name[0] == '\0') continue;
+        char id[16];
+        shadeStableId(shade, id, sizeof(id));
+        if (strcmp(key, id) == 0) return false;
+    }
+    return true;
+}
+
+void HomeKitClass::pruneOrphanAccessoryAids()
+{
+    if (!_started) return;
+
+    const char *partition = CONFIG_HAP_PLATFORM_DEF_NVS_RUNTIME_PARTITION;
+    nvs_handle_t handle;
+    if (nvs_open_from_partition(partition, HAP_RUNTIME_NAMESPACE, NVS_READWRITE, &handle) != ESP_OK) {
+        ESP_LOGW(s_TAG, "AID prune: cannot open NVS %s/%s", partition, HAP_RUNTIME_NAMESPACE);
+        return;
+    }
+
+    // Collect first, erase after — erasing during iteration invalidates the iterator.
+    std::vector<std::string> orphans;
+    nvs_iterator_t it = nullptr;
+    esp_err_t res = nvs_entry_find(partition, HAP_RUNTIME_NAMESPACE, NVS_TYPE_BLOB, &it);
+    while (res == ESP_OK) {
+        nvs_entry_info_t info;
+        nvs_entry_info(it, &info);
+        if (isOrphanAidEntry(handle, info.key)) orphans.emplace_back(info.key);
+        res = nvs_entry_next(&it);
+    }
+    nvs_release_iterator(it);
+
+    for (const std::string &key : orphans) nvs_erase_key(handle, key.c_str());
+    if (!orphans.empty()) nvs_commit(handle);
+    nvs_close(handle);
+
+    if (!orphans.empty())
+        ESP_LOGI(s_TAG, "AID prune: removed %u orphaned accessory entr%s", (unsigned)orphans.size(),
+                 orphans.size() == 1 ? "y" : "ies");
 }

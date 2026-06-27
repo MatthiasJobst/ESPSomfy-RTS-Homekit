@@ -247,6 +247,7 @@ bool SomfyShadeController::deleteShade(uint8_t shadeId)
             this->commandDispatcher.cmdQueue.reset(); // drop commands bound to the removed shade
         }
     }
+    homekit.pruneOrphanAccessoryAids(); // reclaim the deleted shade's AID entry
     this->store.commit();
     return true;
 }

@@ -10,6 +10,7 @@ class HomeKitClass {
     void notifyShadeState(SomfyShade *) {}
     void addShade(SomfyShade *) {}
     void removeShade(SomfyShade *) {}
+    void pruneOrphanAccessoryAids() {}
     void resetPairings() {}
     void toJSON(JsonResponse &) {}
     void end() {}
