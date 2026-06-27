@@ -12,7 +12,7 @@ retained below, and the full license texts ship alongside each component
 
 | Component | License | Copyright | Source |
 |---|---|---|---|
-| Bootstrap Icons (`house-fill.svg`, `house-gear-fill.svg`) | MIT | Copyright (c) 2019-2024 The Bootstrap Authors | https://github.com/twbs/icons |
+| Bootstrap Icons (SVG files in `data/`: house-fill, house-gear-fill, pencil-fill, trash-fill, sun, sun-fill, file-earmark-arrow-up) | MIT | Copyright (c) 2019-2024 The Bootstrap Authors | https://github.com/twbs/icons |
 | QR Code Generator for JavaScript (`qrcode.min.js`) | MIT | Copyright (c) 2009 Kazuhiko Arase | http://www.d-project.com/ |
 
 ## Firmware libraries (`components/`)

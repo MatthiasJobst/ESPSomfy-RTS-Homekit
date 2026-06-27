@@ -36,6 +36,11 @@ const WebFiles::StaticFile WebFiles::s_files[] = {
     {"/HomeKit.svg", "/HomeKit.svg", "image/svg+xml", true},
     {"/house-fill.svg", "/house-fill.svg", "image/svg+xml", true},
     {"/house-gear-fill.svg", "/house-gear-fill.svg", "image/svg+xml", true},
+    {"/pencil-fill.svg", "/pencil-fill.svg", "image/svg+xml", true},
+    {"/trash-fill.svg", "/trash-fill.svg", "image/svg+xml", true},
+    {"/sun-fill.svg", "/sun-fill.svg", "image/svg+xml", true},
+    {"/sun.svg", "/sun.svg", "image/svg+xml", true},
+    {"/file-earmark-arrow-up.svg", "/file-earmark-arrow-up.svg", "image/svg+xml", true},
 };
 const size_t WebFiles::s_fileCount = sizeof(s_files) / sizeof(s_files[0]);
 

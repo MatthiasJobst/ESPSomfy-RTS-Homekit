@@ -341,66 +341,22 @@ i.icss-anim:after {
             top: 54%;
             left: 54%;
         }
+/* Bootstrap Icons served from LittleFS, painted via CSS mask so they inherit
+   the element's currentColor (the base i[class*="icss-"] rule sets
+   background-color: currentColor). */
 i.icss-edit {
     width: 1em;
     height: 1em;
-    background-color: transparent;
-    border-radius: 50% 45% 50% 35%;
-    overflow: hidden;
-    margin: 0;
+    -webkit-mask: url('/pencil-fill.svg') center / contain no-repeat;
+            mask: url('/pencil-fill.svg') center / contain no-repeat;
 }
-
-    i.icss-edit:before {
-        width: .3em;
-        height: .8em;
-        border: .15em solid transparent;
-        border-top: .24em solid currentColor;
-        transform: rotate(45deg) translate(-50%);
-        transform-origin: 0 0;
-        box-shadow: 0 -.05em, .24em -.8em, -.24em -.8em, 0 -1.5em;
-        clip: rect(-.9em .3em 1em 0);
-        left: .25em;
-        top: .75em;
-    }
-
-    i.icss-edit:after {
-        width: .1em;
-        height: 0;
-        background-color: transparent;
-        transform: translate(-50%, -50%);
-        top: 50%;
-        left: 50%;
-    }
 
 i.icss-trash {
-    width: .68em;
-    height: .9em;
-    background-color: transparent;
-    border-width: .1em .1em;
-    border-style: solid;
-    border-radius: .05em;
-    margin: .1em .15em 0;
+    width: 1em;
+    height: 1em;
+    -webkit-mask: url('/trash-fill.svg') center / contain no-repeat;
+            mask: url('/trash-fill.svg') center / contain no-repeat;
 }
-
-    i.icss-trash:before {
-        border-style: solid;
-        border-width: .1em;
-        top: -.23em;
-        left: 50%;
-        border-radius: .1em;
-        width: .275em;
-        height: 1.03em;
-        transform: translateX(-50%);
-    }
-
-    i.icss-trash:after {
-        border-width: .1em .43em;
-        border-style: solid;
-        left: 50%;
-        top: -.05em;
-        border-radius: .07em;
-        transform: translateX(-50%);
-    }
 i.icss-somfy-down {
     width: 1em;
     height: 1em;
@@ -814,27 +770,10 @@ i.icss-lightbulb {
 
 i.icss-upload {
     width: 1em;
-    height: .6em;
-    background-color: transparent;
-    border-width: 0 .2em .3em;
-    border-style: solid;
-    border-radius: .03em;
-    margin: .4em 0 0;
+    height: 1em;
+    -webkit-mask: url('/file-earmark-arrow-up.svg') center / contain no-repeat;
+            mask: url('/file-earmark-arrow-up.svg') center / contain no-repeat;
 }
-    i.icss-upload:before {
-        height: .5em;
-        border-style: solid;
-        border-width: 0 .25em .25em;
-        border-color: transparent;
-        border-bottom-color: currentColor;
-        background-color: transparent;
-        box-shadow: 0em .35em 0 -.13em;
-        top: -.6em;
-        left: 50%;
-        transform: translateX(-50%);
-    }
-    i.icss-upload:after {
-    }
 i.icss-file {
     width: .8em;
     height: 1em;
@@ -907,129 +846,29 @@ i.icss-awning {
         background-image: repeating-linear-gradient(90deg, var(--shade-color, currentColor), var(--shade-color, currentColor) calc(25% - 4px), black calc(25% - 2px), var(--shade-color, currentColor) calc(25% - 2px)); 
         background-color: rgba(71, 212, 255, 0);
     }
+/* Sun icons: sun-fill (lit / "on") and sun (outline / "off"), masked from the
+   served Bootstrap SVGs. icss-sun-c is the filled state, icss-sun-o the outline,
+   icss-sun the standalone indicator. */
 i.icss-sun-c {
     width: 1em;
     height: 1em;
-    border-radius: 50%;
-    background-color: transparent;
-    background-image: radial-gradient(ellipse at center, #fd0 1%, #fb0 39%, #fb0 39%, #d61 100%);
-    box-shadow: 0 0 .06em .03em rgba(255, 107, 0, 0.4), 0 0 22px 11px rgba(255, 203, 0, 0.13);
-    background-position: -.7em -.6em;
-    background-size: 165%;
-    margin: 0;
+    -webkit-mask: url('/sun-fill.svg') center / contain no-repeat;
+            mask: url('/sun-fill.svg') center / contain no-repeat;
 }
-
-    i.icss-sun-c:before {
-    }
-
-    i.icss-sun-c:after {
-    }
 
 i.icss-sun {
-    width: .6em;
-    height: .6em;
-    border-radius: 50%;
-    background-color: transparent;
-    border: 0.03em solid transparent;
-    box-shadow: inset 0 0 0 .5em;
-    margin: .2em;
-}
-
-    i.icss-sun:before {
-        width: .1em;
-        height: .1em;
-        background-color: transparent;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        box-shadow: .45em 0, .38em 0, -.45em 0, -.38em 0, 0 .45em, 0 .38em, 0 -.45em, 0 -.38em;
-    }
-
-    i.icss-sun:after {
-        width: .1em;
-        height: .1em;
-        background-color: transparent;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) rotate(45deg);
-        box-shadow: .45em 0, .38em 0, -.45em 0, -.38em 0, 0 .45em, 0 .38em, 0 -.45em, 0 -.38em;
-    }
-i.icss-sun-o {
-    width: .6em;
-    height: .6em;
-    border-radius: 50%;
-    background-color: transparent;
-    border: 0.03em solid transparent;
-    box-shadow: inset 0 0 0 .065em;
-    margin: .2em;
-}
-
-    i.icss-sun-o:before {
-        width: .1em;
-        height: .1em;
-        background-color: transparent;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        box-shadow: .45em 0, .38em 0, -.45em 0, -.38em 0, 0 .45em, 0 .38em, 0 -.45em, 0 -.38em;
-    }
-
-    i.icss-sun-o:after {
-        width: .1em;
-        height: .1em;
-        background-color: transparent;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) rotate(45deg);
-        box-shadow: .45em 0, .38em 0, -.45em 0, -.38em 0, 0 .45em, 0 .38em, 0 -.45em, 0 -.38em;
-    }
-i.icss-sun-c {
     width: 1em;
     height: 1em;
-    border-radius: 50%;
-    background-color: transparent;
-    background-image: radial-gradient(ellipse at center, #fd0 1%, #fb0 39%, #fb0 39%, #d61 100%);
-    box-shadow: 0 0 .06em .03em rgba(255, 107, 0, 0.4), 0 0 22px 11px rgba(255, 203, 0, 0.13);
-    background-position: -.7em -.6em;
-    background-size: 165%;
-    margin: 0;
+    -webkit-mask: url('/sun-fill.svg') center / contain no-repeat;
+            mask: url('/sun-fill.svg') center / contain no-repeat;
 }
-
-    i.icss-sun-c:before {
-    }
-
-    i.icss-sun-c:after {
-    }
 
 i.icss-sun-o {
-    width: .6em;
-    height: .6em;
-    border-radius: 50%;
-    background-color: transparent;
-    border: 0.03em solid transparent;
-    box-shadow: inset 0 0 0 .065em;
-    margin: .2em;
+    width: 1em;
+    height: 1em;
+    -webkit-mask: url('/sun.svg') center / contain no-repeat;
+            mask: url('/sun.svg') center / contain no-repeat;
 }
-
-    i.icss-sun-o:before {
-        width: .1em;
-        height: .1em;
-        background-color: transparent;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        box-shadow: .45em 0, .38em 0, -.45em 0, -.38em 0, 0 .45em, 0 .38em, 0 -.45em, 0 -.38em;
-    }
-
-    i.icss-sun-o:after {
-        width: .1em;
-        height: .1em;
-        background-color: transparent;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) rotate(45deg);
-        box-shadow: .45em 0, .38em 0, -.45em 0, -.38em 0, 0 .45em, 0 .38em, 0 -.45em, 0 -.38em;
-    }
 div.button-light {
     position:absolute;
     margin-left:-30px;
@@ -1062,23 +901,19 @@ div.button-sunflag {
     margin-left:-30px;
     cursor:pointer;
 }
-    div.button-sunflag[data-on=false] i.icss-sun-c {
-        background-image: radial-gradient(ellipse at center, gainsboro 1%, #ccc 39%, silver 39%, gray 100%);
-    }
-
-    div.button-sunflag > i.icss-sun-c {
-        position: absolute;
-        font-size: 18px;
-        color: orange;
-        left: 6px;
-        top: 7px;
-    }
-
+    /* The fill (sun-c) and outline (sun-o) overlay in the same spot; data-on
+       picks which one shows. background-color paints the mask (orange here;
+       overridden to white inline in the Virtual Remote). */
+    div.button-sunflag > i.icss-sun-c,
     div.button-sunflag > i.icss-sun-o {
         position: absolute;
         font-size: 32px;
-        color: orange;
+        background-color: orange;
+        left: 0;
+        top: 0;
     }
+    div.button-sunflag[data-on=false] > i.icss-sun-c { display: none; }
+    div.button-sunflag[data-on=true]  > i.icss-sun-o { display: none; }
 i.icss-warning {
     width: 1em;
     height: .1em;

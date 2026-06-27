@@ -159,18 +159,6 @@
     width: 100%;
     box-sizing: border-box;
 }
-.linkappshade-hint {
-    font-size: .75em;
-    font-style: italic;
-    text-align: center;
-    padding: 0 0 4px;
-    opacity: .8;
-}
-.link-tab-label {
-    font-size: .8em;
-    color: #00bcd4;
-    padding: 4px 0 2px;
-}
 .info-text {
     font-size: 20px;
 }

@@ -8,9 +8,9 @@
     <meta name="apple-mobile-web-app-title" content="ESPSomfy RTS App">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
 
-    <link rel="stylesheet" href="main.css?v=v0.7.1q" type="text/css" />
-    <link rel="stylesheet" href="widgets.css?v=v0.7.1q" type="text/css" />
-    <link rel="stylesheet" href="icons.css?v=v0.7.1q" type="text/css" />
+    <link rel="stylesheet" href="main.css?v=v0.7.1v" type="text/css" />
+    <link rel="stylesheet" href="widgets.css?v=v0.7.1v" type="text/css" />
+    <link rel="stylesheet" href="icons.css?v=v0.7.1v" type="text/css" />
     <link rel="icon" type="image/png" href="favicon.png" />
 
     <!-- iPad retina icon -->
@@ -115,14 +115,14 @@
 
 
     <script type="text/javascript" src="qrcode.min.js"></script>
-    <script type="text/javascript" src="index.js?v=v0.7.1q"></script>
+    <script type="text/javascript" src="index.js?v=v0.7.1v"></script>
     <script type="text/javascript">
     // Cache-bust query appended to every versioned asset (CSS + scripts). It is the
     // app version plus a trailing asset-revision letter (e.g. v0.6.1a) so it stays
     // distinct from the firmware/application version. bump_version.sh resets every
     // version query token in this file to "<tag>a" on release; between releases bump
     // the letter by hand (a→b→c) when iterating on assets, then reflash the data partition.
-    window.assetVer = '?v=v0.7.1q';
+    window.assetVer = '?v=v0.7.1v';
     // Load remaining scripts one at a time so the ESP32 never receives
     // more than one file request simultaneously. The browser's preload
     // scanner would otherwise fetch all <script src> tags in parallel,
@@ -155,15 +155,15 @@
             <h1 style="text-align: center;">
                 <img src="icon.png" style="width:50px;float:left;margin-left:1px;margin-top:-10px;" />
                 <span>ESPSomfy RTS</span>
-                <span class="button-outline" onclick="ui.toggleConfig();" style="float:right;font-size:1.25rem;vertical-align:middle;width:38px;height:38px;position:relative;padding-top:4px;">
-                    <span style="vertical-align:middle;clear:both;text-align:center;display:inline-block;">
+                <span style="float:right;display:flex;align-items:center;">
+                    <img src="HomeKit.svg" id="icoHomeKit" style="width:38px;margin-right:4px;" />
+                    <span class="button-outline" onclick="ui.toggleConfig();" style="font-size:1.25rem;width:38px;height:38px;position:relative;padding:0;display:flex;align-items:center;justify-content:center;">
                         <span id="icoConfig">
                             <span class="ct-icon ct-gear" aria-hidden="true"></span>
                             <span class="ct-icon ct-home" aria-hidden="true"></span>
                         </span>
                     </span>
                 </span>
-                <img src="HomeKit.svg" id="icoHomeKit" style="width:38px;float:right;margin-right:4px;vertical-align:middle;" />
             </h1>
             <div id="divConfigPnl" style="display:none;">
                 <div id="divWiFiStrength" style="margin-top:-10px;text-align:center;font-size:12px;">
@@ -854,21 +854,11 @@
                         </div>
                         <div id="divLinkTabList"></div>
                         <hr />
-                        <div id="divLinkAppShade" style="display:none;">
-                            <div class="link-tab-label">Add a linked shade</div>
-                            <div class="button-container">
-                                <select id="selLinkAppShade" class="link-appshade-select"></select>
-                            </div>
-                            <div class="button-container">
-                                <button id="btnLinkAppShade" type="button" onclick="somfy.addShadeLink();">
-                                    Link Shade
-                                </button>
-                            </div>
-                            <div class="linkappshade-hint">A linked shade follows the same commands; its position is tracked independently.</div>
-                        </div>
-                        <div class="link-tab-label">Link a physical remote</div>
-                        <div class="button-container">
-                            <button id="btnLinkTabRemote" type="button" onclick="somfy.linkRemoteFromTab();">
+                        <div class="button-container" style="text-align:center;">
+                            <button id="btnLinkAppShade" type="button" onclick="somfy.openLinkShade();" style="display:inline-block;width:47%;">
+                                Link Shade
+                            </button>
+                            <button id="btnLinkTabRemote" type="button" onclick="somfy.linkRemoteFromTab();" style="display:inline-block;width:47%;">
                                 Link Remote
                             </button>
                         </div>
@@ -963,8 +953,8 @@
                         <div class="vr-button vr-updown">
                             <span>Sun Flag</span>
                             <div>
-                                <div class="button-outline" style="width: 59px; text-align: center; border-radius: 33%; font-size: 2em; padding: 10px; height: 52px;" data-cmd="SunFlag" onmousedown="somfy.sendVRCommand(this);" ontouchstart="somfy.sendVRCommand(this);" onmouseup="somfy.endVRCommand();" onmouseleave="somfy.endVRCommand();" ontouchend="somfy.endVRCommand();" ontouchcancel="somfy.endVRCommand();"><div class="button-sunflag" data-on="true" style="margin:0px;margin-left:4px;"><i class="icss-sun-c" style="background:white;"></i><i class="icss-sun-o" style="left:0px;color:white;"></i></div></div>
-                                <div class="button-outline" style="width: 59px; text-align: center; border-radius: 33%; font-size: 2em; padding: 10px; height: 52px;" data-cmd="Flag" onmousedown="somfy.sendVRCommand(this);" ontouchstart="somfy.sendVRCommand(this);" onmouseup="somfy.endVRCommand();" onmouseleave="somfy.endVRCommand();" ontouchend="somfy.endVRCommand();" ontouchcancel="somfy.endVRCommand();"><div class="button-sunflag" data-on="false" style="margin:0px;margin-left:4px;"><i class="icss-sun-c" style="background:transparent;"></i><i class="icss-sun-o" style="left:0px;color:white;"></i></div></div>
+                                <div class="button-outline" style="width: 59px; text-align: center; border-radius: 33%; font-size: 2em; padding: 10px; height: 52px;" data-cmd="SunFlag" onmousedown="somfy.sendVRCommand(this);" ontouchstart="somfy.sendVRCommand(this);" onmouseup="somfy.endVRCommand();" onmouseleave="somfy.endVRCommand();" ontouchend="somfy.endVRCommand();" ontouchcancel="somfy.endVRCommand();"><div class="button-sunflag" data-on="true" style="margin:0px;margin-left:4px;"><i class="icss-sun-c" style="background:white;"></i><i class="icss-sun-o" style="left:0px;background:white;"></i></div></div>
+                                <div class="button-outline" style="width: 59px; text-align: center; border-radius: 33%; font-size: 2em; padding: 10px; height: 52px;" data-cmd="Flag" onmousedown="somfy.sendVRCommand(this);" ontouchstart="somfy.sendVRCommand(this);" onmouseup="somfy.endVRCommand();" onmouseleave="somfy.endVRCommand();" ontouchend="somfy.endVRCommand();" ontouchcancel="somfy.endVRCommand();"><div class="button-sunflag" data-on="false" style="margin:0px;margin-left:4px;"><i class="icss-sun-c" style="background:transparent;"></i><i class="icss-sun-o" style="left:0px;background:white;"></i></div></div>
                             </div>
                         </div>
                         <div class="vr-button">
