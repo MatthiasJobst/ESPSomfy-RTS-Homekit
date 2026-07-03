@@ -9,6 +9,7 @@
 #include "ShadeConfigFile.h" // for stub counter externs
 #include "GitOTA.h"
 #include <cstring>
+#include <set>
 #include <gtest/gtest.h>
 
 // ── extern globals defined in globals_stub.cpp ──────────────────────────────
@@ -88,7 +89,7 @@ TEST_F(ControllerTest, GetNextShadeId_GapInMiddle_ReturnsGap)
 
 TEST_F(ControllerTest, GetNextShadeId_AllSlotsUsed_Returns255)
 {
-    for (uint8_t i = 0; i < SOMFY_MAX_SHADES - 2; i++)
+    for (uint8_t i = 0; i < SOMFY_MAX_SHADES; i++)
         somfy.shades[i].setShadeId(i + 1);
     EXPECT_EQ(somfy.getNextShadeId(), 255);
 }
@@ -427,8 +428,26 @@ INSTANTIATE_TEST_SUITE_P(SortOrderRange, AddShadeSortOrderTest,
 
 TEST_F(ControllerTest, AddShade_NoIdAvailable_ReturnsNull)
 {
-    for (uint8_t i = 0; i < SOMFY_MAX_SHADES - 2; i++)
+    for (uint8_t i = 0; i < SOMFY_MAX_SHADES; i++)
         somfy.shades[i].setShadeId(i + 1);
+    EXPECT_EQ(somfy.addShade(), nullptr);
+}
+
+// Guards the full capacity: addShade() must succeed exactly SOMFY_MAX_SHADES
+// times, handing out distinct ids 1..SOMFY_MAX_SHADES, before it runs out of
+// slots. Catches any off-by-one that shrinks usable capacity below the array.
+TEST_F(ControllerTest, AddShade_FillsAllSlots_ThenReturnsNull)
+{
+    std::set<uint8_t> seenIds;
+    for (uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
+        auto *s = somfy.addShade();
+        ASSERT_NE(s, nullptr) << "addShade() failed at slot " << static_cast<int>(i);
+        const uint8_t id = s->getShadeId();
+        EXPECT_GE(id, 1u);
+        EXPECT_LE(id, SOMFY_MAX_SHADES);
+        EXPECT_TRUE(seenIds.insert(id).second) << "duplicate shade id " << static_cast<int>(id);
+    }
+    EXPECT_EQ(seenIds.size(), static_cast<size_t>(SOMFY_MAX_SHADES));
     EXPECT_EQ(somfy.addShade(), nullptr);
 }
 

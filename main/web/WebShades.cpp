@@ -282,7 +282,7 @@ void WebShades::handleAddShade(WebServer &server)
         JsonObject obj;
         if (!json.parseBody(obj)) return;
         ESP_LOGI(s_TAG, "Counting shades");
-        if (somfy.shadeCount() > SOMFY_MAX_SHADES) {
+        if (somfy.shadeCount() >= SOMFY_MAX_SHADES) {
             json.respondJson().error("Maximum number of shades exceeded.");
             return;
         }

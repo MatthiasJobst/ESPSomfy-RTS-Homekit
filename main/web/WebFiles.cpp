@@ -41,6 +41,7 @@ const WebFiles::StaticFile WebFiles::s_files[] = {
     {"/sun-fill.svg", "/sun-fill.svg", "image/svg+xml", true},
     {"/sun.svg", "/sun.svg", "image/svg+xml", true},
     {"/file-earmark-arrow-up.svg", "/file-earmark-arrow-up.svg", "image/svg+xml", true},
+    {"/settings_remote.svg", "/settings_remote.svg", "image/svg+xml", true},
 };
 const size_t WebFiles::s_fileCount = sizeof(s_files) / sizeof(s_files[0]);
 

@@ -677,6 +677,47 @@ div.wait-overlay > .lds-roller {
 #divVirtualRemote[data-bitlength="none"] div.vr-button {
     display:none;
 }
+/* Virtual Remote is launched from the floating button (.vr-fab). When open it
+   takes over the card in normal flow (so the card grows to fit all buttons at
+   full size) and the app chrome is hidden to reclaim vertical space. The toggle
+   class lives on #divContainer because the header/top-tabs are above the Somfy
+   area. */
+#divVirtualRemote {
+    display: none;
+}
+/* Show only the remote: at each level from the card down to the remote, hide
+   every sibling (header, firmware/wifi status, top tabs, subtab bar, FAB, the
+   active subtab). New chrome added later is hidden automatically. */
+#divContainer.vr-open > #divAuthenticated > *:not(#divConfigPnl),
+#divContainer.vr-open #divConfigPnl > *:not(#divSomfySettings),
+#divContainer.vr-open #divSomfySettings > *:not(#divVirtualRemote) {
+    display: none;
+}
+#divContainer.vr-open #divVirtualRemote {
+    display: block;
+}
+.vr-fab {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background-color: #00bcd4;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 55;
+}
+.vr-fab-icon {
+    width: 28px;
+    height: 28px;
+    background-color: #fff;
+    -webkit-mask: url('/settings_remote.svg') center / contain no-repeat;
+            mask: url('/settings_remote.svg') center / contain no-repeat;
+}
 .shade-positioner {
     position: absolute;
     width: 100%;

@@ -2026,6 +2026,12 @@ class Somfy {
             if (typeof cb === 'function') cb(err, group);
         });
     }
+    openVirtualRemote() {
+        document.getElementById('divContainer').classList.add('vr-open');
+    }
+    closeVirtualRemote() {
+        document.getElementById('divContainer').classList.remove('vr-open');
+    }
     sendVRCommand(el) {
         let pnl = document.getElementById('divVirtualRemote');
         let dd = pnl.querySelector('#selVRMotor');
