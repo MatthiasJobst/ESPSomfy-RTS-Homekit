@@ -220,12 +220,20 @@ SomfyShade *SomfyShadeController::addShade(JsonObject &obj)
 SomfyShade *SomfyShadeController::addShade()
 {
     uint8_t shadeId = this->getNextShadeId();
-    // So the next shade id will be the first one we run into with an id of 255 so
-    // if it gets deleted in the middle then it will get the first slot that is empty.
-    // There is no apparent way around this.  In the future we might actually add an indexer
-    // to it for sorting later.  The time has come so the sort order is set below.
     if (shadeId == 255) return nullptr;
-    SomfyShade *shade = &this->shades[shadeId - 1];
+    // The slot index is NOT the shadeId: persistence compacts shades into the
+    // front slots on load (ShadeConfigFile), so slot N does not hold shadeId N+1
+    // after a reboot. Place the new shade in the first empty slot and look it up
+    // by id everywhere else (getShadeById), rather than indexing by shadeId - 1
+    // which would overwrite whichever shade happens to occupy that slot.
+    SomfyShade *shade = nullptr;
+    for (uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
+        if (this->shades[i].getShadeId() == 255) {
+            shade = &this->shades[i];
+            break;
+        }
+    }
+    if (!shade) return nullptr;
     // Compute the max BEFORE assigning the new id, so the new (still id=255)
     // slot is skipped by getMaxShadeOrder() and doesn't contribute its own
     // freshly-cleared sortOrder=0 to the max.

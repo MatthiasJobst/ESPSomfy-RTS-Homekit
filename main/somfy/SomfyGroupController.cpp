@@ -37,7 +37,7 @@ uint8_t SomfyGroupController::getNextGroupId()
 {
     // There is no shortcut for this since the deletion of
     // a group in the middle makes all of this very difficult.
-    for (uint8_t i = 1; i < SOMFY_MAX_GROUPS - 1; i++) {
+    for (uint8_t i = 1; i <= SOMFY_MAX_GROUPS; i++) {
         bool id_exists = false;
         for (uint8_t j = 0; j < SOMFY_MAX_GROUPS; j++) {
             SomfyGroup *group = &this->groups[j];
@@ -78,11 +78,21 @@ uint8_t SomfyGroupController::groupCount()
 SomfyGroup *SomfyGroupController::addGroup()
 {
     uint8_t groupId = this->getNextGroupId();
-    assert((groupId != 0) && (groupId != 255)); // getNextGroupId() returns 255 on failure
-    // The next id is the first slot with an id of 255, so a deleted middle slot
-    // gets reused. See addShade(): compute max before assigning id so the new
-    // (still id=255) slot is skipped by getMaxGroupOrder().
-    SomfyGroup *group = &this->groups[groupId - 1];
+    if (groupId == 0 || groupId == 255) return nullptr;
+    // The slot index is NOT groupId - 1: persistence compacts groups into the
+    // front slots on load, so slot N does not hold groupId N+1 after a reboot.
+    // Place the new group in the first empty slot and look it up by id (see
+    // addShade() for the shade equivalent of this bug).
+    SomfyGroup *group = nullptr;
+    for (uint8_t i = 0; i < SOMFY_MAX_GROUPS; i++) {
+        if (this->groups[i].getGroupId() == 255) {
+            group = &this->groups[i];
+            break;
+        }
+    }
+    if (!group) return nullptr;
+    // Compute max before assigning id so the new (still id=255) slot is skipped
+    // by getMaxGroupOrder().
     group->sortOrder = static_cast<int8_t>(this->getMaxGroupOrder() + 1);
     group->setGroupId(groupId);
     if (this->markDirty) this->markDirty();
@@ -93,6 +103,7 @@ SomfyGroup *SomfyGroupController::addGroup()
 SomfyGroup *SomfyGroupController::addGroup(JsonObject &obj)
 {
     SomfyGroup *group = this->addGroup();
+    if (!group) return nullptr;
     group->fromJSON(obj);
     group->save();
     group->emitState("groupAdded");

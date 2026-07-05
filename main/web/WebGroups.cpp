@@ -191,7 +191,7 @@ void WebGroups::handleAddGroup(WebServer &server)
         JsonObject obj;
         if (!json.parseBody(obj)) return;
         ESP_LOGI(s_TAG, "Counting shades");
-        if (somfy.groupController.groupCount() > SOMFY_MAX_GROUPS) {
+        if (somfy.groupController.groupCount() >= SOMFY_MAX_GROUPS) {
             json.respondJson().error("Maximum number of groups exceeded.");
             return;
         } else {

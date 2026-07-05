@@ -103,7 +103,7 @@ TEST_F(ControllerTest, GetNextGroupId_EmptyArray_Returns1)
 
 TEST_F(ControllerTest, GetNextGroupId_AllUsed_Returns255)
 {
-    for (uint8_t i = 0; i < SOMFY_MAX_GROUPS - 2; i++)
+    for (uint8_t i = 0; i < SOMFY_MAX_GROUPS; i++)
         somfy.groupController.groupSlot(i).setGroupId(i + 1);
     EXPECT_EQ(somfy.groupController.getNextGroupId(), 255);
 }
@@ -117,7 +117,7 @@ TEST_F(ControllerTest, GetNextRoomId_EmptyArray_Returns1)
 
 TEST_F(ControllerTest, GetNextRoomId_AllUsed_Returns0)
 {
-    for (uint8_t i = 0; i < SOMFY_MAX_ROOMS - 2; i++)
+    for (uint8_t i = 0; i < SOMFY_MAX_ROOMS; i++)
         somfy.roomController.roomSlot(i).roomId = i + 1;
     EXPECT_EQ(somfy.roomController.getNextRoomId(), 0);
 }
@@ -451,6 +451,29 @@ TEST_F(ControllerTest, AddShade_FillsAllSlots_ThenReturnsNull)
     EXPECT_EQ(somfy.addShade(), nullptr);
 }
 
+// Regression: after a mid-list delete + reload, persistence compacts shades
+// into the front slots, so slot index != shadeId - 1. addShade() must place the
+// new shade in a free slot without clobbering an existing shade that happens to
+// occupy slot (newId - 1). Reproduces the "add succeeds but loses a shade" bug.
+TEST_F(ControllerTest, AddShade_AfterCompaction_DoesNotClobberExistingShade)
+{
+    // Simulate the post-reload state: ids 1 and 3 packed into slots 0 and 1
+    // (as ShadeConfigFile would leave them after shade 2 was deleted).
+    somfy.shades[0].setShadeId(1);
+    somfy.shades[1].setShadeId(3);
+    // getNextShadeId() returns 2 (lowest free id); slot 2-1 == slot 1 holds id 3.
+    auto *s = somfy.addShade();
+    ASSERT_NE(s, nullptr);
+    EXPECT_EQ(s->getShadeId(), 2);
+    // The pre-existing shades must both survive.
+    ASSERT_NE(somfy.getShadeById(1), nullptr);
+    ASSERT_NE(somfy.getShadeById(3), nullptr);
+    ASSERT_NE(somfy.getShadeById(2), nullptr);
+    // The new shade must occupy its own slot, not shade 3's.
+    EXPECT_NE(somfy.getShadeById(2), somfy.getShadeById(3));
+    EXPECT_EQ(somfy.shadeCount(), 3);
+}
+
 TEST_F(ControllerTest, AddRoom_Empty_ReturnsRoomWithId1)
 {
     auto *r = somfy.roomController.addRoom();
@@ -459,14 +482,13 @@ TEST_F(ControllerTest, AddRoom_Empty_ReturnsRoomWithId1)
     EXPECT_TRUE(somfy.store.dirty);
 }
 
-TEST_F(ControllerTest, AddRoom_NoIdAvailable_Asserts)
+TEST_F(ControllerTest, AddRoom_NoIdAvailable_ReturnsNull)
 {
-    // addRoom() treats an exhausted id space as a programming error: getNextRoomId()
-    // returning 0 should be impossible in practice, so it asserts rather than
-    // returning nullptr. Fill every slot so the next id genuinely is 0.
+    // Adding a room when all slots are full is a user-reachable state, not a code
+    // invariant, so addRoom() returns nullptr instead of panicking.
     for (uint8_t i = 0; i < SOMFY_MAX_ROOMS; i++)
         somfy.roomController.roomSlot(i).roomId = i + 1;
-    EXPECT_DEATH(somfy.roomController.addRoom(), "roomId != 0");
+    EXPECT_EQ(somfy.roomController.addRoom(), nullptr);
 }
 
 TEST_F(ControllerTest, AddGroup_Empty_ReturnsGroupWithId1)
@@ -475,6 +497,61 @@ TEST_F(ControllerTest, AddGroup_Empty_ReturnsGroupWithId1)
     ASSERT_NE(g, nullptr);
     EXPECT_EQ(g->getGroupId(), 1);
     EXPECT_TRUE(somfy.store.dirty);
+}
+
+// Regression for the assert-panic crash: adding a group when all slots are full
+// must return nullptr, not abort. Also verifies the full capacity is usable.
+TEST_F(ControllerTest, AddGroup_FillsAllSlots_ThenReturnsNull)
+{
+    std::set<uint8_t> seenIds;
+    for (uint8_t i = 0; i < SOMFY_MAX_GROUPS; i++) {
+        auto *g = somfy.groupController.addGroup();
+        ASSERT_NE(g, nullptr) << "addGroup() failed at slot " << static_cast<int>(i);
+        EXPECT_TRUE(seenIds.insert(g->getGroupId()).second);
+    }
+    EXPECT_EQ(seenIds.size(), static_cast<size_t>(SOMFY_MAX_GROUPS));
+    EXPECT_EQ(somfy.groupController.addGroup(), nullptr);
+}
+
+// Regression: after compaction, slot index != groupId - 1, so addGroup() must
+// not clobber an existing group occupying slot (newId - 1).
+TEST_F(ControllerTest, AddGroup_AfterCompaction_DoesNotClobberExistingGroup)
+{
+    somfy.groupController.groupSlot(0).setGroupId(1);
+    somfy.groupController.groupSlot(1).setGroupId(3);
+    auto *g = somfy.groupController.addGroup();
+    ASSERT_NE(g, nullptr);
+    EXPECT_EQ(g->getGroupId(), 2);
+    ASSERT_NE(somfy.groupController.getGroupById(1), nullptr);
+    ASSERT_NE(somfy.groupController.getGroupById(3), nullptr);
+    EXPECT_NE(somfy.groupController.getGroupById(2), somfy.groupController.getGroupById(3));
+    EXPECT_EQ(somfy.groupController.groupCount(), 3);
+}
+
+// Room equivalents of the two group regressions above.
+TEST_F(ControllerTest, AddRoom_FillsAllSlots_ThenReturnsNull)
+{
+    std::set<uint8_t> seenIds;
+    for (uint8_t i = 0; i < SOMFY_MAX_ROOMS; i++) {
+        auto *r = somfy.roomController.addRoom();
+        ASSERT_NE(r, nullptr) << "addRoom() failed at slot " << static_cast<int>(i);
+        EXPECT_TRUE(seenIds.insert(r->roomId).second);
+    }
+    EXPECT_EQ(seenIds.size(), static_cast<size_t>(SOMFY_MAX_ROOMS));
+    EXPECT_EQ(somfy.roomController.addRoom(), nullptr);
+}
+
+TEST_F(ControllerTest, AddRoom_AfterCompaction_DoesNotClobberExistingRoom)
+{
+    somfy.roomController.roomSlot(0).roomId = 1;
+    somfy.roomController.roomSlot(1).roomId = 3;
+    auto *r = somfy.roomController.addRoom();
+    ASSERT_NE(r, nullptr);
+    EXPECT_EQ(r->roomId, 2);
+    ASSERT_NE(somfy.roomController.getRoomById(1), nullptr);
+    ASSERT_NE(somfy.roomController.getRoomById(3), nullptr);
+    EXPECT_NE(somfy.roomController.getRoomById(2), somfy.roomController.getRoomById(3));
+    EXPECT_EQ(somfy.roomController.roomCount(), 3);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

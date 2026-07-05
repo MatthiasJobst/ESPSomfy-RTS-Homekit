@@ -26,7 +26,7 @@ SomfyRoom *SomfyRoomController::getRoomById(uint8_t roomId)
 
 uint8_t SomfyRoomController::getNextRoomId()
 {
-    for (uint8_t i = 1; i < SOMFY_MAX_ROOMS - 1; i++) {
+    for (uint8_t i = 1; i <= SOMFY_MAX_ROOMS; i++) {
         bool id_exists = false;
         for (uint8_t j = 0; j < SOMFY_MAX_ROOMS; j++) {
             SomfyRoom *room = &this->rooms[j];
@@ -67,8 +67,19 @@ uint8_t SomfyRoomController::roomCount()
 SomfyRoom *SomfyRoomController::addRoom()
 {
     uint8_t roomId = this->getNextRoomId();
-    assert(roomId != 0);
-    SomfyRoom *room = &this->rooms[roomId - 1];
+    if (roomId == 0) return nullptr;
+    // The slot index is NOT roomId - 1: persistence compacts rooms into the front
+    // slots on load, so slot N does not hold roomId N+1 after a reboot. Place the
+    // new room in the first empty slot (roomId == 0) and look it up by id (see
+    // addShade() for the shade equivalent of this bug).
+    SomfyRoom *room = nullptr;
+    for (uint8_t i = 0; i < SOMFY_MAX_ROOMS; i++) {
+        if (this->rooms[i].roomId == 0) {
+            room = &this->rooms[i];
+            break;
+        }
+    }
+    if (!room) return nullptr;
     room->sortOrder = static_cast<int8_t>(this->getMaxRoomOrder() + 1);
     room->roomId = roomId;
     if (this->markDirty) this->markDirty();
