@@ -17,10 +17,10 @@ extern MQTTClass mqtt;
 void SomfyGroup::clear()
 {
     ESP_LOGD(s_TAG, "Clearing group.");
-    this->setGroupId(255);
+    this->setGroupId(SomfyGroup::NO_ID);
     this->setRemoteAddress(0);
     this->repeats = 0;
-    this->roomId = 0;
+    this->roomId = SomfyRoom::NO_ID;
     this->sortOrder = 0;
     this->name[0] = 0x00;
     memset(&this->linkedShades, 0x00, sizeof(this->linkedShades));

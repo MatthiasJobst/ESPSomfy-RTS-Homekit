@@ -16,6 +16,9 @@
 
 class SomfyShade : public SomfyRemote {
   public:
+    /// Sentinel id marking an empty shade slot (0xFF erased-record convention).
+    /// Shades are allocated ids 1..SOMFY_MAX_SHADES.
+    static constexpr uint8_t NO_ID = 255;
     SomfyShade()
     {
         mqttPublisher.shade = this;
@@ -156,10 +159,13 @@ class SomfyShade : public SomfyRemote {
     SomfyMovementTracker movementTracker;
 
   private:
-    uint8_t shadeId = 255;
+    uint8_t shadeId = NO_ID;
     void markShadeDataDirty();
 
     friend class SomfyCommandProcessor;
     friend class SomfyMovementTracker;
     friend class SomfyJSONSerializer;
 };
+
+/// ADL id accessor for the SlotArray helpers (slots::lowestFreeId / firstEmptySlot).
+inline uint8_t slotId(SomfyShade &shade) { return shade.getShadeId(); }

@@ -1,10 +1,8 @@
 #include "SomfyGroupController.h"
 #include <cassert>
-#include <esp_log.h>
 #include "SomfyGroup.h"
+#include "SlotArray.h"
 #include "WResp.h" // JsonResponse, used by toJSONGroups()
-
-static const char *s_TAG = "SomfyGroupController";
 
 SomfyGroupController::SomfyGroupController(std::function<void()> markDirty, std::function<void()> resetCommands)
     : markDirty(std::move(markDirty)), resetCommands(std::move(resetCommands))
@@ -35,23 +33,7 @@ SomfyGroup *SomfyGroupController::findGroupByRemoteAddress(uint32_t address)
 
 uint8_t SomfyGroupController::getNextGroupId()
 {
-    // There is no shortcut for this since the deletion of
-    // a group in the middle makes all of this very difficult.
-    for (uint8_t i = 1; i <= SOMFY_MAX_GROUPS; i++) {
-        bool id_exists = false;
-        for (uint8_t j = 0; j < SOMFY_MAX_GROUPS; j++) {
-            SomfyGroup *group = &this->groups[j];
-            if (group->getGroupId() == i) {
-                id_exists = true;
-                break;
-            }
-        }
-        if (!id_exists) {
-            ESP_LOGI(s_TAG, "Got next Group Id:%d", i);
-            return i;
-        }
-    }
-    return 255;
+    return slots::lowestFreeId(this->groups);
 }
 
 int8_t SomfyGroupController::getMaxGroupOrder()
@@ -59,7 +41,7 @@ int8_t SomfyGroupController::getMaxGroupOrder()
     int16_t order = -1;
     for (uint8_t i = 0; i < SOMFY_MAX_GROUPS; i++) {
         SomfyGroup *group = &this->groups[i];
-        if (group->getGroupId() == 255) continue;
+        if (group->getGroupId() == SomfyGroup::NO_ID) continue;
         if (order < group->sortOrder) order = group->sortOrder;
     }
     assert(order <= 127);
@@ -70,7 +52,7 @@ uint8_t SomfyGroupController::groupCount()
 {
     uint8_t count = 0;
     for (uint8_t i = 0; i < SOMFY_MAX_GROUPS; i++) {
-        if (this->groups[i].getGroupId() != 255) count++;
+        if (this->groups[i].getGroupId() != SomfyGroup::NO_ID) count++;
     }
     return count;
 }
@@ -78,18 +60,12 @@ uint8_t SomfyGroupController::groupCount()
 SomfyGroup *SomfyGroupController::addGroup()
 {
     uint8_t groupId = this->getNextGroupId();
-    if (groupId == 0 || groupId == 255) return nullptr;
+    if (groupId == 0 || groupId == SomfyGroup::NO_ID) return nullptr;
     // The slot index is NOT groupId - 1: persistence compacts groups into the
     // front slots on load, so slot N does not hold groupId N+1 after a reboot.
     // Place the new group in the first empty slot and look it up by id (see
     // addShade() for the shade equivalent of this bug).
-    SomfyGroup *group = nullptr;
-    for (uint8_t i = 0; i < SOMFY_MAX_GROUPS; i++) {
-        if (this->groups[i].getGroupId() == 255) {
-            group = &this->groups[i];
-            break;
-        }
-    }
+    SomfyGroup *group = slots::firstEmptySlot(this->groups);
     if (!group) return nullptr;
     // Compute max before assigning id so the new (still id=255) slot is skipped
     // by getMaxGroupOrder().
@@ -128,7 +104,7 @@ void SomfyGroupController::toJSONGroups(JsonResponse &json)
 {
     for (uint8_t i = 0; i < SOMFY_MAX_GROUPS; i++) {
         SomfyGroup &group = this->groups[i];
-        if (group.getGroupId() != 255) {
+        if (group.getGroupId() != SomfyGroup::NO_ID) {
             json.beginObject();
             group.toJSON(json);
             json.endObject();
@@ -140,7 +116,7 @@ void SomfyGroupController::updateGroupFlags()
 {
     for (uint8_t i = 0; i < SOMFY_MAX_GROUPS; i++) {
         SomfyGroup *group = &this->groups[i];
-        if (group->getGroupId() != 255) {
+        if (group->getGroupId() != SomfyGroup::NO_ID) {
             SomfyFlag oldFlags = group->flags;
             group->updateFlags();
             if (oldFlags != group->flags) group->emitState();
