@@ -138,3 +138,12 @@ MQTT was tempting to remove as well since I don't use it, but it is genuinely us
 
 ### Improving the transmission
 
+## License
+
+This project's own source is released into the public domain under [The Unlicense](LICENSE).
+
+The Unlicense covers **only the original code in this repository**. The firmware and
+web bundle also include third-party components (e.g. Bootstrap Icons, ArduinoJson,
+arduino-esp32) that remain under their own licenses and are **not** public domain.
+Those components and their notices are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+

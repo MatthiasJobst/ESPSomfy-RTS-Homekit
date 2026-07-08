@@ -142,7 +142,7 @@ void WebRooms::handleAddRoom(WebServer &server)
         JsonObject obj;
         if (!json.parseBody(obj)) return;
         ESP_LOGI(s_TAG, "Counting rooms");
-        if (somfy.roomController.roomCount() > SOMFY_MAX_ROOMS) {
+        if (somfy.roomController.roomCount() >= SOMFY_MAX_ROOMS) {
             json.respondJson().error("Maximum number of rooms exceeded.");
             return;
         } else {
