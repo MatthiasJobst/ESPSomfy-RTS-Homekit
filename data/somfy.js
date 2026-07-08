@@ -403,6 +403,8 @@ class Somfy {
         document.getElementById('divShadeList').innerHTML = divCfg;
         let shadeControls = document.getElementById('divShadeControls');
         shadeControls.innerHTML = divCtl;
+        // Keep the Links tab's source-shade picker in sync with the shade list.
+        this.populateLinkTabShades(shades);
         // Attach the timer for setting the My Position for the shade.
         let btns = shadeControls.querySelectorAll('div.cmd-button');
         for (let i = 0; i < btns.length; i++) {
@@ -851,20 +853,170 @@ class Somfy {
         });
     }
     setLinkedRemotesList(shade) {
+        // Fetch the full shade list so linked rows can show the owning shade's
+        // name when a linked remote is actually another app shade.
+        getJSON('/shades', (err, shades) => {
+            let allShades = (!err && Array.isArray(shades)) ? shades : [];
+            this.renderLinkedRemotesList(shade, allShades);
+        });
+    }
+    renderLinkedRemotesList(shade, allShades, opts) {
+        opts = opts || {};
+        let targetId = opts.targetId || 'divLinkedRemoteList';
+        let unlinkFn = opts.unlinkFn || 'unlinkRemote';
+        let header = opts.header || 'Linked Remotes';
+        let emptyText = opts.empty || 'No linked remotes';
+        let target = document.getElementById(targetId);
+        if (!target) return;
         let linkedRemotes = (shade && shade.linkedRemotes) ? shade.linkedRemotes : [];
-        let divCfg = '<div class="linkedremote-header">Linked Remotes</div>';
+        let divCfg = `<div class="linkedremote-header">${header}</div>`;
         if (linkedRemotes.length === 0) {
-            divCfg += '<div class="linkedremote-none">No linked remotes</div>';
+            divCfg += `<div class="linkedremote-none">${emptyText}</div>`;
         }
         for (let i = 0; i < linkedRemotes.length; i++) {
             let remote = linkedRemotes[i];
+            // When the linked address belongs to another app shade, label it
+            // with that shade's name; otherwise show the bare address.
+            let match = allShades.find(s => s.remoteAddress === remote.remoteAddress && s.shadeId !== shade.shadeId);
+            let label = match ? `${match.name} — ${remote.remoteAddress}` : `${remote.remoteAddress}`;
             divCfg += `<div class="somfyLinkedRemote" data-shadeid="${shade.shadeId}" data-remoteaddress="${remote.remoteAddress}">`;
-            divCfg += `<span class="linkedremote-address">${remote.remoteAddress}</span>`;
+            divCfg += `<span class="linkedremote-address">${label}</span>`;
             divCfg += `<span class="linkedremote-code">${remote.lastRollingCode}</span>`;
-            divCfg += `<div class="button-outline" onclick="somfy.unlinkRemote(${shade.shadeId}, ${remote.remoteAddress});"><i class="icss-trash"></i></div>`;
+            divCfg += `<div class="button-outline" onclick="somfy.${unlinkFn}(${shade.shadeId}, ${remote.remoteAddress});"><i class="icss-trash"></i></div>`;
             divCfg += '</div>';
         }
-        document.getElementById('divLinkedRemoteList').innerHTML = divCfg;
+        target.innerHTML = divCfg;
+    }
+    // Candidate shades for linking: every other saved shade with a real address
+    // that is not already linked to this shade.
+    linkCandidates(shade, allShades) {
+        let linkedAddrs = ((shade && shade.linkedRemotes) || []).map(r => r.remoteAddress);
+        return (allShades || []).filter(s =>
+            s.shadeId !== shade.shadeId &&
+            s.remoteAddress &&
+            linkedAddrs.indexOf(s.remoteAddress) === -1);
+    }
+    // Enable the tab's "Link Shade" button only when there is something to link.
+    updateLinkShadeButton(shade, allShades) {
+        let btn = document.getElementById('btnLinkAppShade');
+        if (!btn) return;
+        let none = this.linkCandidates(shade, allShades).length === 0;
+        btn.classList.toggle('disabled', none);
+        btn.disabled = none;
+    }
+    // ── Links tab: manage shade-to-shade links in one place ───────────────────
+    // Fill the "source shade" picker (which shade to add links to). Kept in sync
+    // from setShadesList(). Preserves the current selection across refreshes.
+    populateLinkTabShades(shades) {
+        let sel = document.getElementById('selLinkTabShade');
+        if (!sel) return;
+        let prev = sel.value;
+        let list = (shades || []).filter(s => s.remoteAddress);
+        let opts = '';
+        for (let i = 0; i < list.length; i++) {
+            let s = list[i];
+            let room = _rooms.find(x => x.roomId === s.roomId);
+            let prefix = (room && room.name && room.roomId !== 0) ? `${room.name}: ` : '';
+            opts += `<option value="${s.shadeId}">${prefix}${s.name} (${s.remoteAddress})</option>`;
+        }
+        sel.innerHTML = opts || '<option value="" disabled selected>No shades configured</option>';
+        if (prev && sel.querySelector(`option[value="${prev}"]`)) sel.value = prev;
+        this.loadShadeLinks();
+    }
+    // Render the selected source shade's links and the "add link" candidates.
+    loadShadeLinks() {
+        let srcSel = document.getElementById('selLinkTabShade');
+        let listEl = document.getElementById('divLinkTabList');
+        if (!srcSel || !srcSel.value) {
+            if (listEl) listEl.innerHTML = '';
+            this.updateLinkShadeButton({ shadeId: -1, linkedRemotes: [] }, []);
+            return;
+        }
+        let shadeId = parseInt(srcSel.value, 10);
+        getJSON('/shades', (err, shades) => {
+            let allShades = (!err && Array.isArray(shades)) ? shades : [];
+            getJSON(`/shade?shadeId=${shadeId}`, (errShade, shade) => {
+                let current = (!errShade && shade) ? shade : { shadeId: shadeId, linkedRemotes: [] };
+                this.renderLinkedRemotesList(current, allShades, {
+                    targetId: 'divLinkTabList',
+                    unlinkFn: 'unlinkShadeLink',
+                    header: 'Linked shades & remotes',
+                    empty: 'No links yet'
+                });
+                this.updateLinkShadeButton(current, allShades);
+            });
+        });
+    }
+    // Open a popup to pick and link another shade to the selected source shade
+    // (mirrors linkRemote's press-a-remote popup).
+    openLinkShade() {
+        let src = document.getElementById('selLinkTabShade');
+        if (!src || !src.value) return;
+        let shadeId = parseInt(src.value, 10);
+        let div = document.createElement('div');
+        let html = `<div id="divLinkShade" class="instructions" data-shadeid="${shadeId}">`;
+        html += '<div>Link the following shade</div>';
+        html += `<div class="field-group" style="text-align:center;background-color:white;border-radius:5px;">`;
+        html += '<select id="selLinkAppShade" class="link-appshade-select"></select>';
+        html += '<label for="selLinkAppShade">Select a shade</label>';
+        html += '</div>';
+        html += '<div class="button-container" style="text-align:center;margin-top:10px;">';
+        html += `<button type="button" style="display:inline-block;width:45%;margin:0 2%;" onclick="somfy.addShadeLink();">Link</button>`;
+        html += `<button type="button" style="display:inline-block;width:45%;margin:0 2%;" onclick="document.getElementById('divLinkShade').remove();">Cancel</button>`;
+        html += '</div></div>';
+        div.innerHTML = html;
+        document.getElementById('divSomfyLinks').appendChild(div);
+        // Fetch candidates (full list minus self and already-linked) and fill the select.
+        getJSON('/shades', (err, shades) => {
+            let allShades = (!err && Array.isArray(shades)) ? shades : [];
+            getJSON(`/shade?shadeId=${shadeId}`, (errShade, shade) => {
+                let current = (!errShade && shade) ? shade : { shadeId: shadeId, linkedRemotes: [] };
+                this.fillLinkCandidateSelect(current, allShades);
+            });
+        });
+        return div;
+    }
+    fillLinkCandidateSelect(shade, allShades) {
+        let sel = document.getElementById('selLinkAppShade');
+        if (!sel) return;
+        let candidates = this.linkCandidates(shade, allShades);
+        if (candidates.length === 0) {
+            sel.innerHTML = '<option value="" disabled selected>No other shades available to link</option>';
+            return;
+        }
+        let opts = '';
+        for (let i = 0; i < candidates.length; i++) {
+            let s = candidates[i];
+            let room = _rooms.find(x => x.roomId === s.roomId);
+            let prefix = (room && room.name && room.roomId !== 0) ? `${room.name}: ` : '';
+            opts += `<option value="${s.remoteAddress}">${prefix}${s.name} (${s.remoteAddress})</option>`;
+        }
+        sel.innerHTML = opts;
+    }
+    // Link the chosen candidate shade's remote to the selected source shade.
+    addShadeLink() {
+        let src = document.getElementById('selLinkTabShade');
+        let cand = document.getElementById('selLinkAppShade');
+        if (!src || !src.value || !cand || !cand.value) return;
+        let obj = { shadeId: parseInt(src.value, 10), remoteAddress: parseInt(cand.value, 10) };
+        putJSON('/linkRemote', obj, (err) => {
+            if (err) {
+                ui.serviceError(err);
+                return;
+            }
+            let pop = document.getElementById('divLinkShade');
+            if (pop) pop.remove();
+            this.loadShadeLinks();
+        });
+    }
+    unlinkShadeLink(shadeId, remoteAddress) {
+        putJSON('/unlinkRemote', { shadeId: shadeId, remoteAddress: remoteAddress }, (err) => {
+            if (err) {
+                ui.serviceError(err);
+                return;
+            }
+            this.loadShadeLinks();
+        });
     }
     setLinkedShadesList(group) {
         let divCfg = '';
@@ -960,8 +1112,15 @@ class Somfy {
             putJSON('/linkRemote', obj, (err, shade) => {
                 console.log(shade);
                 overlay.remove();
+                // Keep the linking dialog open on error so the user sees the
+                // failure (e.g. no free linked-remote slots) and can retry/cancel.
+                if (err) {
+                    ui.serviceError(err);
+                    return;
+                }
                 lnk.remove();
-                this.setLinkedRemotesList(shade);
+                // RF linking is initiated from the Links tab; refresh it.
+                this.loadShadeLinks();
             });
         }
         else {
@@ -1118,7 +1277,6 @@ class Somfy {
             getJSONSync('/getNextShade', (err, shade) => {
                 document.getElementById('btnPairShade').style.display = 'none';
                 document.getElementById('btnUnpairShade').style.display = 'none';
-                document.getElementById('btnLinkRemote').style.display = 'none';
                 document.getElementById('btnSaveShade').innerText = 'Add Shade';
                 document.getElementById('spanShadeId').innerText = '*';
                 document.getElementById('divLinkedRemoteList').innerHTML = '';
@@ -1148,7 +1306,6 @@ class Somfy {
             document.getElementById('btnSaveShade').style.display = 'none';
             document.getElementById('btnPairShade').style.display = 'none';
             document.getElementById('btnUnpairShade').style.display = 'none';
-            document.getElementById('btnLinkRemote').style.display = 'none';
 
             document.getElementById('btnSaveShade').innerText = 'Save Shade';
             document.getElementById('spanShadeId').innerText = shadeId;
@@ -1161,7 +1318,6 @@ class Somfy {
                     ui.toElement(document.getElementById('somfyShade'), shade);
                     this.showEditShade(true);
                     document.getElementById('btnSaveShade').style.display = 'inline-block';
-                    document.getElementById('btnLinkRemote').style.display = '';
                     this.onShadeTypeChanged(document.getElementById('selShadeType'));
                     let ico = document.getElementById('icoShade');
                     let tilt = ico.parentElement.querySelector('i.icss-window-tilt');
@@ -1380,7 +1536,6 @@ class Somfy {
                         document.getElementById('spanShadeId').innerText = shade.shadeId;
                         document.getElementById('btnSaveShade').innerText = 'Save Shade';
                         document.getElementById('btnSaveShade').style.display = 'inline-block';
-                        document.getElementById('btnLinkRemote').style.display = '';
                         document.getElementById(shade.paired ? 'btnUnpairShade' : 'btnPairShade').style.display = 'inline-block';
                         document.getElementById('btnSetRollingCode').style.display = 'inline-block';
                         this.updateShadeList();
@@ -1578,7 +1733,6 @@ class Somfy {
                 document.getElementById('somfyMain').style.display = 'none';
                 document.getElementById('somfyShade').style.display = '';
                 document.getElementById('btnSaveShade').style.display = 'inline-block';
-                document.getElementById('btnLinkRemote').style.display = '';
                 document.getElementsByName('shadeAddress')[0].value = shade.remoteAddress;
                 document.getElementsByName('shadeName')[0].value = shade.name;
                 document.getElementsByName('shadeUpTime')[0].value = shade.upTime;
@@ -1612,7 +1766,6 @@ class Somfy {
                 document.getElementById('somfyMain').style.display = 'none';
                 document.getElementById('somfyShade').style.display = '';
                 document.getElementById('btnSaveShade').style.display = 'inline-block';
-                document.getElementById('btnLinkRemote').style.display = '';
                 document.getElementsByName('shadeAddress')[0].value = shade.remoteAddress;
                 document.getElementsByName('shadeName')[0].value = shade.name;
                 document.getElementsByName('shadeUpTime')[0].value = shade.upTime;
@@ -1687,7 +1840,6 @@ class Somfy {
                 console.log(shade);
                 this.showEditShade(true);
                 document.getElementById('btnSaveShade').style.display = 'inline-block';
-                document.getElementById('btnLinkRemote').style.display = '';
                 if (shade.paired) {
                     document.getElementById('btnUnpairShade').style.display = 'inline-block';
                     document.getElementById('btnPairShade').style.display = 'none';
@@ -1874,6 +2026,12 @@ class Somfy {
             if (typeof cb === 'function') cb(err, group);
         });
     }
+    openVirtualRemote() {
+        document.getElementById('divContainer').classList.add('vr-open');
+    }
+    closeVirtualRemote() {
+        document.getElementById('divContainer').classList.remove('vr-open');
+    }
     sendVRCommand(el) {
         let pnl = document.getElementById('divVirtualRemote');
         let dd = pnl.querySelector('#selVRMotor');
@@ -1948,15 +2106,23 @@ class Somfy {
                 if (typeof cb === 'function') cb(err, shade);
             });
     }
+    // Open the press-a-remote popup for the shade currently selected in the
+    // Links tab's source picker.
+    linkRemoteFromTab() {
+        let src = document.getElementById('selLinkTabShade');
+        if (!src || !src.value) return;
+        this.linkRemote(parseInt(src.value, 10));
+    }
     linkRemote(shadeId) {
         let div = document.createElement('div');
         let html = `<div id="divLinking" class="instructions" data-type="link-remote" data-shadeid="${shadeId}">`;
-        html += '<div>Press any button on the remote to link it to this shade.  This will not change the pairing for the remote and this screen will close when the remote is detected.</div>';
+        html += '<div>Press any button on the remote to link it to the selected shade.  This will not change the pairing for the remote and this screen will close when the remote is detected.</div>';
         html += '<hr></hr>';
         html += `<div><div class="button-container"><button id="btnStopLinking" type="button" style="padding-left:20px;padding-right:20px;" onclick="document.getElementById('divLinking').remove();">Cancel</button></div>`;
         html += '</div>';
         div.innerHTML = html;
-        document.getElementById('somfyShade').appendChild(div);
+        // Anchor the overlay over the Links tab (its positioning context).
+        document.getElementById('divSomfyLinks').appendChild(div);
         return div;
     }
     linkRepeatRemote() {

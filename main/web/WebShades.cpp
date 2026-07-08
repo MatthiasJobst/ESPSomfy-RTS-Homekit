@@ -282,7 +282,7 @@ void WebShades::handleAddShade(WebServer &server)
         JsonObject obj;
         if (!json.parseBody(obj)) return;
         ESP_LOGI(s_TAG, "Counting shades");
-        if (somfy.shadeCount() > SOMFY_MAX_SHADES) {
+        if (somfy.shadeCount() >= SOMFY_MAX_SHADES) {
             json.respondJson().error("Maximum number of shades exceeded.");
             return;
         }
@@ -510,17 +510,20 @@ void WebShades::remoteLinkOp(WebServer &server, bool link)
             if (obj.containsKey("shadeId")) {
                 SomfyShade *shade = requireShade(json, obj["shadeId"].as<uint8_t>());
                 if (shade) {
-                    if (obj.containsKey("remoteAddress")) {
-                        if (link) {
-                            if (obj.containsKey("rollingCode"))
-                                shade->linkRemote(obj["remoteAddress"], obj["rollingCode"]);
-                            else
-                                shade->linkRemote(obj["remoteAddress"]);
-                        } else {
-                            shade->unlinkRemote(obj["remoteAddress"]);
+                    if (!obj.containsKey("remoteAddress")) {
+                        json.respondJson().error("Remote address not provided.");
+                        return;
+                    }
+                    if (link) {
+                        bool linked = obj.containsKey("rollingCode")
+                                          ? shade->linkRemote(obj["remoteAddress"], obj["rollingCode"])
+                                          : shade->linkRemote(obj["remoteAddress"]);
+                        if (!linked) {
+                            json.respondJson().error("No free linked-remote slots available.");
+                            return;
                         }
                     } else {
-                        json.respondJson().error("Remote address not provided.");
+                        shade->unlinkRemote(obj["remoteAddress"]);
                     }
                     sendShadeJSON(json, shade);
                 }

@@ -47,6 +47,21 @@ class HomeKitClass {
     void resetPairings();
 
     /**
+     * @brief Delete orphaned accessory-AID entries from the HomeKit runtime keystore.
+     *
+     * HAP persists one AID blob per bridged accessory (keyed by the shade's stable
+     * id) so AIDs stay constant across reboots; these are never pruned by the SDK,
+     * so deleted shades — and entries left over from older firmware that keyed by
+     * name — accumulate and fill the NVS partition. This removes every `hap_main`
+     * AID blob that no longer matches a live shade, while preserving the HAP
+     * identity/counter keys. Safe to call repeatedly; only runs once the HAP stack
+     * has started.
+     *
+     * Invoked on boot after the bridge is built, and whenever a shade is deleted.
+     */
+    void pruneOrphanAccessoryAids();
+
+    /**
      * @brief Serialize HomeKit status to JSON for the /homekit API endpoint.
      *
      * @param resp JSON response object to write into.

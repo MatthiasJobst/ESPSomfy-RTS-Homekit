@@ -65,6 +65,7 @@ add_executable(shade_tests
     test_somfyShadeController.cpp
     test_somfyGroup.cpp
     test_somfyRoom.cpp
+    test_slotArray.cpp
     test_authService.cpp
     ../../main/services/AuthService.cpp
     stubs/globals_stub.cpp

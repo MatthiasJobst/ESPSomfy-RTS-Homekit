@@ -18,10 +18,10 @@ extern GitUpdater git;
 
 void SomfyShade::clear()
 {
-    this->setShadeId(255);
+    this->setShadeId(SomfyShade::NO_ID);
     this->setRemoteAddress(0);
     this->sortOrder = 0;
-    this->roomId = 0;
+    this->roomId = SomfyRoom::NO_ID;
     movementTracker.reset();
     this->flagManager = SomfyFlagManager{};
     mqttPublisher.flipPosition = false;

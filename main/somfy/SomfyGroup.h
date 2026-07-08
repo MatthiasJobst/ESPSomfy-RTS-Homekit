@@ -5,9 +5,12 @@
 
 class SomfyGroup : public SomfyRemote {
   protected:
-    uint8_t groupId = 255;
+    uint8_t groupId = 255; // = NO_ID; literal kept so the default is visible before NO_ID's declaration.
 
   public:
+    /// Sentinel id marking an empty group slot (0xFF erased-record convention).
+    /// Groups are allocated ids 1..SOMFY_MAX_GROUPS.
+    static constexpr uint8_t NO_ID = 255;
     uint8_t roomId = 0;
     uint8_t sortOrder = 0;
     group_types groupType = group_types::channel;
@@ -44,3 +47,6 @@ class SomfyGroup : public SomfyRemote {
     bool publish(const char *topic, uint16_t val, bool retain = false);
     bool publish(const char *topic, bool val, bool retain = false);
 };
+
+/// ADL id accessor for the SlotArray helpers (slots::lowestFreeId / firstEmptySlot).
+inline uint8_t slotId(SomfyGroup &group) { return group.getGroupId(); }

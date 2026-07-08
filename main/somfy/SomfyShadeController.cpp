@@ -8,6 +8,7 @@
 #include <freertos/task.h>
 #include <WebServer.h>
 #include "SomfyShadeController.h"
+#include "SlotArray.h"
 #include "ConfigSettings.h"
 #include "GitOTA.h"
 #include "HomeKit.h"
@@ -63,7 +64,7 @@ void SomfyShadeController::applyDefaultBitLengths()
     bool saveFlag = false;
     for (uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
         SomfyShade *shade = &this->shades[i];
-        if (shade->getShadeId() != 255 && shade->bitLength == 0) {
+        if (shade->getShadeId() != SomfyShade::NO_ID && shade->bitLength == 0) {
             ESP_LOGD(s_TAG, "Setting bit length to %d", this->transceiver.config.type);
             shade->bitLength = this->transceiver.config.type;
             saveFlag = true;
@@ -85,21 +86,21 @@ char mqttTopicBuffer[55];
 void SomfyShadeController::processFrame(somfy_frame_t &frame, bool internal)
 {
     for (uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
-        if (this->shades[i].getShadeId() != 255) this->shades[i].processFrame(frame, internal);
+        if (this->shades[i].getShadeId() != SomfyShade::NO_ID) this->shades[i].processFrame(frame, internal);
     }
 }
 
 void SomfyShadeController::processWaitingFrame()
 {
     for (uint8_t i = 0; i < SOMFY_MAX_SHADES; i++)
-        if (this->shades[i].getShadeId() != 255) this->shades[i].processWaitingFrame();
+        if (this->shades[i].getShadeId() != SomfyShade::NO_ID) this->shades[i].processWaitingFrame();
 }
 
 void SomfyShadeController::emitState(uint8_t num)
 {
     for (uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
         SomfyShade *shade = &this->shades[i];
-        if (shade->getShadeId() == 255) continue;
+        if (shade->getShadeId() == SomfyShade::NO_ID) continue;
         shade->emitState(num);
     }
 }
@@ -110,7 +111,7 @@ void SomfyShadeController::publish()
     char arrIds[128] = "[";
     for (uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
         SomfyShade *shade = &this->shades[i];
-        if (shade->getShadeId() == 255) continue;
+        if (shade->getShadeId() == SomfyShade::NO_ID) continue;
         if (strlen(arrIds) > 1) strlcat(arrIds, ",", sizeof(arrIds));
         itoa(shade->getShadeId(), &arrIds[strlen(arrIds)], 10);
         shade->publish();
@@ -128,7 +129,7 @@ void SomfyShadeController::publish()
     strcpy(arrIds, "[");
     for (uint8_t i = 0; i < SOMFY_MAX_GROUPS; i++) {
         SomfyGroup *group = &this->groupController.groupSlot(i);
-        if (group->getGroupId() == 255) continue;
+        if (group->getGroupId() == SomfyGroup::NO_ID) continue;
         if (strlen(arrIds) > 1) strlcat(arrIds, ",", sizeof(arrIds));
         itoa(group->getGroupId(), &arrIds[strlen(arrIds)], 10);
         group->publish();
@@ -146,23 +147,7 @@ void SomfyShadeController::publish()
 
 uint8_t SomfyShadeController::getNextShadeId()
 {
-    // There is no shortcut for this since the deletion of
-    // a shade in the middle makes all of this very difficult.
-    for (uint8_t i = 1; i < SOMFY_MAX_SHADES - 1; i++) {
-        bool id_exists = false;
-        for (uint8_t j = 0; j < SOMFY_MAX_SHADES; j++) {
-            SomfyShade *shade = &this->shades[j];
-            if (shade->getShadeId() == i) {
-                id_exists = true;
-                break;
-            }
-        }
-        if (!id_exists) {
-            ESP_LOGI(s_TAG, "Got next Shade Id:%d", i);
-            return i;
-        }
-    }
-    return 255;
+    return slots::lowestFreeId(this->shades);
 }
 
 int8_t SomfyShadeController::getMaxShadeOrder()
@@ -170,7 +155,7 @@ int8_t SomfyShadeController::getMaxShadeOrder()
     int16_t order = -1;
     for (uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
         SomfyShade *shade = &this->shades[i];
-        if (shade->getShadeId() == 255) continue;
+        if (shade->getShadeId() == SomfyShade::NO_ID) continue;
         if (order < shade->sortOrder) order = shade->sortOrder;
     }
     assert(order <= 127);
@@ -181,7 +166,7 @@ uint8_t SomfyShadeController::shadeCount()
 {
     uint8_t count = 0;
     for (uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
-        if (this->shades[i].getShadeId() != 255) count++;
+        if (this->shades[i].getShadeId() != SomfyShade::NO_ID) count++;
     }
     return count;
 }
@@ -193,9 +178,9 @@ uint32_t SomfyShadeController::getNextRemoteAddress(uint8_t id)
     // The assumption here is that the max number of groups will
     // always be less than or equal to the max number of shades.
     while (i < SOMFY_MAX_SHADES) {
-        if ((i < SOMFY_MAX_SHADES && this->shades[i].getShadeId() != 255 &&
+        if ((i < SOMFY_MAX_SHADES && this->shades[i].getShadeId() != SomfyShade::NO_ID &&
              this->shades[i].getRemoteAddress() == address) ||
-            (i < SOMFY_MAX_GROUPS && this->groupController.groupSlot(i).getGroupId() != 255 &&
+            (i < SOMFY_MAX_GROUPS && this->groupController.groupSlot(i).getGroupId() != SomfyGroup::NO_ID &&
              this->groupController.groupSlot(i).getRemoteAddress() == address)) {
             address++;
             i = 0; // Start over we cannot share addresses.
@@ -209,6 +194,7 @@ uint32_t SomfyShadeController::getNextRemoteAddress(uint8_t id)
 SomfyShade *SomfyShadeController::addShade(JsonObject &obj)
 {
     SomfyShade *shade = this->addShade();
+    if (!shade) return nullptr; // all shade slots are full
     shade->fromJSON(obj);
     shade->save();
     shade->emitState("shadeAdded");
@@ -219,12 +205,14 @@ SomfyShade *SomfyShadeController::addShade(JsonObject &obj)
 SomfyShade *SomfyShadeController::addShade()
 {
     uint8_t shadeId = this->getNextShadeId();
-    // So the next shade id will be the first one we run into with an id of 255 so
-    // if it gets deleted in the middle then it will get the first slot that is empty.
-    // There is no apparent way around this.  In the future we might actually add an indexer
-    // to it for sorting later.  The time has come so the sort order is set below.
-    if (shadeId == 255) return nullptr;
-    SomfyShade *shade = &this->shades[shadeId - 1];
+    if (shadeId == SomfyShade::NO_ID) return nullptr;
+    // The slot index is NOT the shadeId: persistence compacts shades into the
+    // front slots on load (ShadeConfigFile), so slot N does not hold shadeId N+1
+    // after a reboot. Place the new shade in the first empty slot and look it up
+    // by id everywhere else (getShadeById), rather than indexing by shadeId - 1
+    // which would overwrite whichever shade happens to occupy that slot.
+    SomfyShade *shade = slots::firstEmptySlot(this->shades);
+    if (!shade) return nullptr;
     // Compute the max BEFORE assigning the new id, so the new (still id=255)
     // slot is skipped by getMaxShadeOrder() and doesn't contribute its own
     // freshly-cleared sortOrder=0 to the max.
@@ -247,6 +235,7 @@ bool SomfyShadeController::deleteShade(uint8_t shadeId)
             this->commandDispatcher.cmdQueue.reset(); // drop commands bound to the removed shade
         }
     }
+    homekit.pruneOrphanAccessoryAids(); // reclaim the deleted shade's AID entry
     this->store.commit();
     return true;
 }
@@ -271,7 +260,7 @@ void SomfyShadeController::toJSONShades(JsonResponse &json)
 {
     for (uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
         SomfyShade &shade = this->shades[i];
-        if (shade.getShadeId() != 255) {
+        if (shade.getShadeId() != SomfyShade::NO_ID) {
             json.beginObject();
             shade.toJSON(json);
             json.endObject();
@@ -282,7 +271,7 @@ void SomfyShadeController::toJSONShades(JsonResponse &json)
 void SomfyShadeController::tickShades()
 {
     for (uint8_t i = 0; i < SOMFY_MAX_SHADES; i++) {
-        if (this->shades[i].getShadeId() != 255) {
+        if (this->shades[i].getShadeId() != SomfyShade::NO_ID) {
             this->shades[i].checkMovement();
             this->shades[i].setGPIOs();
         }
